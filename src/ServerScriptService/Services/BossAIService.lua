@@ -1,0 +1,136 @@
+-- src/ServerScriptService/Services/BossAIService.lua
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+local Net = require(ReplicatedStorage.Shared.Net)
+local BossAttacks = require(ReplicatedStorage.Shared.Data.BossAttacks)
+local CombatService = require(script.Parent.CombatService)
+
+local BossAIService = {}
+
+local function pickPhase(bossData, currentHealth: number, maxHealth: number)
+	local hpPercent = currentHealth / maxHealth
+	local chosen = bossData.phases[1]
+	for _, phase in bossData.phases do
+		if hpPercent <= phase.hpThreshold then
+			chosen = phase
+		end
+	end
+	return chosen
+end
+
+local function playersInRadius(center: Vector3, radius: number): {Player}
+	local hit = {}
+	for _, player in Players:GetPlayers() do
+		local rootPart = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if rootPart and (rootPart.Position - center).Magnitude <= radius then
+			table.insert(hit, player)
+		end
+	end
+	return hit
+end
+
+-- CombatService.RegisterBoss's range check reads `activeBoss.model.PrimaryPart.Position`
+-- (see CombatService.lua), which requires `model` to be a Model with PrimaryPart set — a
+-- bare Part has no PrimaryPart property. Build a small Model wrapping a single visual Part
+-- so the boss "actor" matches the Model+PrimaryPart shape CombatService already expects,
+-- consistent with how Roblox characters/NPCs are normally structured.
+local function createBossModel(bossId: string, spawnCFrame: CFrame): Model
+	local model = Instance.new("Model")
+	model.Name = bossId
+
+	local torso = Instance.new("Part")
+	torso.Name = "Torso"
+	torso.Size = Vector3.new(6, 10, 6)
+	torso.Anchored = true
+	torso.CFrame = spawnCFrame
+	torso.Parent = model
+
+	model.PrimaryPart = torso
+	model.Parent = workspace
+
+	return model
+end
+
+function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (() -> ())?)
+	local bossData = require(ReplicatedStorage.Shared.Data.Bosses[bossId])
+
+	local model = createBossModel(bossId, spawnCFrame)
+
+	local currentHealth = bossData.maxHealth
+	local alive = true
+	local firedPhaseTransitions = {}
+
+	local handle = {
+		model = model,
+		currentHealth = currentHealth,
+		maxHealth = bossData.maxHealth,
+	}
+
+	function handle.onDamaged(amount: number)
+		if not alive then
+			return
+		end
+		currentHealth = math.max(0, currentHealth - amount)
+		handle.currentHealth = currentHealth
+		Net.Get("BossStateChanged"):FireAllClients(bossId, currentHealth, bossData.maxHealth)
+		if currentHealth <= 0 then
+			alive = false
+		end
+	end
+
+	CombatService.RegisterBoss(handle)
+
+	task.spawn(function()
+		while alive do
+			local phase = pickPhase(bossData, currentHealth, bossData.maxHealth)
+
+			if not firedPhaseTransitions[phase.hpThreshold] and phase.hpThreshold < 1.0 then
+				firedPhaseTransitions[phase.hpThreshold] = true
+				local transition
+				for _, t in bossData.phaseTransition do
+					if t.hpThreshold == phase.hpThreshold then
+						transition = t
+						break
+					end
+				end
+				if transition then
+					task.wait(transition.duration)
+				end
+			end
+
+			local waitTime = phase.attackIntervalRange[1]
+				+ math.random() * (phase.attackIntervalRange[2] - phase.attackIntervalRange[1])
+			task.wait(waitTime)
+
+			if not alive then
+				break
+			end
+
+			local attackId = phase.attackPool[math.random(1, #phase.attackPool)]
+			local attack = BossAttacks[attackId]
+			local multiplier = phase.telegraphTimeMultiplier or 1.0
+
+			Net.Get("TelegraphAttack"):FireAllClients(attackId, model.PrimaryPart.Position, attack.telegraphTime * multiplier)
+			task.wait(attack.telegraphTime * multiplier)
+
+			if not alive then
+				break
+			end
+
+			for _, player in playersInRadius(model.PrimaryPart.Position, attack.radius) do
+				CombatService.ApplyDamageToPlayer(player, attack.damage)
+			end
+		end
+
+		CombatService.ClearBoss()
+		model:Destroy()
+		if onDeath then
+			onDeath()
+		end
+	end)
+
+	return handle
+end
+
+return BossAIService
