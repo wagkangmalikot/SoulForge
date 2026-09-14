@@ -40,14 +40,15 @@ local buttonFrames: {[string]: Frame} = {}
 local cooldownLabels: {[string]: TextLabel} = {}
 
 local totalButtons = #SKILL_ORDER
--- Total width of the button row, for right-alignment.
-local rowWidth = totalButtons * BUTTON_SIZE + (totalButtons - 1) * BUTTON_GAP
 
 local function fireSkill(skillId: string)
-	local expires = cooldownEnds[skillId]
-	if expires and os.clock() < expires then
-		return -- still on cooldown, ignore the tap
-	end
+	-- The client's own cooldown tracking is DISPLAY ONLY (dimming the button,
+	-- showing a countdown). It must never gate the remote itself: the server
+	-- is the sole authority on whether a cast is actually allowed (cooldown,
+	-- character alive, in range, etc. — see CombatService.onCastSkill). If we
+	-- blocked the FireServer call here, a client-side guess that's wrong (e.g.
+	-- a prior cast was rejected server-side because the boss was out of range)
+	-- would lock the player out of a skill the server would happily accept.
 	Net.Get("CastSkill"):FireServer(skillId)
 
 	-- Optimistically start showing the cooldown the moment the button is pressed;
