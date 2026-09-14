@@ -211,8 +211,16 @@ function RespawnService.Start()
 
 	-- A player who disconnects while downed would otherwise leave a stale
 	-- downedState entry behind, and the pending bleed-out task.delay would later
-	-- call player:LoadCharacter() on a Player instance that already left.
+	-- call player:LoadCharacter() on a Player instance that already left. Their
+	-- character also no longer ragdolls on death (BreakJointsOnDeath = false), so
+	-- without explicitly destroying revivePrompt here, a disconnecting downed
+	-- player's corpse and its live, interactable "Revive" prompt would otherwise
+	-- be left behind for the rest of the session.
 	Players.PlayerRemoving:Connect(function(player)
+		local state = downedState[player.UserId]
+		if state and state.revivePrompt then
+			state.revivePrompt:Destroy()
+		end
 		downedState[player.UserId] = nil
 	end)
 end
