@@ -13,7 +13,9 @@ local HUDController = {}
 
 -- ── On-screen skill buttons (mobile & desktop) ─────────────────────────────
 -- Four buttons, right-aligned above the bottom edge, one per Tank skill.
--- Each dims + shows a countdown while on cooldown.
+-- Each dims + shows a countdown while on cooldown, or a "Lv. X" label while
+-- locked (spec section 2b) -- see the Heartbeat loop below for how the two
+-- states are told apart.
 -- Keyboard bindings (1-4) are also wired for desktop players.
 
 local TANK_CLASS = Classes.Tank
@@ -36,8 +38,12 @@ local cooldownEnds: {[string]: number} = {}
 
 -- buttonFrames[skillId] = the outer Frame (so we can dim it)
 local buttonFrames: {[string]: Frame} = {}
--- cooldownLabels[skillId] = the TextLabel showing remaining seconds
+-- cooldownLabels[skillId] = the TextLabel showing remaining seconds (or "Lv. X" while locked)
 local cooldownLabels: {[string]: TextLabel} = {}
+
+-- Updated by CharacterDataChanged; defaults to 1 to match a fresh character's
+-- starting level before the first sync arrives.
+local currentLevel = 1
 
 local totalButtons = #SKILL_ORDER
 
@@ -103,6 +109,10 @@ function HUDController.Start()
 		bossHealthFill.Size = UDim2.new(math.clamp(current / max, 0, 1), 0, 1, 0)
 	end)
 
+	Net.Get("CharacterDataChanged").OnClientEvent:Connect(function(level, _unspentEXP)
+		currentLevel = level
+	end)
+
 	-- ── Telegraph ground indicators ────────────────────────────────────────────
 
 	Net.Get("TelegraphAttack").OnClientEvent:Connect(function(attackId, position, telegraphTime)
@@ -161,7 +171,7 @@ function HUDController.Start()
 		cdLabel.Parent = frame
 		cooldownLabels[skillId] = cdLabel
 
-		-- Overlay that dims the button during cooldown.
+		-- Overlay that dims the button during cooldown or while locked.
 		local dimOverlay = Instance.new("Frame")
 		dimOverlay.Name = "DimOverlay"
 		dimOverlay.Size = UDim2.new(1, 0, 1, 0)
@@ -201,25 +211,35 @@ function HUDController.Start()
 		end
 	end)
 
-	-- Per-frame cooldown display update.
+	-- Per-frame cooldown/lock display update.
 	game:GetService("RunService").Heartbeat:Connect(function()
 		local now = os.clock()
 		for _, skillId in SKILL_ORDER do
 			local frame  = buttonFrames[skillId]
 			local cdLabel = cooldownLabels[skillId]
 			local dimOverlay = frame:FindFirstChild("DimOverlay")
-			local expires = cooldownEnds[skillId]
+			local skill = Skills[skillId]
+			local unlockLevel = skill and skill.unlockLevel or 1
 
-			if expires and now < expires then
-				local remaining = expires - now
-				cdLabel.Text = ("%.1f"):format(remaining)
+			if currentLevel < unlockLevel then
+				-- Locked: show the level requirement instead of a cooldown timer.
+				cdLabel.Text = ("Lv. %d"):format(unlockLevel)
 				if dimOverlay then
 					dimOverlay.BackgroundTransparency = 0.55
 				end
 			else
-				cdLabel.Text = ""
-				if dimOverlay then
-					dimOverlay.BackgroundTransparency = 1
+				local expires = cooldownEnds[skillId]
+				if expires and now < expires then
+					local remaining = expires - now
+					cdLabel.Text = ("%.1f"):format(remaining)
+					if dimOverlay then
+						dimOverlay.BackgroundTransparency = 0.55
+					end
+				else
+					cdLabel.Text = ""
+					if dimOverlay then
+						dimOverlay.BackgroundTransparency = 1
+					end
 				end
 			end
 		end
