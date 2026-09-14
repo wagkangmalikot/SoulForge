@@ -11,6 +11,8 @@ local DEFAULT_DATA = {
 		Level = 1,
 		ClassId = "Tank",
 		UnspentEXP = 0,
+		Name = "",                    -- set at character creation (spec 2b), TextService-filtered
+		HasCreatedCharacter = false,  -- gates whether the creation screen shows on join
 	},
 }
 
@@ -102,6 +104,27 @@ end
 -- player has a loaded profile.
 function PlayerDataService.GetProfile(player: Player)
 	return profiles[player.UserId]
+end
+
+-- Blocks the calling thread until this player's profile finishes loading
+-- successfully, or they disconnect. Returns the Profile, or nil if the load
+-- failed/errored (PlayerDataService has already kicked them in that case) or
+-- they disconnected while waiting. For use by other hub-only server services
+-- (e.g. CharacterCreationService) that need to inspect profile data before a
+-- player's character spawns, without racing PlayerDataService's own async load.
+function PlayerDataService.WaitForProfile(player: Player)
+	while player.Parent == Players do
+		local profile = profiles[player.UserId]
+		if profile then
+			return profile
+		end
+		if not loading[player.UserId] then
+			-- The load attempt already finished (and failed) -- no point continuing to poll.
+			return nil
+		end
+		task.wait(0.1)
+	end
+	return nil
 end
 
 function PlayerDataService.Start()
