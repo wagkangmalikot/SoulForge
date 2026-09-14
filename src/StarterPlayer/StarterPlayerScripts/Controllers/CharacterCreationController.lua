@@ -30,9 +30,15 @@ function CharacterCreationController.Start()
 	background.BorderSizePixel = 0
 	background.Parent = screenGui
 
+	-- All vertical (Y) positions/sizes below are scale-only (no pixel offset) so
+	-- the whole layout compresses proportionally on short viewports -- notably
+	-- mobile-landscape (~400-450px tall, a supported orientation per this
+	-- project's mobile-support work) -- instead of overlapping the way a mix of
+	-- scale positions and fixed-pixel heights would. X stays offset-based since
+	-- only viewport height is the tight constraint here.
 	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(0, 500, 0, 60)
-	title.Position = UDim2.new(0.5, -250, 0.15, 0)
+	title.Size = UDim2.new(0, 500, 0.10, 0)
+	title.Position = UDim2.new(0.5, -250, 0.05, 0)
 	title.BackgroundTransparency = 1
 	title.TextColor3 = Color3.new(1, 1, 1)
 	title.TextScaled = true
@@ -42,8 +48,8 @@ function CharacterCreationController.Start()
 
 	-- Tank class card -- the only selectable option for this slice (spec 2a/2b).
 	local classCard = Instance.new("Frame")
-	classCard.Size = UDim2.new(0, 200, 0, 240)
-	classCard.Position = UDim2.new(0.5, -100, 0.3, 0)
+	classCard.Size = UDim2.new(0, 200, 0.34, 0)
+	classCard.Position = UDim2.new(0.5, -100, 0.19, 0)
 	classCard.BackgroundColor3 = Color3.new(0.15, 0.15, 0.2)
 	classCard.Parent = background
 
@@ -51,9 +57,12 @@ function CharacterCreationController.Start()
 	classCorner.CornerRadius = UDim.new(0, 10)
 	classCorner.Parent = classCard
 
+	-- Sized/positioned relative to classCard itself (scale is relative to the
+	-- parent frame, not the screen), so these stay proportional to the card no
+	-- matter how tall the card ends up being on a given viewport.
 	local classLabel = Instance.new("TextLabel")
-	classLabel.Size = UDim2.new(1, 0, 0, 40)
-	classLabel.Position = UDim2.new(0, 0, 0, 10)
+	classLabel.Size = UDim2.new(1, 0, 0.18, 0)
+	classLabel.Position = UDim2.new(0, 0, 0.04, 0)
 	classLabel.BackgroundTransparency = 1
 	classLabel.TextColor3 = Color3.new(1, 1, 1)
 	classLabel.TextScaled = true
@@ -62,8 +71,8 @@ function CharacterCreationController.Start()
 	classLabel.Parent = classCard
 
 	local classDesc = Instance.new("TextLabel")
-	classDesc.Size = UDim2.new(1, -20, 0, 150)
-	classDesc.Position = UDim2.new(0, 10, 0, 60)
+	classDesc.Size = UDim2.new(1, -20, 0.70, 0)
+	classDesc.Position = UDim2.new(0, 10, 0.26, 0)
 	classDesc.BackgroundTransparency = 1
 	classDesc.TextColor3 = Color3.new(0.8, 0.8, 0.8)
 	classDesc.TextWrapped = true
@@ -72,8 +81,8 @@ function CharacterCreationController.Start()
 	classDesc.Parent = classCard
 
 	local nameBox = Instance.new("TextBox")
-	nameBox.Size = UDim2.new(0, 300, 0, 44)
-	nameBox.Position = UDim2.new(0.5, -150, 0.62, 0)
+	nameBox.Size = UDim2.new(0, 300, 0.07, 0)
+	nameBox.Position = UDim2.new(0.5, -150, 0.56, 0)
 	nameBox.PlaceholderText = "Enter your character's name"
 	nameBox.Text = ""
 	nameBox.ClearTextOnFocus = false
@@ -81,8 +90,8 @@ function CharacterCreationController.Start()
 	nameBox.Parent = background
 
 	local errorLabel = Instance.new("TextLabel")
-	errorLabel.Size = UDim2.new(0, 400, 0, 30)
-	errorLabel.Position = UDim2.new(0.5, -200, 0.7, 0)
+	errorLabel.Size = UDim2.new(0, 400, 0.05, 0)
+	errorLabel.Position = UDim2.new(0.5, -200, 0.65, 0)
 	errorLabel.BackgroundTransparency = 1
 	errorLabel.TextColor3 = Color3.new(1, 0.4, 0.4)
 	errorLabel.TextScaled = true
@@ -90,8 +99,8 @@ function CharacterCreationController.Start()
 	errorLabel.Parent = background
 
 	local confirmButton = Instance.new("TextButton")
-	confirmButton.Size = UDim2.new(0, 200, 0, 50)
-	confirmButton.Position = UDim2.new(0.5, -100, 0.8, 0)
+	confirmButton.Size = UDim2.new(0, 200, 0.09, 0)
+	confirmButton.Position = UDim2.new(0.5, -100, 0.73, 0)
 	confirmButton.BackgroundColor3 = Color3.new(0.2, 0.6, 0.3)
 	confirmButton.TextColor3 = Color3.new(1, 1, 1)
 	confirmButton.TextScaled = true
@@ -108,9 +117,25 @@ function CharacterCreationController.Start()
 			return
 		end
 		errorLabel.Text = ""
+		-- Debounce: the server already guards against duplicate submissions
+		-- (Task 3's `submitting` flag), but disabling here avoids wastefully
+		-- re-firing the remote on every extra tap while waiting for a result,
+		-- and gives the player a clearer "this is processing" signal.
+		confirmButton.Active = false
+		confirmButton.AutoButtonColor = false
+		confirmButton.BackgroundColor3 = Color3.new(0.15, 0.35, 0.2)
 		Net.Get("SubmitCharacterCreation"):FireServer(name)
 	end)
 
+	-- Assumes ShowCharacterCreation cannot fire before this listener connects:
+	-- every controller in Main.client.lua (including this one) starts and
+	-- connects synchronously with no yields, so this connection is live before
+	-- any server round-trip -- including PlayerDataService.WaitForProfile,
+	-- which always yields at least once -- could complete. If a future change
+	-- to PlayerDataService's load path introduces an instant/cached fast path
+	-- that could fire this remote before the client finishes connecting
+	-- listeners, this assumption breaks and a new joiner could be silently
+	-- softlocked with CharacterAutoLoads = false and no creation screen.
 	Net.Get("ShowCharacterCreation").OnClientEvent:Connect(function()
 		screenGui.Enabled = true
 	end)
@@ -118,8 +143,14 @@ function CharacterCreationController.Start()
 	Net.Get("CharacterCreationResult").OnClientEvent:Connect(function(success, errorMessage)
 		if success then
 			screenGui.Enabled = false
+			-- Left disabled: the screen is about to hide, so there's nothing
+			-- left to re-enable it for.
 		else
 			errorLabel.Text = errorMessage or "Something went wrong. Try again."
+			-- Re-enable so the player can correct the name and retry.
+			confirmButton.Active = true
+			confirmButton.AutoButtonColor = true
+			confirmButton.BackgroundColor3 = Color3.new(0.2, 0.6, 0.3)
 		end
 	end)
 end
