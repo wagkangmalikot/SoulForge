@@ -10,6 +10,7 @@ local PartyService = require(ServerScriptService.Services.PartyService)
 local DungeonEntryService = require(ServerScriptService.Services.DungeonEntryService)
 local DungeonSessionService = require(ServerScriptService.Services.DungeonSessionService)
 local CharacterCreationService = require(ServerScriptService.Services.CharacterCreationService)
+local LevelUpService = require(ServerScriptService.Services.LevelUpService)
 
 PlayerDataService.Start()
 CombatService.Start()
@@ -29,6 +30,7 @@ local function determineServerTypeAndStart(player: Player)
 		PartyService.Start()
 		DungeonEntryService.Start()
 		CharacterCreationService.Start()
+		LevelUpService.Start()
 	end
 end
 
