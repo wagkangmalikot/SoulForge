@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TeleportService = game:GetService("TeleportService")
 
 local Net = require(ReplicatedStorage.Shared.Net)
+local Classes = require(ReplicatedStorage.Shared.Data.Classes)
 local BossAIService = require(script.Parent.BossAIService)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 local RespawnService = require(script.Parent.RespawnService)
@@ -50,6 +51,23 @@ local function hookPlayerDeath(player: Player, character: Model)
 		warn(("DungeonSessionService: no Humanoid found for %s's character within 5s -- death hook not installed"):format(player.Name))
 		return
 	end
+
+	-- Roblox's default BreakJointsOnDeath ragdolls (breaks the joints of) a character
+	-- the instant Died fires. RespawnService's revive logic only restores Health
+	-- afterward, which does NOT undo an already-broken ragdoll -- so this must be set
+	-- here, at spawn time, before the character can ever die. It's checked at the
+	-- moment Died fires, not read live from the revive path.
+	humanoid.BreakJointsOnDeath = false
+
+	-- This vertical slice has exactly one class (Tank; see
+	-- ReplicatedStorage/Shared/Data/Classes.lua), so hardcoding it here matches the
+	-- existing Tank-only scoping used elsewhere (e.g. PlayerDataService's
+	-- DEFAULT_DATA.Character.ClassId = "Tank"). Without this, spawned Humanoids sit
+	-- at Roblox's default 100 HP instead of the class's intended baseHealth.
+	local classData = Classes.Tank
+	humanoid.MaxHealth = classData.baseHealth
+	humanoid.Health = classData.baseHealth
+
 	humanoid.Died:Connect(function()
 		RespawnService.OnPlayerDowned(player)
 	end)

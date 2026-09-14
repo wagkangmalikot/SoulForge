@@ -11,8 +11,13 @@ local REVIVE_CHANNEL_SECONDS = 5
 local REVIVE_RANGE = 8
 local REVIVE_MOVE_TOLERANCE = 2
 
--- userId -> {bled: boolean, channeling: boolean?, channelingReviverUserId: number?, cancelChannel: (() -> ())?}
+-- userId -> {bled: boolean, channeling: boolean?, channelingReviverUserId: number?, cancelChannel: (() -> ())?, revivePrompt: ProximityPrompt?}
 local downedState = {}
+
+-- Forward-declared so OnPlayerDowned (defined above tryChannelRevive in this file)
+-- can wire a ProximityPrompt's Triggered event straight to the same internal
+-- revive-attempt logic the RequestChannelRevive remote handler uses.
+local tryChannelRevive
 
 local entrancePosition = Vector3.new(0, 5, 0) -- set by DungeonSessionService.Start
 
@@ -21,6 +26,10 @@ function RespawnService.SetEntrancePosition(position: Vector3)
 end
 
 local function respawnAtEntrance(player: Player)
+	local state = downedState[player.UserId]
+	if state and state.revivePrompt then
+		state.revivePrompt:Destroy()
+	end
 	downedState[player.UserId] = nil
 	player:LoadCharacter()
 	task.defer(function()
@@ -34,7 +43,34 @@ function RespawnService.OnPlayerDowned(player: Player)
 	if downedState[player.UserId] then
 		return
 	end
-	downedState[player.UserId] = { bled = false }
+	local state = { bled = false }
+	downedState[player.UserId] = state
+
+	-- Real player-facing revive trigger: a ProximityPrompt on the downed character
+	-- that any other nearby player can activate, calling straight into the same
+	-- tryChannelRevive logic the RequestChannelRevive remote uses. Without this,
+	-- the only way to fire a revive attempt was the remote itself (e.g. from a
+	-- console command), which is not reachable through any real player action.
+	local character = player.Character
+	local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+	if rootPart then
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.ActionText = "Revive"
+		prompt.ObjectText = player.Name
+		-- HoldDuration is 0 on purpose: the actual 5-second channel timing (and its
+		-- move/damage/cancel interrupts) is already implemented by tryChannelRevive's
+		-- own loop below. A nonzero HoldDuration here would just be a second,
+		-- redundant hold on top of that.
+		prompt.HoldDuration = 0
+		prompt.MaxActivationDistance = REVIVE_RANGE
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = rootPart
+		prompt.Triggered:Connect(function(triggeringPlayer: Player)
+			tryChannelRevive(triggeringPlayer, player.UserId)
+		end)
+		state.revivePrompt = prompt
+	end
+
 	Net.Get("PlayerDowned"):FireAllClients(player.UserId)
 
 	task.delay(BLEED_OUT_SECONDS, function()
@@ -46,7 +82,7 @@ function RespawnService.OnPlayerDowned(player: Player)
 	end)
 end
 
-local function tryChannelRevive(reviver: Player, downedUserId: number)
+function tryChannelRevive(reviver: Player, downedUserId: number)
 	-- Reject self-revive up front: a downed player's own character still exists (at
 	-- 0 HP) until bleed-out/respawn fires, so without this check firing
 	-- RequestChannelRevive with your own UserId would pass the range check (distance
@@ -141,6 +177,10 @@ local function tryChannelRevive(reviver: Player, downedUserId: number)
 		downedState[downedUserId] = nil
 		Net.Get("PlayerRevived"):FireAllClients(downedUserId)
 
+		if state.revivePrompt then
+			state.revivePrompt:Destroy()
+		end
+
 		local humanoid = downedPlayer.Character and downedPlayer.Character:FindFirstChildOfClass("Humanoid")
 		if humanoid then
 			humanoid.Health = humanoid.MaxHealth * 0.5 -- revived at half health
@@ -184,6 +224,11 @@ end
 -- `if state and not state.bled then` and `downedState[downedUserId]` lookups will
 -- all see the entry as gone and return/no-op instead of acting after session end.
 function RespawnService.Stop()
+	for _, state in downedState do
+		if state.cancelChannel then
+			state.cancelChannel()
+		end
+	end
 	table.clear(downedState)
 end
 
