@@ -36,11 +36,26 @@ local function onPlayerAdded(player: Player)
 	-- LoadProfileAsync defaults to "ForceLoad" behavior (no not_released_handler
 	-- passed), so ProfileService itself retries for a handful of steps and then
 	-- steals the session lock from a server that is still holding it (spec 1a).
-	-- It only returns nil if the game is shutting down or a hard DataStore
-	-- error occurs.
-	local profile = ProfileStore:LoadProfileAsync(tostring(player.UserId))
+	-- It normally only returns nil if the game is shutting down or a hard
+	-- DataStore error occurs, but it can also hard-error (ProfileService.lua
+	-- ~line 1737) if a profile for this key is already registered in this
+	-- server's session (e.g. the same player rapidly rejoins this same server
+	-- before the prior session's async :Release() has finished unregistering
+	-- it). Guard with pcall so that case gives an immediate, accurate kick
+	-- instead of silently falling through to the 15s timeout.
+	local loadOk, profile = pcall(function()
+		return ProfileStore:LoadProfileAsync(tostring(player.UserId))
+	end)
 
 	loading[player.UserId] = nil
+
+	if not loadOk then
+		warn(("PlayerDataService: LoadProfileAsync errored for %s: %s"):format(player.Name, tostring(profile)))
+		if player.Parent == Players then
+			player:Kick("Your previous session on this server hasn't finished closing yet. Please rejoin.")
+		end
+		return
+	end
 
 	if not profile then
 		-- Load never succeeded. The timeout above will have already kicked the
@@ -78,6 +93,13 @@ local function onPlayerRemoving(player: Player)
 	end
 end
 
+-- Returns the player's active Profile, or nil. nil can mean any of:
+--   1) the load is still in flight (call again after PlayerAdded resolves),
+--   2) the load failed or errored (the player has already been kicked), or
+--   3) the profile was released (session ended, player left, or server is
+--      shutting down via BindToClose).
+-- Callers must always nil-check the result rather than assuming a connected
+-- player has a loaded profile.
 function PlayerDataService.GetProfile(player: Player)
 	return profiles[player.UserId]
 end
