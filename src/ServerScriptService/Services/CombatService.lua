@@ -95,6 +95,10 @@ function CombatService.Start()
 		end
 		onCastSkill(player, skillId, targetPosition)
 	end)
+
+	Players.PlayerRemoving:Connect(function(player)
+		lastCastAt[player.UserId] = nil
+	end)
 end
 
 return CombatService
