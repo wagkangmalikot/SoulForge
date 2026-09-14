@@ -82,32 +82,54 @@ function DungeonSessionService.Start(dungeonId: string)
 	RespawnService.SetEntrancePosition(ENTRANCE_POSITION)
 	RespawnService.Start()
 
-	-- Hook existing players' current characters; also hook future character spawns.
-	for _, player in Players:GetPlayers() do
-		if player.Character then
-			hookPlayerDeath(player, player.Character)
-		end
-		player.CharacterAdded:Connect(function(character)
-			hookPlayerDeath(player, character)
-		end)
-	end
-	Players.PlayerAdded:Connect(function(player)
-		player.CharacterAdded:Connect(function(character)
-			hookPlayerDeath(player, character)
-		end)
-	end)
-
-	-- Disable the engine's own auto-respawn AFTER the initial hookup loop above, so
-	-- each player's very first spawn on teleport-in (already underway/complete by
-	-- now) is unaffected. From this point on, every respawn must go exclusively
-	-- through RespawnService's own player:LoadCharacter() call in respawnAtEntrance --
-	-- otherwise the engine would silently respawn a downed Humanoid ~5s after death
-	-- (CharacterAutoLoads default) at the default SpawnLocation instead of
-	-- ENTRANCE_POSITION, mid-bleed-out or mid-revive-channel, and RespawnService's own
-	-- pending bleed-out timer would later fire too and yank the player a second time.
-	-- Players is a per-server service instance, so this only affects this dungeon
-	-- server; the hub server keeps normal auto-respawn.
+	-- Disable the engine's own auto-respawn up front. A party of 2-4 players
+	-- teleported together via one TeleportAsync call do NOT all land on this
+	-- server in the same tick -- each client connects independently, staggered
+	-- by hundreds of ms to seconds -- so we can't rely on "whoever's already
+	-- connected already has a character" and let CharacterAutoLoads handle
+	-- everyone else: any party member who connects after this line would then
+	-- never get an automatic spawn and be stuck characterless for the whole
+	-- dungeon. Instead, spawnAndHook below makes spawning explicit and uniform
+	-- for every player, whether already connected or joining later. From this
+	-- point on, every respawn-after-death also goes exclusively through
+	-- RespawnService's own player:LoadCharacter() call in respawnAtEntrance --
+	-- otherwise the engine would silently respawn a downed Humanoid ~5s after
+	-- death (CharacterAutoLoads default) at the default SpawnLocation instead
+	-- of ENTRANCE_POSITION, mid-bleed-out or mid-revive-channel, and
+	-- RespawnService's own pending bleed-out timer would later fire too and
+	-- yank the player a second time. Players is a per-server service instance,
+	-- so this only affects this dungeon server; the hub server keeps normal
+	-- auto-respawn.
 	Players.CharacterAutoLoads = false
+
+	-- Spawns (or hooks) exactly one character per player, whether they already
+	-- had one when this ran or join/spawn later. CharacterAdded is connected
+	-- FIRST, before checking/calling LoadCharacter(), so the character created
+	-- by the LoadCharacter() call below can never be missed: LoadCharacter()
+	-- yields until the character is loaded as part of firing CharacterAdded,
+	-- so connecting only after the call returns would race (and could lose)
+	-- that event.
+	local function spawnAndHook(player: Player)
+		player.CharacterAdded:Connect(function(character)
+			hookPlayerDeath(player, character)
+		end)
+		if player.Character then
+			-- Already has a character (e.g. the first player, if the engine's
+			-- own auto-spawn already completed before this ran) -- hook it
+			-- directly, since CharacterAdded already fired for it in the past
+			-- and won't fire again for the same character.
+			hookPlayerDeath(player, player.Character)
+		else
+			-- No character yet, and CharacterAutoLoads is now off, so the
+			-- engine won't spawn one on its own -- spawn it explicitly.
+			player:LoadCharacter()
+		end
+	end
+
+	for _, player in Players:GetPlayers() do
+		spawnAndHook(player)
+	end
+	Players.PlayerAdded:Connect(spawnAndHook)
 
 	bossHandle = BossAIService.SpawnBoss("Rockhide", BOSS_SPAWN_CFRAME, function()
 		endSession("victory")
