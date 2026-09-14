@@ -14,7 +14,7 @@ local parties = {}
 local partyOf = {}
 local nextPartyId = 1
 
--- inviterUserId -> inviteeUserId -> true (pending invite)
+-- inviteeUserId -> partyId (pending invite)
 local pendingInvites = {}
 
 local function broadcastPartyUpdate(partyId: number)
@@ -62,6 +62,9 @@ local function respondToInvite(invitee: Player, accepted: boolean)
 	pendingInvites[invitee.UserId] = nil
 	if not partyId or not accepted then
 		return
+	end
+	if partyOf[invitee.UserId] then
+		return -- invitee already joined/created a different party since this invite was sent
 	end
 	local party = parties[partyId]
 	if not party or #party.members >= MAX_PARTY_SIZE then
