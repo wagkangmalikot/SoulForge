@@ -109,7 +109,26 @@ function DungeonSessionService.Start(dungeonId: string)
 	-- yields until the character is loaded as part of firing CharacterAdded,
 	-- so connecting only after the call returns would race (and could lose)
 	-- that event.
+	--
+	-- hookedPlayers guards against processing the same player twice. This
+	-- matters because player:LoadCharacter() below yields the calling
+	-- coroutine until the character loads -- if that happens inside the
+	-- initial GetPlayers() loop further down, any other party member whose
+	-- PlayerAdded fires during that yield must still be caught, which is why
+	-- PlayerAdded is connected BEFORE the loop runs. That ordering creates a
+	-- narrow window (between the :Connect call and :GetPlayers() being read)
+	-- where a joining player could be picked up by both the connection and
+	-- the loop's snapshot; without this guard that would mean a duplicate
+	-- LoadCharacter() call and two CharacterAdded connections stacked on the
+	-- same player.
+	local hookedPlayers = {}
+
 	local function spawnAndHook(player: Player)
+		if hookedPlayers[player.UserId] then
+			return
+		end
+		hookedPlayers[player.UserId] = true
+
 		player.CharacterAdded:Connect(function(character)
 			hookPlayerDeath(player, character)
 		end)
@@ -126,10 +145,16 @@ function DungeonSessionService.Start(dungeonId: string)
 		end
 	end
 
+	-- Connect PlayerAdded BEFORE looping over the initial snapshot: spawnAndHook's
+	-- player:LoadCharacter() call yields, so if the loop below is parked waiting
+	-- for one player's character to load, any other party member's PlayerAdded
+	-- must already have somewhere to go -- otherwise, with CharacterAutoLoads off
+	-- and Main.server.lua's dispatch listener already consumed (:Once), that
+	-- player would get no character for the whole dungeon.
+	Players.PlayerAdded:Connect(spawnAndHook)
 	for _, player in Players:GetPlayers() do
 		spawnAndHook(player)
 	end
-	Players.PlayerAdded:Connect(spawnAndHook)
 
 	bossHandle = BossAIService.SpawnBoss("Rockhide", BOSS_SPAWN_CFRAME, function()
 		endSession("victory")
