@@ -47,6 +47,7 @@ end
 local function hookPlayerDeath(player: Player, character: Model)
 	local humanoid = character:WaitForChild("Humanoid", 5)
 	if not humanoid then
+		warn(("DungeonSessionService: no Humanoid found for %s's character within 5s -- death hook not installed"):format(player.Name))
 		return
 	end
 	humanoid.Died:Connect(function()
@@ -73,6 +74,7 @@ function DungeonSessionService.Start(dungeonId: string)
 			return
 		end
 		ended = true
+		RespawnService.Stop()
 		bankRewardsAndReturnToHub(result)
 	end
 
@@ -94,6 +96,18 @@ function DungeonSessionService.Start(dungeonId: string)
 			hookPlayerDeath(player, character)
 		end)
 	end)
+
+	-- Disable the engine's own auto-respawn AFTER the initial hookup loop above, so
+	-- each player's very first spawn on teleport-in (already underway/complete by
+	-- now) is unaffected. From this point on, every respawn must go exclusively
+	-- through RespawnService's own player:LoadCharacter() call in respawnAtEntrance --
+	-- otherwise the engine would silently respawn a downed Humanoid ~5s after death
+	-- (CharacterAutoLoads default) at the default SpawnLocation instead of
+	-- ENTRANCE_POSITION, mid-bleed-out or mid-revive-channel, and RespawnService's own
+	-- pending bleed-out timer would later fire too and yank the player a second time.
+	-- Players is a per-server service instance, so this only affects this dungeon
+	-- server; the hub server keeps normal auto-respawn.
+	Players.CharacterAutoLoads = false
 
 	bossHandle = BossAIService.SpawnBoss("Rockhide", BOSS_SPAWN_CFRAME, function()
 		endSession("victory")

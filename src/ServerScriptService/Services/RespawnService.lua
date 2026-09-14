@@ -9,6 +9,7 @@ local RespawnService = {}
 local BLEED_OUT_SECONDS = 10
 local REVIVE_CHANNEL_SECONDS = 5
 local REVIVE_RANGE = 8
+local REVIVE_MOVE_TOLERANCE = 2
 
 -- userId -> {bled: boolean, channeling: boolean?, channelingReviverUserId: number?, cancelChannel: (() -> ())?}
 local downedState = {}
@@ -46,6 +47,14 @@ function RespawnService.OnPlayerDowned(player: Player)
 end
 
 local function tryChannelRevive(reviver: Player, downedUserId: number)
+	-- Reject self-revive up front: a downed player's own character still exists (at
+	-- 0 HP) until bleed-out/respawn fires, so without this check firing
+	-- RequestChannelRevive with your own UserId would pass the range check (distance
+	-- 0 from yourself) and, formerly, the health-interrupt check too.
+	if reviver.UserId == downedUserId then
+		return
+	end
+
 	local state = downedState[downedUserId]
 	if not state or state.channeling then
 		return
@@ -65,10 +74,22 @@ local function tryChannelRevive(reviver: Player, downedUserId: number)
 		return
 	end
 
+	-- The reviver must be alive to revive someone else. This is also validated here
+	-- (rather than after state.channeling is set) so a missing/dead reviver Humanoid
+	-- can never leave state.channeling stuck true with no cancelChannel yet installed
+	-- to reset it.
+	local reviverHumanoid = reviver.Character and reviver.Character:FindFirstChildOfClass("Humanoid")
+	if not reviverHumanoid or reviverHumanoid.Health <= 0 then
+		return
+	end
+
+	-- Every precondition (range, reviver-not-self, reviver-alive) is validated above;
+	-- state.channeling is the last thing set before starting the channel loop so no
+	-- early return after this point can leave it stuck true.
 	state.channeling = true
 	state.channelingReviverUserId = reviver.UserId
 	local startPosition = reviverRoot.Position
-	local startHealth = reviver.Character:FindFirstChildOfClass("Humanoid").Health
+	local startHealth = reviverHumanoid.Health
 	local elapsed = 0
 	local cancelled = false
 
@@ -76,27 +97,38 @@ local function tryChannelRevive(reviver: Player, downedUserId: number)
 		cancelled = true
 	end
 
+	local function abortChannel()
+		state.channeling = false
+		state.channelingReviverUserId = nil
+		Net.Get("ReviveProgress"):FireAllClients(reviver.UserId, downedUserId, 0)
+	end
+
 	task.spawn(function()
+		-- Invariant: there is no yield point between the `state.bled` check just below
+		-- and this loop's post-loop completion code further down. That's what makes
+		-- "bleed-out wins" (OnPlayerDowned's task.delay sets state.bled and respawns
+		-- the player) and "channel wins" (the loop reaches REVIVE_CHANNEL_SECONDS and
+		-- revives them) mutually exclusive outcomes safe to reason about independently.
 		while elapsed < REVIVE_CHANNEL_SECONDS do
 			task.wait(0.25)
 			elapsed += 0.25
 
 			if cancelled or state.bled then
-				state.channeling = false
-				state.channelingReviverUserId = nil
-				Net.Get("ReviveProgress"):FireAllClients(reviver.UserId, downedUserId, 0)
+				abortChannel()
 				return
 			end
 
 			local currentRoot = reviver.Character and reviver.Character:FindFirstChild("HumanoidRootPart")
 			local currentHumanoid = reviver.Character and reviver.Character:FindFirstChildOfClass("Humanoid")
+			-- Assumes health is monotonically non-increasing during a channel (no
+			-- healing exists yet in this slice) -- a future Healer class would need
+			-- this revisited, since healing the reviver mid-channel would incorrectly
+			-- read as damage and abort the channel.
 			if not currentRoot or not currentHumanoid
-				or (currentRoot.Position - startPosition).Magnitude > 2
+				or (currentRoot.Position - startPosition).Magnitude > REVIVE_MOVE_TOLERANCE
 				or currentHumanoid.Health < startHealth
 			then
-				state.channeling = false
-				state.channelingReviverUserId = nil
-				Net.Get("ReviveProgress"):FireAllClients(reviver.UserId, downedUserId, 0)
+				abortChannel()
 				return
 			end
 
@@ -143,6 +175,16 @@ function RespawnService.Start()
 	Players.PlayerRemoving:Connect(function(player)
 		downedState[player.UserId] = nil
 	end)
+end
+
+-- Call when the dungeon session ends so any in-flight bleed-out task.delay or
+-- revive-channel task.spawn loop stops mattering. Those closures all read from
+-- downedState (OnPlayerDowned's bleed-out check, tryChannelRevive, and the
+-- channel loop itself), so clearing it here makes their guards naturally no-op:
+-- `if state and not state.bled then` and `downedState[downedUserId]` lookups will
+-- all see the entry as gone and return/no-op instead of acting after session end.
+function RespawnService.Stop()
+	table.clear(downedState)
 end
 
 return RespawnService
