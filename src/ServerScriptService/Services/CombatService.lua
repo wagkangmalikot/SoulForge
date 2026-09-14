@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 
 local Net = require(ReplicatedStorage.Shared.Net)
 local Skills = require(ReplicatedStorage.Shared.Data.Skills)
+local PlayerDataService = require(script.Parent.PlayerDataService)
 
 local CombatService = {}
 
@@ -47,6 +48,14 @@ local function onCastSkill(player: Player, skillId: string, targetPosition: Vect
 	local skill = Skills[skillId]
 	if not skill then
 		return -- unknown skillId: silently ignore (section 15, whitelist real Data lookups)
+	end
+
+	-- Skill unlock level (spec section 2b): a skill isn't castable until the
+	-- player's Character.Level meets its unlockLevel, checked server-side --
+	-- never trust a client that only shows a skill as "locked" cosmetically.
+	local profile = PlayerDataService.GetProfile(player)
+	if not profile or profile.Data.Character.Level < (skill.unlockLevel or 1) then
+		return
 	end
 
 	if isOnCooldown(player.UserId, skillId, skill.cooldown) then
