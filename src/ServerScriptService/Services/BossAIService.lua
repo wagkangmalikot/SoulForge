@@ -141,4 +141,13 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 	return handle
 end
 
+-- Force-kills the active boss (e.g. on a party wipe, so the boss's attack
+-- coroutine doesn't keep telegraphing/attacking an emptying server). Reuses
+-- onDamaged so the existing alive=false transition, BossStateChanged fire,
+-- and the coroutine's own "if not alive then break end" checks handle
+-- cleanup (ClearBoss/model:Destroy/onDeath) the same way a normal kill does.
+function BossAIService.ForceKill(handle)
+	handle.onDamaged(handle.currentHealth)
+end
+
 return BossAIService

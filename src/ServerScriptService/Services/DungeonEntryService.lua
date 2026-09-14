@@ -45,7 +45,12 @@ local function enterDungeon(player: Player, dungeonId: string)
 		partyMemberUserIds = memberUserIds,
 	})
 
-	TeleportService:TeleportAsync(game.PlaceId, players, teleportOptions)
+	local teleportOk, teleportErr = pcall(function()
+		TeleportService:TeleportAsync(game.PlaceId, players, teleportOptions)
+	end)
+	if not teleportOk then
+		warn("DungeonEntryService: TeleportAsync to dungeon failed", teleportErr)
+	end
 end
 
 function DungeonEntryService.Start()
