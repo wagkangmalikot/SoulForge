@@ -8,15 +8,19 @@ local CombatService = require(script.Parent.CombatService)
 
 local BossAIService = {}
 
+-- Returns the phase whose hpThreshold applies at the given health, plus its 1-based index
+-- in bossData.phases (used to populate BossStateChanged's documented phaseIndex argument).
 local function pickPhase(bossData, currentHealth: number, maxHealth: number)
 	local hpPercent = currentHealth / maxHealth
 	local chosen = bossData.phases[1]
-	for _, phase in bossData.phases do
+	local chosenIndex = 1
+	for index, phase in bossData.phases do
 		if hpPercent <= phase.hpThreshold then
 			chosen = phase
+			chosenIndex = index
 		end
 	end
-	return chosen
+	return chosen, chosenIndex
 end
 
 local function playersInRadius(center: Vector3, radius: number): {Player}
@@ -73,7 +77,8 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 		end
 		currentHealth = math.max(0, currentHealth - amount)
 		handle.currentHealth = currentHealth
-		Net.Get("BossStateChanged"):FireAllClients(bossId, currentHealth, bossData.maxHealth)
+		local _, phaseIndex = pickPhase(bossData, currentHealth, bossData.maxHealth)
+		Net.Get("BossStateChanged"):FireAllClients(bossId, phaseIndex, currentHealth, bossData.maxHealth)
 		if currentHealth <= 0 then
 			alive = false
 		end
@@ -96,6 +101,9 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 				end
 				if transition then
 					task.wait(transition.duration)
+					if not alive then
+						break
+					end
 				end
 			end
 
