@@ -127,21 +127,40 @@ function DungeonSessionService.Start(dungeonId: string)
 		if hookedPlayers[player.UserId] then
 			return
 		end
+		-- Set BEFORE the pcall below, not after: a failed attempt (e.g. the
+		-- Player instance has already gone stale because they disconnected
+		-- while this loop was yielded on an earlier player's LoadCharacter())
+		-- must not be silently retried or double-processed later.
 		hookedPlayers[player.UserId] = true
 
-		player.CharacterAdded:Connect(function(character)
-			hookPlayerDeath(player, character)
+		-- A player in the initial GetPlayers() snapshot can disconnect while
+		-- this function is yielded inside an earlier player's LoadCharacter()
+		-- call (plausible during a multi-second dungeon teleport where party
+		-- members land staggered). Operating on that now-stale Player instance
+		-- could throw; without this pcall, an uncaught error here would abort
+		-- the rest of this for loop AND everything after it in Start() --
+		-- BossAIService.SpawnBoss and the wipe-detection loop would never run --
+		-- leaving every subsequent player in the snapshot unhooked. Catching it
+		-- here means one player's failure can't take the rest of the party (or
+		-- the boss/wipe setup) down with it.
+		local ok, err = pcall(function()
+			player.CharacterAdded:Connect(function(character)
+				hookPlayerDeath(player, character)
+			end)
+			if player.Character then
+				-- Already has a character (e.g. the first player, if the engine's
+				-- own auto-spawn already completed before this ran) -- hook it
+				-- directly, since CharacterAdded already fired for it in the past
+				-- and won't fire again for the same character.
+				hookPlayerDeath(player, player.Character)
+			else
+				-- No character yet, and CharacterAutoLoads is now off, so the
+				-- engine won't spawn one on its own -- spawn it explicitly.
+				player:LoadCharacter()
+			end
 		end)
-		if player.Character then
-			-- Already has a character (e.g. the first player, if the engine's
-			-- own auto-spawn already completed before this ran) -- hook it
-			-- directly, since CharacterAdded already fired for it in the past
-			-- and won't fire again for the same character.
-			hookPlayerDeath(player, player.Character)
-		else
-			-- No character yet, and CharacterAutoLoads is now off, so the
-			-- engine won't spawn one on its own -- spawn it explicitly.
-			player:LoadCharacter()
+		if not ok then
+			warn(("DungeonSessionService: spawnAndHook failed for %s: %s"):format(player.Name, tostring(err)))
 		end
 	end
 
