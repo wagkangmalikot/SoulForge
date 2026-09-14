@@ -21,6 +21,11 @@ local REMOTE_NAMES = {
 	"CancelChannelRevive",    -- client -> server
 	"ReviveProgress",         -- server -> client: {reviverUserId, downedUserId, progress}
 	"DungeonResult",          -- server -> client: {result = "victory" | "wipe", expEarned}
+	"ShowCharacterCreation",   -- server -> client: tells this client to display the creation screen
+	"SubmitCharacterCreation", -- client -> server: {characterName}
+	"CharacterCreationResult", -- server -> client: {success, errorMessage?}
+	"RequestLevelUp",          -- client -> server (no args)
+	"CharacterDataChanged",    -- server -> client: {level, unspentEXP} -- fires on spawn and after each level-up
 }
 
 local remotes = {}
