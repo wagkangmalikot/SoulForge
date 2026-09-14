@@ -6,10 +6,14 @@ local TeleportService = game:GetService("TeleportService")
 local Net = require(ReplicatedStorage.Shared.Net)
 local BossAIService = require(script.Parent.BossAIService)
 local PlayerDataService = require(script.Parent.PlayerDataService)
+local RespawnService = require(script.Parent.RespawnService)
 
 local DungeonSessionService = {}
 
 local EXP_REWARD_ON_VICTORY = 50 -- flat value for this slice; real EXP formulas are a later plan
+
+local BOSS_SPAWN_CFRAME = CFrame.new(0, 5, 0)
+local ENTRANCE_POSITION = Vector3.new(0, 5, -20) -- near spawn, away from the boss
 
 local function bankRewardsAndReturnToHub(result: "victory" | "wipe")
 	-- Bank BEFORE teleporting away, per spec section 1a's anti-dupe/anti-loss
@@ -37,6 +41,19 @@ local function bankRewardsAndReturnToHub(result: "victory" | "wipe")
 	end
 end
 
+-- Hooks the downed/revive system for a single player.  Called once for every
+-- player whose character has already spawned by the time DungeonSessionService
+-- starts, and also from a CharacterAdded connection so late-spawners are covered.
+local function hookPlayerDeath(player: Player, character: Model)
+	local humanoid = character:WaitForChild("Humanoid", 5)
+	if not humanoid then
+		return
+	end
+	humanoid.Died:Connect(function()
+		RespawnService.OnPlayerDowned(player)
+	end)
+end
+
 function DungeonSessionService.Start(dungeonId: string)
 	if dungeonId ~= "Rockhide" then
 		return
@@ -59,12 +76,33 @@ function DungeonSessionService.Start(dungeonId: string)
 		bankRewardsAndReturnToHub(result)
 	end
 
-	bossHandle = BossAIService.SpawnBoss("Rockhide", CFrame.new(0, 5, 0), function()
+	-- Set up RespawnService before spawning the boss so death hooks are in place.
+	RespawnService.SetEntrancePosition(ENTRANCE_POSITION)
+	RespawnService.Start()
+
+	-- Hook existing players' current characters; also hook future character spawns.
+	for _, player in Players:GetPlayers() do
+		if player.Character then
+			hookPlayerDeath(player, player.Character)
+		end
+		player.CharacterAdded:Connect(function(character)
+			hookPlayerDeath(player, character)
+		end)
+	end
+	Players.PlayerAdded:Connect(function(player)
+		player.CharacterAdded:Connect(function(character)
+			hookPlayerDeath(player, character)
+		end)
+	end)
+
+	bossHandle = BossAIService.SpawnBoss("Rockhide", BOSS_SPAWN_CFRAME, function()
 		endSession("victory")
 	end)
 
-	-- Simplified wipe handling for this slice (full downed/revive loop is
-	-- Task 7): if every connected player's Humanoid health hits 0, it's a wipe.
+	-- Wipe detection: if every connected player's Humanoid health is 0 (and
+	-- RespawnService's bleed-out timer hasn't respawned them yet), call a wipe.
+	-- The downed/revive loop (RespawnService) lets players recover before the
+	-- bleed-out expires, so this check won't fire as long as someone is being revived.
 	task.spawn(function()
 		while not ended do
 			task.wait(1)
