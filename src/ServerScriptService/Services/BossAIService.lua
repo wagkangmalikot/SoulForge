@@ -36,21 +36,36 @@ end
 
 -- CombatService.RegisterBoss's range check reads `activeBoss.model.PrimaryPart.Position`
 -- (see CombatService.lua), which requires `model` to be a Model with PrimaryPart set — a
--- bare Part has no PrimaryPart property. Build a small Model wrapping a single visual Part
--- so the boss "actor" matches the Model+PrimaryPart shape CombatService already expects,
--- consistent with how Roblox characters/NPCs are normally structured.
+-- bare Part has no PrimaryPart property. Boss art assets live directly in the published
+-- place under ReplicatedStorage.Assets (not Rojo-managed source, same as the hub's
+-- RockhidePortal/LevelUpShrine scenery Parts -- binary content isn't practical to keep
+-- in git this way), named "<bossId>BossTemplate", each already a Model with its
+-- PrimaryPart set to the correct height for the telegraph ground-projection math in the
+-- attack loop below to keep working unmodified. Falls back to a plain placeholder Part
+-- for any boss that doesn't have a template yet, so this never hard-fails.
 local function createBossModel(bossId: string, spawnCFrame: CFrame): Model
-	local model = Instance.new("Model")
-	model.Name = bossId
+	local assets = ReplicatedStorage:FindFirstChild("Assets")
+	local template = assets and assets:FindFirstChild(bossId .. "BossTemplate")
 
-	local torso = Instance.new("Part")
-	torso.Name = "Torso"
-	torso.Size = Vector3.new(6, 10, 6)
-	torso.Anchored = true
-	torso.CFrame = spawnCFrame
-	torso.Parent = model
+	local model: Model
+	if template then
+		model = template:Clone()
+		model.Name = bossId
+		model:PivotTo(spawnCFrame)
+	else
+		model = Instance.new("Model")
+		model.Name = bossId
 
-	model.PrimaryPart = torso
+		local torso = Instance.new("Part")
+		torso.Name = "Torso"
+		torso.Size = Vector3.new(6, 10, 6)
+		torso.Anchored = true
+		torso.CFrame = spawnCFrame
+		torso.Parent = model
+
+		model.PrimaryPart = torso
+	end
+
 	model.Parent = workspace
 
 	return model

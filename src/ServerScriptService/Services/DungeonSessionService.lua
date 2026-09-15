@@ -97,7 +97,7 @@ end
 -- DungeonPortalController/LevelUpUIController). Without this, they'd sit
 -- around visually cluttering the dungeon arena, right on top of where the
 -- boss and the entrance both are.
-local HUB_ONLY_SCENERY = {"RockhidePortal", "LevelUpShrine"}
+local HUB_ONLY_SCENERY = {"RockhidePortal", "LevelUpShrine", "SpawnLocation"}
 
 function DungeonSessionService.Start(dungeonId: string)
 	if dungeonId ~= "Rockhide" then
