@@ -21,9 +21,11 @@ local REMOTE_NAMES = {
 	"CancelChannelRevive",    -- client -> server
 	"ReviveProgress",         -- server -> client: {reviverUserId, downedUserId, progress}
 	"DungeonResult",          -- server -> client: {result = "victory" | "wipe", expEarned}
-	"ShowCharacterCreation",   -- server -> client: tells this client to display the creation screen
-	"SubmitCharacterCreation", -- client -> server: {characterName}
-	"CharacterCreationResult", -- server -> client: {success, errorMessage?}
+	"ShowCharacterCreation",     -- server -> client: tells this client to show the create screen (first-timer, no existing character)
+	"SubmitCharacterCreation",   -- client -> server: no args -- name comes from player.DisplayName, class is always Tank
+	"ShowCharacterChoice",       -- server -> client: {level} -- tells this client to show the Load/Create New choice (returning player)
+	"RequestLoadCharacter",      -- client -> server: no args -- spawn as the existing character
+	"RequestCreateNewCharacter", -- client -> server: no args -- reset Character to defaults (keeping DisplayName/HasCreatedCharacter) and spawn
 	"RequestLevelUp",          -- client -> server (no args)
 	"CharacterDataChanged",    -- server -> client: {level, unspentEXP} -- fires on spawn and after each level-up
 }
