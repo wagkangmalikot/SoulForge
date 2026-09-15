@@ -198,6 +198,8 @@ function CharacterCreationController.Start()
 		createNewButton.Active = false
 		continueButton.AutoButtonColor = false
 		continueButton.BackgroundColor3 = Color3.new(0.15, 0.35, 0.2)
+		createNewButton.AutoButtonColor = false
+		createNewButton.BackgroundColor3 = Color3.new(0.4, 0.15, 0.15)
 		Net.Get("RequestLoadCharacter"):FireServer()
 	end)
 
