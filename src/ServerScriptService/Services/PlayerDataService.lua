@@ -22,10 +22,16 @@ local ProfileStore = ProfileService.GetProfileStore("PlayerData_v1", DEFAULT_DAT
 local profiles = {}
 -- userId -> true while a load is in flight, used by the timeout watchdog
 local loading = {}
+-- userId -> true once onPlayerAdded has been invoked for them at all (never
+-- cleared). Distinguishes "hasn't started loading yet" from "started and
+-- failed" for WaitForProfile below -- see the comment there for why this
+-- matters.
+local attempted = {}
 
 local LOAD_TIMEOUT_SECONDS = 15
 
 local function onPlayerAdded(player: Player)
+	attempted[player.UserId] = true
 	loading[player.UserId] = true
 
 	task.delay(LOAD_TIMEOUT_SECONDS, function()
@@ -112,14 +118,26 @@ end
 -- they disconnected while waiting. For use by other hub-only server services
 -- (e.g. CharacterCreationService) that need to inspect profile data before a
 -- player's character spawns, without racing PlayerDataService's own async load.
+--
+-- Callers commonly reach this from their OWN Players.PlayerAdded connection
+-- (e.g. CharacterCreationService.handlePlayer). Roblox does not guarantee the
+-- firing order between independent connections on the same signal, so this
+-- can run before onPlayerAdded below has had a chance to run at all -- not
+-- just before it *finishes*. Checking `attempted` (only ever set true, at the
+-- top of onPlayerAdded, never cleared) instead of `loading` distinguishes
+-- "hasn't started yet" (keep polling) from "started and finished without a
+-- profile" (a real failure -- give up). Checking `loading` alone collapsed
+-- both cases into "give up", so a caller that won this race returned nil
+-- before onPlayerAdded ever ran, even though the load would have succeeded a
+-- moment later.
 function PlayerDataService.WaitForProfile(player: Player)
 	while player.Parent == Players do
 		local profile = profiles[player.UserId]
 		if profile then
 			return profile
 		end
-		if not loading[player.UserId] then
-			-- The load attempt already finished (and failed) -- no point continuing to poll.
+		if attempted[player.UserId] and not loading[player.UserId] then
+			-- onPlayerAdded ran to completion and did not produce a profile: real failure.
 			return nil
 		end
 		task.wait(0.1)
