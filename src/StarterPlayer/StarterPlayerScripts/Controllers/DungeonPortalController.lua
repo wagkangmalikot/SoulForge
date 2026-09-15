@@ -1,6 +1,6 @@
 -- src/StarterPlayer/StarterPlayerScripts/Controllers/DungeonPortalController.lua
 -- Attaches a ProximityPrompt to the "RockhidePortal" Part in Workspace (hub only).
--- On dungeon servers this Part won't exist, so the script exits early.
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Net = require(ReplicatedStorage.Shared.Net)
@@ -8,15 +8,29 @@ local Net = require(ReplicatedStorage.Shared.Net)
 local DungeonPortalController = {}
 
 function DungeonPortalController.Start()
+	local player = Players.LocalPlayer
+
+	-- Hub-only: hub and dungeon servers are the SAME published place --
+	-- there is only one shared Workspace, distinguished at runtime purely by
+	-- teleportData.isDungeon (mirroring Main.server.lua's own check), so
+	-- RockhidePortal existing in Workspace can't be used to tell them apart
+	-- (it's saved into the one shared place, present on every server
+	-- instance regardless of type). Checking teleportData first means this
+	-- never even attempts the portal lookup on a dungeon server.
+	local teleportData = player:GetJoinData().TeleportData
+	if teleportData and teleportData.isDungeon then
+		return
+	end
+
 	-- Run the (possibly blocking) portal lookup on its own thread so that a
-	-- dungeon server's 5-second timeout below doesn't delay Main.client.lua's
-	-- synchronous calls into the controllers that run after this one.
+	-- delay here doesn't delay Main.client.lua's synchronous calls into the
+	-- controllers that run after this one.
 	task.spawn(function()
-		-- WaitForChild with a short timeout: if the part doesn't exist within 5 seconds
-		-- this is a dungeon server and there is nothing for this controller to do.
 		local portalPart = workspace:WaitForChild("RockhidePortal", 5)
 		if not portalPart then
-			-- Dungeon server (no portal placed here) — exit silently.
+			-- Shouldn't happen on a real hub server, but guard against a
+			-- still-replicating Part rather than erroring on a nil Parent below.
+			warn("DungeonPortalController: RockhidePortal not found on hub server within 5s")
 			return
 		end
 

@@ -13,29 +13,34 @@ local Net = require(ReplicatedStorage.Shared.Net)
 local CharacterCreationController = {}
 
 function CharacterCreationController.Start()
-	-- IMPORTANT: everything in this synchronous section -- building the
-	-- ScreenGui, wiring every button, and connecting the
-	-- ShowCharacterCreation / ShowCharacterChoice / CharacterAdded listeners
-	-- -- must run with zero yields, before the task.spawn below. Roblox
-	-- RemoteEvents do not buffer a fire that happens before a listener
-	-- connects; the server's handlePlayer always yields at least once (on
-	-- PlayerDataService.WaitForProfile) before firing ShowCharacterCreation/
-	-- ShowCharacterChoice, but there's no guarantee that yield outlasts the
-	-- workspace:WaitForChild hub-detection check below, which can itself
-	-- genuinely yield if RockhidePortal hasn't replicated yet. If the
-	-- server's fire happened to land while this client were still inside
-	-- that WaitForChild, connecting the listener afterward would silently
-	-- drop it, leaving the player stuck on a permanently blank screen. By
-	-- connecting these listeners first, before any yield anywhere in this
-	-- script, a server-fired event can never be missed.
 	local player = Players.LocalPlayer
+
+	-- Hub-only: this whole flow must not run on a dungeon server. Hub and
+	-- dungeon servers are the SAME published place -- there is only one
+	-- shared Workspace, distinguished at runtime purely by
+	-- teleportData.isDungeon (mirroring Main.server.lua's own check) -- so a
+	-- scene object like RockhidePortal exists on every server instance
+	-- regardless of type and can't be used to tell them apart (this
+	-- previously gated on workspace:WaitForChild("RockhidePortal"), which
+	-- broke the moment that Part was saved into the shared place: the intro
+	-- screen started blocking gameplay inside the dungeon too). Reading the
+	-- same teleportData the server already used for this exact decision is
+	-- the only reliable signal. GetJoinData() never yields, so this check
+	-- (and everything below it) runs synchronously with zero risk of a
+	-- server-fired ShowCharacterCreation/ShowCharacterChoice landing before
+	-- this script has connected its listeners.
+	local teleportData = player:GetJoinData().TeleportData
+	if teleportData and teleportData.isDungeon then
+		return
+	end
+
 	local playerGui = player:WaitForChild("PlayerGui")
 
 	local screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "CharacterCreation"
 	screenGui.ResetOnSpawn = false
 	screenGui.IgnoreGuiInset = true
-	screenGui.Enabled = false -- flipped true only once hub-detection (below) confirms this isn't a dungeon server
+	screenGui.Enabled = true -- shows immediately: the intro needs no server round-trip
 	screenGui.Parent = playerGui
 
 	local background = Instance.new("Frame")
@@ -71,6 +76,17 @@ function CharacterCreationController.Start()
 	pressPrompt.Font = Enum.Font.Gotham
 	pressPrompt.Text = "Press anything to continue"
 	pressPrompt.Parent = introFrame
+
+	TweenService:Create(
+		titleLabel,
+		TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ TextTransparency = 0 }
+	):Play()
+	TweenService:Create(
+		pressPrompt,
+		TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ TextTransparency = 0.3 }
+	):Play()
 
 	-- ── Create screen (first-timer) ────────────────────────────────────
 	local createFrame = Instance.new("Frame")
@@ -312,11 +328,13 @@ function CharacterCreationController.Start()
 			loadingLabel.Visible = true
 		end
 	end
+	inputConnection = UserInputService.InputBegan:Connect(function(_input, gameProcessed)
+		if gameProcessed then
+			return
+		end
+		dismissIntro()
+	end)
 
-	-- These three connections are the whole point of the synchronous
-	-- section above: they must be live before workspace:WaitForChild
-	-- (below) gets a chance to yield, or a server fire during that yield
-	-- would be silently dropped.
 	Net.Get("ShowCharacterCreation").OnClientEvent:Connect(function()
 		pendingScreen = "creation"
 		showPendingScreen()
@@ -334,48 +352,6 @@ function CharacterCreationController.Start()
 	-- with no per-action bookkeeping needed here.
 	player.CharacterAdded:Connect(function()
 		screenGui.Enabled = false
-	end)
-
-	-- Run hub-detection on its own thread so a dungeon server's 5-second
-	-- timeout below doesn't delay Main.client.lua's synchronous calls into
-	-- the controllers that run after this one. This whole flow is hub-only:
-	-- a dungeon server never places RockhidePortal, the same signal
-	-- DungeonPortalController already uses to detect this, reused here so
-	-- the intro card never flashes on a dungeon server. Only the
-	-- hub-detection check and the things that depend on knowing "this is a
-	-- hub" (enabling the ScreenGui, starting the intro tweens, and
-	-- listening for the input that dismisses the intro) live in here --
-	-- everything else had to be connected synchronously above (see the
-	-- comment at the top of Start()).
-	task.spawn(function()
-		local portalPart = workspace:WaitForChild("RockhidePortal", 5)
-		if not portalPart then
-			-- Dungeon server -- no character-entry flow here. The ScreenGui
-			-- built above stays Enabled = false forever, which is harmless:
-			-- CharacterCreationService never runs on a dungeon server, so
-			-- none of the remotes connected above ever fire.
-			return
-		end
-
-		screenGui.Enabled = true -- shows immediately: the intro needs no server round-trip
-
-		TweenService:Create(
-			titleLabel,
-			TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-			{ TextTransparency = 0 }
-		):Play()
-		TweenService:Create(
-			pressPrompt,
-			TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-			{ TextTransparency = 0.3 }
-		):Play()
-
-		inputConnection = UserInputService.InputBegan:Connect(function(_input, gameProcessed)
-			if gameProcessed then
-				return
-			end
-			dismissIntro()
-		end)
 	end)
 end
 

@@ -16,6 +16,23 @@ local EXP_REWARD_ON_VICTORY = 50 -- flat value for this slice; real EXP formulas
 local BOSS_SPAWN_CFRAME = CFrame.new(0, 5, 0)
 local ENTRANCE_POSITION = Vector3.new(0, 5, -20) -- near spawn, away from the boss
 
+-- Hub and dungeon servers are the same published place with one shared
+-- Workspace, so the only SpawnLocation Part in it is the hub's -- Roblox's
+-- default spawn-point selection (used by both the engine's own auto-spawn and
+-- a bare LoadCharacter() call) would otherwise place every dungeon entrant at
+-- the hub's spawn coordinates instead of ENTRANCE_POSITION, landing them right
+-- next to the boss instead of a safe distance away. Mirrors the exact
+-- technique RespawnService.respawnAtEntrance already uses for repositioning
+-- after a respawn -- this is the same fix, just for the very first spawn.
+local function moveCharacterToEntrance(character: Model)
+	task.defer(function()
+		local rootPart = character:WaitForChild("HumanoidRootPart", 5)
+		if rootPart then
+			rootPart.CFrame = CFrame.new(ENTRANCE_POSITION)
+		end
+	end)
+end
+
 local function bankRewardsAndReturnToHub(result: "victory" | "wipe")
 	-- Bank BEFORE teleporting away, per spec section 1a's anti-dupe/anti-loss
 	-- ordering rule: the mutation must be in memory before the player leaves
@@ -73,9 +90,25 @@ local function hookPlayerDeath(player: Player, character: Model)
 	end)
 end
 
+-- Hub-only scenery Parts that live in the single Workspace shared by every
+-- server instance of this place (hub and dungeon servers are only
+-- distinguished at runtime by teleportData.isDungeon, not by separate scene
+-- content -- see the matching client-side fix in CharacterCreationController/
+-- DungeonPortalController/LevelUpUIController). Without this, they'd sit
+-- around visually cluttering the dungeon arena, right on top of where the
+-- boss and the entrance both are.
+local HUB_ONLY_SCENERY = {"RockhidePortal", "LevelUpShrine"}
+
 function DungeonSessionService.Start(dungeonId: string)
 	if dungeonId ~= "Rockhide" then
 		return
+	end
+
+	for _, name in HUB_ONLY_SCENERY do
+		local part = workspace:FindFirstChild(name)
+		if part then
+			part:Destroy()
+		end
 	end
 
 	local ended = false
@@ -171,10 +204,19 @@ function DungeonSessionService.Start(dungeonId: string)
 				-- directly, since CharacterAdded already fired for it in the past
 				-- and won't fire again for the same character.
 				hookPlayerDeath(player, player.Character)
+				-- The engine would have placed them at whatever SpawnLocation
+				-- exists in this shared Workspace (the hub's), not
+				-- ENTRANCE_POSITION -- reposition explicitly.
+				moveCharacterToEntrance(player.Character)
 			else
 				-- No character yet, and CharacterAutoLoads is now off, so the
 				-- engine won't spawn one on its own -- spawn it explicitly.
+				-- Same SpawnLocation problem applies: LoadCharacter() places
+				-- them via the default spawn point, not ENTRANCE_POSITION.
 				player:LoadCharacter()
+				if player.Character then
+					moveCharacterToEntrance(player.Character)
+				end
 			end
 		end)
 		if not ok then

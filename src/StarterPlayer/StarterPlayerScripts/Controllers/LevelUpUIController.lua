@@ -1,8 +1,6 @@
 -- src/StarterPlayer/StarterPlayerScripts/Controllers/LevelUpUIController.lua
 -- Attaches a ProximityPrompt to the "LevelUpShrine" Part in Workspace
--- (hub only, spec section 9a). On dungeon servers this Part won't exist, so
--- the lookup times out and the controller does nothing further -- same
--- pattern as DungeonPortalController.
+-- (hub only, spec section 9a).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -20,6 +18,19 @@ end
 
 function LevelUpUIController.Start()
 	local player = Players.LocalPlayer
+
+	-- Hub-only: hub and dungeon servers are the SAME published place -- there
+	-- is only one shared Workspace, distinguished at runtime purely by
+	-- teleportData.isDungeon (mirroring Main.server.lua's own check), so
+	-- LevelUpShrine existing in Workspace can't be used to tell them apart
+	-- (it's saved into the one shared place, present on every server
+	-- instance regardless of type) -- same fix as CharacterCreationController
+	-- and DungeonPortalController.
+	local teleportData = player:GetJoinData().TeleportData
+	if teleportData and teleportData.isDungeon then
+		return
+	end
+
 	local playerGui = player:WaitForChild("PlayerGui")
 
 	local currentLevel = 1
@@ -105,13 +116,17 @@ function LevelUpUIController.Start()
 		screenGui.Enabled = false
 	end)
 
-	-- Run on its own thread, same reasoning as DungeonPortalController: the
-	-- 5-second timeout below must not delay Main.client.lua's synchronous
-	-- calls into whichever controllers run after this one.
+	-- Run on its own thread, same reasoning as DungeonPortalController: a
+	-- delay here must not delay Main.client.lua's synchronous calls into
+	-- whichever controllers run after this one.
 	task.spawn(function()
 		local shrine = workspace:WaitForChild("LevelUpShrine", 5)
 		if not shrine then
-			return -- dungeon server, or the shrine hasn't been placed yet
+			-- Shouldn't happen on a real hub server (the teleportData check
+			-- above already excluded dungeon servers) -- guard against a
+			-- still-replicating Part rather than erroring on a nil Parent below.
+			warn("LevelUpUIController: LevelUpShrine not found on hub server within 5s")
+			return
 		end
 
 		local prompt = Instance.new("ProximityPrompt")
