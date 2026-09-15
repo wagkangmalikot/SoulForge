@@ -119,7 +119,15 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 			local attack = BossAttacks[attackId]
 			local multiplier = phase.telegraphTimeMultiplier or 1.0
 
-			Net.Get("TelegraphAttack"):FireAllClients(attackId, model.PrimaryPart.Position, attack.telegraphTime * multiplier)
+			-- HUDController renders this as a flat ground-level disc. Firing
+			-- model.PrimaryPart.Position directly would center it at the boss's
+			-- torso height instead of its feet -- a thin, half-transparent disc
+			-- floating mid-air is very easy to miss standing at ground level,
+			-- defeating the whole point of a telegraph warning. Project down by
+			-- half the model's height to put it where a player is actually
+			-- looking.
+			local groundPosition = model.PrimaryPart.Position - Vector3.new(0, model.PrimaryPart.Size.Y / 2, 0)
+			Net.Get("TelegraphAttack"):FireAllClients(attackId, groundPosition, attack.telegraphTime * multiplier)
 			task.wait(attack.telegraphTime * multiplier)
 
 			if not alive then
