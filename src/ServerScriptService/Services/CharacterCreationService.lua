@@ -58,10 +58,33 @@ end
 -- Guards against a double-click/double-fire spamming any of the three
 -- character-entry actions (submit creation, load, create-new) in quick
 -- succession: OnServerEvent runs each fire on its own thread, so without this
--- a player could race two concurrent LoadCharacter() calls. Shared across all
--- three actions since a player can only be on one pre-spawn screen at a
--- time -- they're mutually exclusive by construction, so one flag is enough.
+-- a player could race two concurrent LoadCharacter() calls. It's safe to
+-- share one flag across all three actions not merely because they're
+-- mutually-exclusive UI screens, but because each handler checks and sets
+-- this flag entirely before its own first yield (the LoadCharacter() pcall)
+-- -- so there's never a window where two handlers are both past their guard
+-- at once. If a future edit ever inserted a yielding call ahead of the
+-- guard-set in any one handler, that guarantee -- and the double-fire
+-- protection it provides -- would break.
 local actionInFlight = {}
+
+-- Shared tail end of all three character-entry actions: spawn the character,
+-- notify the client of the (possibly just-reset) profile data, and release
+-- the in-flight guard. Pulled out because all three handlers otherwise repeat
+-- this verbatim aside from the warn's context phrase.
+local function loadCharacterAndNotify(player: Player, profile, context: string)
+	-- LoadCharacter() can throw (rare); pcall so a disconnect or engine error
+	-- here doesn't take down this whole handler.
+	local loadOk, loadErr = pcall(function()
+		player:LoadCharacter()
+		fireCharacterDataChanged(player, profile)
+	end)
+	if not loadOk then
+		warn(("CharacterCreationService: LoadCharacter failed for %s %s: %s"):format(player.Name, context, tostring(loadErr)))
+	end
+
+	actionInFlight[player.UserId] = nil
+end
 
 local function onSubmitCharacterCreation(player: Player)
 	local profile = PlayerDataService.GetProfile(player)
@@ -78,17 +101,7 @@ local function onSubmitCharacterCreation(player: Player)
 	profile.Data.Character.ClassId = "Tank" -- the only implemented class (spec section 2a)
 	profile.Data.Character.HasCreatedCharacter = true
 
-	-- LoadCharacter() can throw (rare); pcall so a disconnect or engine error
-	-- here doesn't take down this whole handler.
-	local loadOk, loadErr = pcall(function()
-		player:LoadCharacter()
-		fireCharacterDataChanged(player, profile)
-	end)
-	if not loadOk then
-		warn(("CharacterCreationService: LoadCharacter failed for %s after submission: %s"):format(player.Name, tostring(loadErr)))
-	end
-
-	actionInFlight[player.UserId] = nil
+	loadCharacterAndNotify(player, profile, "after submission")
 end
 
 local function onRequestLoadCharacter(player: Player)
@@ -102,15 +115,7 @@ local function onRequestLoadCharacter(player: Player)
 	end
 	actionInFlight[player.UserId] = true
 
-	local loadOk, loadErr = pcall(function()
-		player:LoadCharacter()
-		fireCharacterDataChanged(player, profile)
-	end)
-	if not loadOk then
-		warn(("CharacterCreationService: LoadCharacter failed for %s on load: %s"):format(player.Name, tostring(loadErr)))
-	end
-
-	actionInFlight[player.UserId] = nil
+	loadCharacterAndNotify(player, profile, "on load")
 end
 
 local function onRequestCreateNewCharacter(player: Player)
@@ -136,15 +141,7 @@ local function onRequestCreateNewCharacter(player: Player)
 	profile.Data.Character.ClassId = "Tank"
 	profile.Data.Character.Name = player.DisplayName
 
-	local loadOk, loadErr = pcall(function()
-		player:LoadCharacter()
-		fireCharacterDataChanged(player, profile)
-	end)
-	if not loadOk then
-		warn(("CharacterCreationService: LoadCharacter failed for %s after create-new: %s"):format(player.Name, tostring(loadErr)))
-	end
-
-	actionInFlight[player.UserId] = nil
+	loadCharacterAndNotify(player, profile, "after create-new")
 end
 
 function CharacterCreationService.Start()
@@ -157,6 +154,18 @@ function CharacterCreationService.Start()
 	for _, player in Players:GetPlayers() do
 		handlePlayer(player)
 	end
+
+	-- Hub servers stay alive across many players joining and leaving, so
+	-- these player-keyed tables must be cleared on disconnect. Otherwise a
+	-- player who leaves and later rejoins this same server instance would
+	-- find processedPlayers still true (handlePlayer would never re-fire
+	-- ShowCharacterCreation/ShowCharacterChoice, leaving them stuck with no
+	-- character and no UI) or actionInFlight still true (all three actions
+	-- silently blocked forever).
+	Players.PlayerRemoving:Connect(function(player: Player)
+		processedPlayers[player.UserId] = nil
+		actionInFlight[player.UserId] = nil
+	end)
 
 	Net.Get("SubmitCharacterCreation").OnServerEvent:Connect(onSubmitCharacterCreation)
 	Net.Get("RequestLoadCharacter").OnServerEvent:Connect(onRequestLoadCharacter)
