@@ -1,20 +1,15 @@
 -- src/ServerScriptService/Services/CharacterCreationService.lua
 -- Hub-only. Gates a player's very first spawn on completing character
 -- creation (spec section 2b): a first-time player sees a creation screen
--- instead of auto-spawning; a returning player (profile already has
--- HasCreatedCharacter = true) spawns immediately, same as before this
--- feature existed.
+-- instead of auto-spawning; a returning player sees a Load/Create New choice
+-- instead of silently skipping straight to spawn.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TextService = game:GetService("TextService")
 
 local Net = require(ReplicatedStorage.Shared.Net)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 
 local CharacterCreationService = {}
-
-local MIN_NAME_LENGTH = 3
-local MAX_NAME_LENGTH = 20
 
 local function fireCharacterDataChanged(player: Player, profile)
 	Net.Get("CharacterDataChanged"):FireClient(
@@ -50,8 +45,7 @@ local function handlePlayer(player: Player)
 		end
 
 		if profile.Data.Character.HasCreatedCharacter then
-			player:LoadCharacter()
-			fireCharacterDataChanged(player, profile)
+			Net.Get("ShowCharacterChoice"):FireClient(player, profile.Data.Character.Level)
 		else
 			Net.Get("ShowCharacterCreation"):FireClient(player)
 		end
@@ -61,75 +55,31 @@ local function handlePlayer(player: Player)
 	end
 end
 
--- Guards against a double-click or spammed client firing two
--- SubmitCharacterCreation events in quick succession: OnServerEvent runs each
--- fire on its own thread, so without this both would pass the
--- HasCreatedCharacter check below and proceed concurrently across the
--- FilterStringAsync yield -- double-mutating the profile, double-spawning the
--- character, double-firing the result/data-changed remotes, and piling up
--- concurrent (server-rate-limited) filter calls. Set before any yield in
--- onSubmitCharacterCreation; cleared on every exit path (success or
--- rejection) so a legitimate retry after a real rejection (e.g. a bad name)
--- isn't permanently blocked.
-local submitting = {}
+-- Guards against a double-click/double-fire spamming any of the three
+-- character-entry actions (submit creation, load, create-new) in quick
+-- succession: OnServerEvent runs each fire on its own thread, so without this
+-- a player could race two concurrent LoadCharacter() calls. Shared across all
+-- three actions since a player can only be on one pre-spawn screen at a
+-- time -- they're mutually exclusive by construction, so one flag is enough.
+local actionInFlight = {}
 
-local function onSubmitCharacterCreation(player: Player, characterName: string)
+local function onSubmitCharacterCreation(player: Player)
 	local profile = PlayerDataService.GetProfile(player)
 	if not profile or profile.Data.Character.HasCreatedCharacter then
 		return -- no profile, or already created: reject a resubmission
 	end
 
-	if submitting[player.UserId] then
-		return -- a previous submission from this player is still in flight
-	end
-	submitting[player.UserId] = true
-
-	local trimmed = characterName:gsub("^%s+", ""):gsub("%s+$", "")
-	-- utf8.len counts codepoints, not bytes. Lua's `#` counts UTF-8 bytes, so
-	-- a reasonable-length non-Latin name (Japanese, Korean, Cyrillic, Arabic,
-	-- ...) can be well within a sane visual length but still trip a
-	-- byte-counted MAX_NAME_LENGTH. Do not swap this back to `#`. utf8.len
-	-- returns nil on malformed UTF-8, which is also treated as invalid below.
-	local length = utf8.len(trimmed)
-	if not length or length < MIN_NAME_LENGTH or length > MAX_NAME_LENGTH then
-		Net.Get("CharacterCreationResult"):FireClient(
-			player, false,
-			("Name must be %d-%d characters."):format(MIN_NAME_LENGTH, MAX_NAME_LENGTH)
-		)
-		submitting[player.UserId] = nil
+	if actionInFlight[player.UserId] then
 		return
 	end
+	actionInFlight[player.UserId] = true
 
-	local filterOk, filterResultOrErr = pcall(function()
-		local filterResult = TextService:FilterStringAsync(trimmed, player.UserId)
-		return filterResult:GetNonChatStringForBroadcastAsync()
-	end)
-	if not filterOk then
-		warn(("CharacterCreationService: FilterStringAsync failed for %s: %s"):format(player.Name, tostring(filterResultOrErr)))
-		Net.Get("CharacterCreationResult"):FireClient(player, false, "Name filtering failed, please try again.")
-		submitting[player.UserId] = nil
-		return
-	end
-
-	local filteredName = filterResultOrErr
-	if filteredName == "" then
-		Net.Get("CharacterCreationResult"):FireClient(player, false, "That name isn't allowed. Try another.")
-		submitting[player.UserId] = nil
-		return
-	end
-
-	profile.Data.Character.Name = filteredName
+	profile.Data.Character.Name = player.DisplayName
 	profile.Data.Character.ClassId = "Tank" -- the only implemented class (spec section 2a)
 	profile.Data.Character.HasCreatedCharacter = true
 
-	Net.Get("CharacterCreationResult"):FireClient(player, true)
-
-	-- Unlike handlePlayer's equivalent call, this one wasn't previously
-	-- guarded: if the player disconnected during the FilterStringAsync yield
-	-- above, LoadCharacter() can throw here -- after the profile has already
-	-- been mutated and success already reported -- leaving them stuck with no
-	-- character and nothing left to retry. pcall it, consistent with how
-	-- handlePlayer already treats this same call as fallible.
+	-- LoadCharacter() can throw (rare); pcall so a disconnect or engine error
+	-- here doesn't take down this whole handler.
 	local loadOk, loadErr = pcall(function()
 		player:LoadCharacter()
 		fireCharacterDataChanged(player, profile)
@@ -138,7 +88,63 @@ local function onSubmitCharacterCreation(player: Player, characterName: string)
 		warn(("CharacterCreationService: LoadCharacter failed for %s after submission: %s"):format(player.Name, tostring(loadErr)))
 	end
 
-	submitting[player.UserId] = nil
+	actionInFlight[player.UserId] = nil
+end
+
+local function onRequestLoadCharacter(player: Player)
+	local profile = PlayerDataService.GetProfile(player)
+	if not profile or not profile.Data.Character.HasCreatedCharacter then
+		return -- no profile, or nothing to load
+	end
+
+	if actionInFlight[player.UserId] then
+		return
+	end
+	actionInFlight[player.UserId] = true
+
+	local loadOk, loadErr = pcall(function()
+		player:LoadCharacter()
+		fireCharacterDataChanged(player, profile)
+	end)
+	if not loadOk then
+		warn(("CharacterCreationService: LoadCharacter failed for %s on load: %s"):format(player.Name, tostring(loadErr)))
+	end
+
+	actionInFlight[player.UserId] = nil
+end
+
+local function onRequestCreateNewCharacter(player: Player)
+	local profile = PlayerDataService.GetProfile(player)
+	if not profile or not profile.Data.Character.HasCreatedCharacter then
+		return -- no profile, or nothing to overwrite
+	end
+
+	if actionInFlight[player.UserId] then
+		return
+	end
+	actionInFlight[player.UserId] = true
+
+	-- Resets progress (spec 2b) but keeps HasCreatedCharacter true -- this is
+	-- an overwrite of an existing character, not a return to the first-timer
+	-- state. If anything below throws, the profile must not end up looking
+	-- like a fresh, uncreated one, or a rejoin would incorrectly show the
+	-- first-timer creation screen instead of the choice screen. Setting
+	-- HasCreatedCharacter is not part of this reset, so that risk doesn't
+	-- apply here.
+	profile.Data.Character.Level = 1
+	profile.Data.Character.UnspentEXP = 0
+	profile.Data.Character.ClassId = "Tank"
+	profile.Data.Character.Name = player.DisplayName
+
+	local loadOk, loadErr = pcall(function()
+		player:LoadCharacter()
+		fireCharacterDataChanged(player, profile)
+	end)
+	if not loadOk then
+		warn(("CharacterCreationService: LoadCharacter failed for %s after create-new: %s"):format(player.Name, tostring(loadErr)))
+	end
+
+	actionInFlight[player.UserId] = nil
 end
 
 function CharacterCreationService.Start()
@@ -152,12 +158,9 @@ function CharacterCreationService.Start()
 		handlePlayer(player)
 	end
 
-	Net.Get("SubmitCharacterCreation").OnServerEvent:Connect(function(player, characterName)
-		if type(characterName) ~= "string" then
-			return
-		end
-		onSubmitCharacterCreation(player, characterName)
-	end)
+	Net.Get("SubmitCharacterCreation").OnServerEvent:Connect(onSubmitCharacterCreation)
+	Net.Get("RequestLoadCharacter").OnServerEvent:Connect(onRequestLoadCharacter)
+	Net.Get("RequestCreateNewCharacter").OnServerEvent:Connect(onRequestCreateNewCharacter)
 end
 
 return CharacterCreationService
