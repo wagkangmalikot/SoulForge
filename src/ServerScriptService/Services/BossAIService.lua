@@ -1,6 +1,5 @@
 -- src/ServerScriptService/Services/BossAIService.lua
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
 
 local Net = require(ReplicatedStorage.Shared.Net)
@@ -22,17 +21,6 @@ local function pickPhase(bossData, currentHealth: number, maxHealth: number)
 		end
 	end
 	return chosen, chosenIndex
-end
-
-local function playersInRadius(center: Vector3, radius: number): {Player}
-	local hit = {}
-	for _, player in Players:GetPlayers() do
-		local rootPart = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-		if rootPart and (rootPart.Position - center).Magnitude <= radius then
-			table.insert(hit, player)
-		end
-	end
-	return hit
 end
 
 -- CombatService.onCastSkill's range check reads `enemy.model.PrimaryPart.Position` for
@@ -157,7 +145,7 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 				break
 			end
 
-			for _, player in playersInRadius(model.PrimaryPart.Position, attack.radius) do
+			for _, player in CombatService.PlayersInRadius(model.PrimaryPart.Position, attack.radius) do
 				CombatService.ApplyDamageToPlayer(player, attack.damage)
 			end
 		end

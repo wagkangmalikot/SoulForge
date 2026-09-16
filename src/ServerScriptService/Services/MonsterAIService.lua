@@ -4,7 +4,6 @@
 -- Unlike BossAIService's bosses, they have no phases or telegraphs -- just a
 -- periodic "is anyone close enough" check that deals damage automatically.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
 
 local CombatService = require(script.Parent.CombatService)
@@ -15,17 +14,6 @@ local MOB_MAX_HEALTH = 20
 local MOB_ATTACK_DAMAGE = 4
 local MOB_ATTACK_RADIUS = 6
 local MOB_ATTACK_INTERVAL = 2 -- seconds between automatic attacks while a player is in range
-
-local function playersInRadius(center: Vector3, radius: number): {Player}
-	local hit = {}
-	for _, player in Players:GetPlayers() do
-		local rootPart = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-		if rootPart and (rootPart.Position - center).Magnitude <= radius then
-			table.insert(hit, player)
-		end
-	end
-	return hit
-end
 
 -- Spawns one mob at `position`, registered under CombatService as `targetId`.
 -- `onKilled(attackingPlayer)` fires once, the moment the mob's health
@@ -98,7 +86,7 @@ local function spawnMob(targetId: string, position: Vector3, onKilled: (Player) 
 			if not alive then
 				break
 			end
-			for _, player in playersInRadius(model.PrimaryPart.Position, MOB_ATTACK_RADIUS) do
+			for _, player in CombatService.PlayersInRadius(model.PrimaryPart.Position, MOB_ATTACK_RADIUS) do
 				CombatService.ApplyDamageToPlayer(player, MOB_ATTACK_DAMAGE)
 			end
 		end
@@ -122,10 +110,9 @@ function MonsterAIService.SpawnMobs(positions: {Vector3}, onKilled: (Player) -> 
 	end
 
 	return function()
-		for targetId, handle in handles do
+		for _, handle in handles do
 			if handle.model.Parent then
-				CombatService.UnregisterEnemy(targetId)
-				handle.model:Destroy()
+				handle.onDamaged(handle.currentHealth, nil)
 			end
 		end
 	end

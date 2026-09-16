@@ -142,6 +142,19 @@ function CombatService.ApplyDamageToPlayer(player: Player, amount: number)
 	Net.Get("HealthChanged"):FireAllClients(player.UserId, humanoid.Health, humanoid.MaxHealth)
 end
 
+-- Shared by BossAIService and MonsterAIService's attack loops to find which
+-- players are standing close enough to a given point to be hit by an attack.
+function CombatService.PlayersInRadius(center: Vector3, radius: number): {Player}
+	local hit = {}
+	for _, player in Players:GetPlayers() do
+		local rootPart = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if rootPart and (rootPart.Position - center).Magnitude <= radius then
+			table.insert(hit, player)
+		end
+	end
+	return hit
+end
+
 function CombatService.Start()
 	Net.Get("CastSkill").OnServerEvent:Connect(function(player, skillId, targetId)
 		if type(skillId) ~= "string" then
