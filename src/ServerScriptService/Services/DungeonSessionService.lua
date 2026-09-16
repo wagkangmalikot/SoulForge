@@ -90,26 +90,15 @@ local function hookPlayerDeath(player: Player, character: Model)
 	end)
 end
 
--- Hub-only scenery Parts that live in the single Workspace shared by every
--- server instance of this place (hub and dungeon servers are only
--- distinguished at runtime by teleportData.isDungeon, not by separate scene
--- content -- see the matching client-side fix in CharacterCreationController/
--- DungeonPortalController/LevelUpUIController). Without this, they'd sit
--- around visually cluttering the dungeon arena, right on top of where the
--- boss and the entrance both are.
-local HUB_ONLY_SCENERY = {"RockhidePortal", "LevelUpShrine", "SpawnLocation"}
-
 function DungeonSessionService.Start(dungeonId: string)
 	if dungeonId ~= "Rockhide" then
 		return
 	end
 
-	for _, name in HUB_ONLY_SCENERY do
-		local part = workspace:FindFirstChild(name)
-		if part then
-			part:Destroy()
-		end
-	end
+	-- Hub-only scenery cleanup (RockhidePortal/LevelUpShrine/SpawnLocation)
+	-- happens in Main.server.lua, at the same branch point that decided this
+	-- is a dungeon server -- see the comment there for why that's the one
+	-- place this belongs, not scattered across each server-type's own Start().
 
 	local ended = false
 	local bossHandle
