@@ -1,6 +1,7 @@
 -- src/ServerScriptService/Services/BossAIService.lua
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+local CollectionService = game:GetService("CollectionService")
 
 local Net = require(ReplicatedStorage.Shared.Net)
 local BossAttacks = require(ReplicatedStorage.Shared.Data.BossAttacks)
@@ -34,8 +35,9 @@ local function playersInRadius(center: Vector3, radius: number): {Player}
 	return hit
 end
 
--- CombatService.RegisterBoss's range check reads `activeBoss.model.PrimaryPart.Position`
--- (see CombatService.lua), which requires `model` to be a Model with PrimaryPart set — a
+-- CombatService.onCastSkill's range check reads `enemy.model.PrimaryPart.Position` for
+-- whichever enemy is currently registered under a given targetId (see CombatService.lua),
+-- which requires `model` to be a Model with PrimaryPart set — a
 -- bare Part has no PrimaryPart property. Boss art assets live directly in the published
 -- place under ReplicatedStorage.Assets (not Rojo-managed source, same as the hub's
 -- RockhidePortal/LevelUpShrine scenery Parts -- binary content isn't practical to keep
@@ -66,6 +68,7 @@ local function createBossModel(bossId: string, spawnCFrame: CFrame): Model
 		model.PrimaryPart = torso
 	end
 
+	CollectionService:AddTag(model, "Enemy")
 	model.Parent = workspace
 
 	return model
@@ -86,7 +89,12 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 		maxHealth = bossData.maxHealth,
 	}
 
-	function handle.onDamaged(amount: number)
+	-- Second parameter is unused here (only trash mobs need to know who
+	-- landed the killing blow, to award its EXP trickle) -- kept for
+	-- interface parity so CombatService.onCastSkill/onCastNormalAttack can
+	-- call any registered enemy's onDamaged the same way regardless of which
+	-- kind of enemy it is.
+	function handle.onDamaged(amount: number, _attackingPlayer: Player?)
 		if not alive then
 			return
 		end
@@ -99,7 +107,7 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 		end
 	end
 
-	CombatService.RegisterBoss(handle)
+	CombatService.RegisterEnemy(bossId, handle)
 
 	task.spawn(function()
 		while alive do
@@ -154,7 +162,7 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 			end
 		end
 
-		CombatService.ClearBoss()
+		CombatService.UnregisterEnemy(bossId)
 		model:Destroy()
 		if onDeath then
 			onDeath()
