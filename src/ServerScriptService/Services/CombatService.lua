@@ -8,10 +8,14 @@ local PlayerDataService = require(script.Parent.PlayerDataService)
 
 local CombatService = {}
 
--- userId -> skillId -> last-cast os.clock() timestamp. The normal attack
--- (onCastNormalAttack below) reuses this same table under the synthetic key
--- "__NormalAttack" rather than a parallel cooldown structure.
+-- userId -> skillId -> last-cast os.clock() timestamp, for real skills only.
 local lastCastAt = {}
+
+-- userId -> last-cast os.clock() timestamp for the normal attack. Kept in its
+-- own table (rather than a synthetic key inside lastCastAt above) since there
+-- is only one normal attack -- no per-skill keying is needed, and this avoids
+-- any chance of a real skillId ever colliding with a reserved sentinel key.
+local lastNormalAttackAt = {}
 
 -- targetId -> {model, currentHealth, maxHealth, onDamaged = function(amount, attackingPlayer) end}
 -- Generalizes what used to be a single hardcoded `activeBoss` slot: both
@@ -105,7 +109,8 @@ local function onCastNormalAttack(player: Player, targetId: string?)
 	if not targetId then
 		return
 	end
-	if isOnCooldown(player.UserId, "__NormalAttack", NORMAL_ATTACK_COOLDOWN) then
+	local lastCast = lastNormalAttackAt[player.UserId]
+	if lastCast and (os.clock() - lastCast) < NORMAL_ATTACK_COOLDOWN then
 		return
 	end
 
@@ -124,7 +129,7 @@ local function onCastNormalAttack(player: Player, targetId: string?)
 		return
 	end
 
-	markCast(player.UserId, "__NormalAttack")
+	lastNormalAttackAt[player.UserId] = os.clock()
 	enemy.onDamaged(NORMAL_ATTACK_DAMAGE, player)
 end
 
@@ -157,6 +162,7 @@ function CombatService.Start()
 
 	Players.PlayerRemoving:Connect(function(player)
 		lastCastAt[player.UserId] = nil
+		lastNormalAttackAt[player.UserId] = nil
 	end)
 end
 
