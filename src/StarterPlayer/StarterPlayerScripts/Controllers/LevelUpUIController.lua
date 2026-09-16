@@ -3,6 +3,7 @@
 -- (hub only, spec section 9a).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TeleportService = game:GetService("TeleportService")
 
 local Net = require(ReplicatedStorage.Shared.Net)
 
@@ -26,7 +27,11 @@ function LevelUpUIController.Start()
 	-- (it's saved into the one shared place, present on every server
 	-- instance regardless of type) -- same fix as CharacterCreationController
 	-- and DungeonPortalController.
-	local teleportData = player:GetJoinData().TeleportData
+	-- TeleportService:GetLocalPlayerTeleportData(), not
+	-- Player:GetJoinData().TeleportData -- the latter's TeleportData can be
+	-- withheld client-side for security reasons, which silently broke this
+	-- exact check elsewhere in this project.
+	local teleportData = TeleportService:GetLocalPlayerTeleportData()
 	if teleportData and teleportData.isDungeon then
 		return
 	end

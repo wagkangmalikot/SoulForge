@@ -5,6 +5,7 @@
 -- ShowCharacterCreation / ShowCharacterChoice.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TeleportService = game:GetService("TeleportService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
@@ -25,11 +26,19 @@ function CharacterCreationController.Start()
 	-- broke the moment that Part was saved into the shared place: the intro
 	-- screen started blocking gameplay inside the dungeon too). Reading the
 	-- same teleportData the server already used for this exact decision is
-	-- the only reliable signal. GetJoinData() never yields, so this check
-	-- (and everything below it) runs synchronously with zero risk of a
-	-- server-fired ShowCharacterCreation/ShowCharacterChoice landing before
-	-- this script has connected its listeners.
-	local teleportData = player:GetJoinData().TeleportData
+	-- the only reliable signal -- but on the CLIENT, that means
+	-- TeleportService:GetLocalPlayerTeleportData(), not
+	-- Player:GetJoinData().TeleportData: the latter's docs note that
+	-- security restrictions can withhold TeleportData client-side, which is
+	-- exactly what silently broke this check the first time (it always
+	-- evaluated as "not a dungeon", so the intro/creation flow ran and got
+	-- stuck on its own "Loading..." fallback inside every dungeon server,
+	-- since ShowCharacterCreation/ShowCharacterChoice never arrive there).
+	-- Neither call yields, so this check (and everything below it) runs
+	-- synchronously with zero risk of a server-fired
+	-- ShowCharacterCreation/ShowCharacterChoice landing before this script
+	-- has connected its listeners.
+	local teleportData = TeleportService:GetLocalPlayerTeleportData()
 	if teleportData and teleportData.isDungeon then
 		return
 	end

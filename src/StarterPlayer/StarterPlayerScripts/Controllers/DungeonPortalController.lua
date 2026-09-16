@@ -1,15 +1,13 @@
 -- src/StarterPlayer/StarterPlayerScripts/Controllers/DungeonPortalController.lua
 -- Attaches a ProximityPrompt to the "RockhidePortal" Part in Workspace (hub only).
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TeleportService = game:GetService("TeleportService")
 
 local Net = require(ReplicatedStorage.Shared.Net)
 
 local DungeonPortalController = {}
 
 function DungeonPortalController.Start()
-	local player = Players.LocalPlayer
-
 	-- Hub-only: hub and dungeon servers are the SAME published place --
 	-- there is only one shared Workspace, distinguished at runtime purely by
 	-- teleportData.isDungeon (mirroring Main.server.lua's own check), so
@@ -17,7 +15,11 @@ function DungeonPortalController.Start()
 	-- (it's saved into the one shared place, present on every server
 	-- instance regardless of type). Checking teleportData first means this
 	-- never even attempts the portal lookup on a dungeon server.
-	local teleportData = player:GetJoinData().TeleportData
+	-- TeleportService:GetLocalPlayerTeleportData(), not
+	-- Player:GetJoinData().TeleportData -- the latter's TeleportData can be
+	-- withheld client-side for security reasons, which silently broke this
+	-- exact check elsewhere in this project.
+	local teleportData = TeleportService:GetLocalPlayerTeleportData()
 	if teleportData and teleportData.isDungeon then
 		return
 	end
