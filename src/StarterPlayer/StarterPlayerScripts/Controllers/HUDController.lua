@@ -28,6 +28,8 @@ local BUTTON_GAP  = 10      -- px between buttons
 local BOTTOM_MARGIN = 70    -- px above the bottom edge (clears the HP bar)
 local RIGHT_MARGIN  = 16    -- px from the right edge
 
+local TARGET_RAYCAST_DISTANCE = 500 -- studs; generous for this game's scale (chamber ~30-40 studs, corridor ~90-110 studs)
+
 local KEYBINDS = {
 	[Enum.KeyCode.One]   = 1,
 	[Enum.KeyCode.Two]   = 2,
@@ -287,7 +289,7 @@ function HUDController.Start()
 		local raycastParams = RaycastParams.new()
 		raycastParams.FilterType = Enum.RaycastFilterType.Exclude
 		raycastParams.FilterDescendantsInstances = player.Character and { player.Character } or {}
-		local result = workspace:Raycast(ray.Origin, ray.Direction * 500, raycastParams)
+		local result = workspace:Raycast(ray.Origin, ray.Direction * TARGET_RAYCAST_DISTANCE, raycastParams)
 		if not result then
 			return
 		end
@@ -297,7 +299,16 @@ function HUDController.Start()
 			return
 		end
 
-		selectTarget(hitModel, hitModel.Name)
+		-- Re-selecting an already-selected target would stack a redundant
+		-- model.Destroying connection inside selectTarget on every repeat
+		-- click (there's no auto-attack -- each click on the same enemy is a
+		-- normal attack against click, so this is the common case during a
+		-- real fight, not an edge case). Only actually (re-)select when the
+		-- clicked enemy isn't already the current target; the normal attack
+		-- still fires either way.
+		if hitModel.Name ~= selectedTargetId then
+			selectTarget(hitModel, hitModel.Name)
+		end
 		fireNormalAttack()
 	end)
 
