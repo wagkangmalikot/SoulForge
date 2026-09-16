@@ -1,6 +1,8 @@
 -- src/StarterPlayer/StarterPlayerScripts/Controllers/HUDController.lua
 -- Renders player HP bar, boss HP bar, telegraph ground indicators,
--- and on-screen skill buttons (mobile + desktop).
+-- on-screen skill buttons (mobile + desktop), and click-to-target +
+-- normal-attack combat controls.
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -47,15 +49,57 @@ local currentLevel = 1
 
 local totalButtons = #SKILL_ORDER
 
+-- ── Click-to-target (spec 2c) ──────────────────────────────────────────────
+-- Clicking a model tagged "Enemy" (BossAIService/MonsterAIService both tag
+-- their spawned models) both selects it -- shown with a Highlight -- and
+-- immediately fires the normal attack at it. There's no separate
+-- select-then-attack step. Skills (below) act on whatever is currently
+-- selected here, independent of the normal attack's own click.
+local selectedTargetId: string? = nil
+local selectedHighlight: Highlight? = nil
+
+local function clearSelection()
+	selectedTargetId = nil
+	if selectedHighlight then
+		selectedHighlight:Destroy()
+		selectedHighlight = nil
+	end
+end
+
+local function selectTarget(model: Model, targetId: string)
+	if selectedHighlight then
+		selectedHighlight:Destroy()
+	end
+
+	selectedTargetId = targetId
+
+	local highlight = Instance.new("Highlight")
+	highlight.FillTransparency = 1
+	highlight.OutlineColor = Color3.new(1, 0.9, 0.2)
+	highlight.OutlineTransparency = 0
+	highlight.Parent = model
+	selectedHighlight = highlight
+
+	-- Clear the selection automatically if the target dies/despawns, so a
+	-- stale highlight -- and a targetId the server would just reject as
+	-- unknown anyway -- doesn't linger after a kill.
+	model.Destroying:Connect(function()
+		if selectedTargetId == targetId then
+			clearSelection()
+		end
+	end)
+end
+
 local function fireSkill(skillId: string)
 	-- The client's own cooldown tracking is DISPLAY ONLY (dimming the button,
 	-- showing a countdown). It must never gate the remote itself: the server
 	-- is the sole authority on whether a cast is actually allowed (cooldown,
 	-- character alive, in range, etc. — see CombatService.onCastSkill). If we
 	-- blocked the FireServer call here, a client-side guess that's wrong (e.g.
-	-- a prior cast was rejected server-side because the boss was out of range)
-	-- would lock the player out of a skill the server would happily accept.
-	Net.Get("CastSkill"):FireServer(skillId)
+	-- a prior cast was rejected server-side because the target was out of
+	-- range) would lock the player out of a skill the server would happily
+	-- accept.
+	Net.Get("CastSkill"):FireServer(skillId, selectedTargetId)
 
 	-- Optimistically start showing the cooldown the moment the button is pressed;
 	-- the server will silently reject duplicate fires within the window anyway.
@@ -63,6 +107,13 @@ local function fireSkill(skillId: string)
 	if skill then
 		cooldownEnds[skillId] = os.clock() + skill.cooldown
 	end
+end
+
+local function fireNormalAttack()
+	if not selectedTargetId then
+		return -- nothing selected -- nothing to attack
+	end
+	Net.Get("CastNormalAttack"):FireServer(selectedTargetId)
 end
 
 function HUDController.Start()
@@ -209,6 +260,45 @@ function HUDController.Start()
 				fireSkill(skillId)
 			end
 		end
+	end)
+
+	-- Click-to-target + normal attack: left-click raycasts from the camera
+	-- through the mouse position; if it hits a model tagged "Enemy" (boss or
+	-- trash mob), that model is selected and immediately attacked. Clicking
+	-- anything else (terrain, a wall, empty space) does nothing -- no
+	-- selection change, no attack, and the previous selection (if any) is
+	-- left alone rather than cleared, so missing a click doesn't lose your
+	-- current target.
+	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+		if gameProcessed then
+			return
+		end
+		if input.UserInputType ~= Enum.UserInputType.MouseButton1 then
+			return
+		end
+
+		local camera = workspace.CurrentCamera
+		if not camera then
+			return
+		end
+		local mouseLocation = UserInputService:GetMouseLocation()
+		local ray = camera:ViewportPointToRay(mouseLocation.X, mouseLocation.Y)
+
+		local raycastParams = RaycastParams.new()
+		raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+		raycastParams.FilterDescendantsInstances = player.Character and { player.Character } or {}
+		local result = workspace:Raycast(ray.Origin, ray.Direction * 500, raycastParams)
+		if not result then
+			return
+		end
+
+		local hitModel = result.Instance:FindFirstAncestorOfClass("Model")
+		if not hitModel or not CollectionService:HasTag(hitModel, "Enemy") then
+			return
+		end
+
+		selectTarget(hitModel, hitModel.Name)
+		fireNormalAttack()
 	end)
 
 	-- Per-frame cooldown/lock display update.
