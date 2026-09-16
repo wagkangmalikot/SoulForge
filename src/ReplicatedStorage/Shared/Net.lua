@@ -5,7 +5,8 @@ local RunService = game:GetService("RunService")
 local Net = {}
 
 local REMOTE_NAMES = {
-	"CastSkill",              -- client -> server: {skillId, targetPosition}
+	"CastSkill",              -- client -> server: {skillId, targetId}
+	"CastNormalAttack",       -- client -> server: {targetId} -- always-available basic attack, no unlockLevel gate
 	"TelegraphAttack",        -- server -> client: {attackId, position, telegraphTime}
 	"HealthChanged",          -- server -> client: {targetUserId, currentHealth, maxHealth}
 	"BossStateChanged",       -- server -> client: {bossId, phaseIndex, currentHealth, maxHealth}
