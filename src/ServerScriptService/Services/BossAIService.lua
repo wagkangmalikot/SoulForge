@@ -176,7 +176,7 @@ end
 -- coroutine doesn't keep telegraphing/attacking an emptying server). Reuses
 -- onDamaged so the existing alive=false transition, BossStateChanged fire,
 -- and the coroutine's own "if not alive then break end" checks handle
--- cleanup (ClearBoss/model:Destroy/onDeath) the same way a normal kill does.
+-- cleanup (UnregisterEnemy/model:Destroy/onDeath) the same way a normal kill does.
 function BossAIService.ForceKill(handle)
 	handle.onDamaged(handle.currentHealth)
 end
