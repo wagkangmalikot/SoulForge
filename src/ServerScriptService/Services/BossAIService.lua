@@ -1,6 +1,6 @@
 -- src/ServerScriptService/Services/BossAIService.lua
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
+local CollectionService = game:GetService("CollectionService")
 
 local Net = require(ReplicatedStorage.Shared.Net)
 local BossAttacks = require(ReplicatedStorage.Shared.Data.BossAttacks)
@@ -23,19 +23,9 @@ local function pickPhase(bossData, currentHealth: number, maxHealth: number)
 	return chosen, chosenIndex
 end
 
-local function playersInRadius(center: Vector3, radius: number): {Player}
-	local hit = {}
-	for _, player in Players:GetPlayers() do
-		local rootPart = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-		if rootPart and (rootPart.Position - center).Magnitude <= radius then
-			table.insert(hit, player)
-		end
-	end
-	return hit
-end
-
--- CombatService.RegisterBoss's range check reads `activeBoss.model.PrimaryPart.Position`
--- (see CombatService.lua), which requires `model` to be a Model with PrimaryPart set — a
+-- CombatService.onCastSkill's range check reads `enemy.model.PrimaryPart.Position` for
+-- whichever enemy is currently registered under a given targetId (see CombatService.lua),
+-- which requires `model` to be a Model with PrimaryPart set — a
 -- bare Part has no PrimaryPart property. Boss art assets live directly in the published
 -- place under ReplicatedStorage.Assets (not Rojo-managed source, same as the hub's
 -- RockhidePortal/LevelUpShrine scenery Parts -- binary content isn't practical to keep
@@ -66,6 +56,7 @@ local function createBossModel(bossId: string, spawnCFrame: CFrame): Model
 		model.PrimaryPart = torso
 	end
 
+	CollectionService:AddTag(model, "Enemy")
 	model.Parent = workspace
 
 	return model
@@ -86,7 +77,12 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 		maxHealth = bossData.maxHealth,
 	}
 
-	function handle.onDamaged(amount: number)
+	-- Second parameter is unused here (only trash mobs need to know who
+	-- landed the killing blow, to award its EXP trickle) -- kept for
+	-- interface parity so CombatService.onCastSkill/onCastNormalAttack can
+	-- call any registered enemy's onDamaged the same way regardless of which
+	-- kind of enemy it is.
+	function handle.onDamaged(amount: number, _attackingPlayer: Player?)
 		if not alive then
 			return
 		end
@@ -99,7 +95,7 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 		end
 	end
 
-	CombatService.RegisterBoss(handle)
+	CombatService.RegisterEnemy(bossId, handle)
 
 	task.spawn(function()
 		while alive do
@@ -149,12 +145,12 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 				break
 			end
 
-			for _, player in playersInRadius(model.PrimaryPart.Position, attack.radius) do
+			for _, player in CombatService.PlayersInRadius(model.PrimaryPart.Position, attack.radius) do
 				CombatService.ApplyDamageToPlayer(player, attack.damage)
 			end
 		end
 
-		CombatService.ClearBoss()
+		CombatService.UnregisterEnemy(bossId)
 		model:Destroy()
 		if onDeath then
 			onDeath()
@@ -168,9 +164,10 @@ end
 -- coroutine doesn't keep telegraphing/attacking an emptying server). Reuses
 -- onDamaged so the existing alive=false transition, BossStateChanged fire,
 -- and the coroutine's own "if not alive then break end" checks handle
--- cleanup (ClearBoss/model:Destroy/onDeath) the same way a normal kill does.
+-- cleanup (UnregisterEnemy/model:Destroy/onDeath) the same way a normal kill does.
 function BossAIService.ForceKill(handle)
-	handle.onDamaged(handle.currentHealth)
+	-- No attacking player -- this is a system-initiated kill (party wipe), not a combat hit.
+	handle.onDamaged(handle.currentHealth, nil)
 end
 
 return BossAIService

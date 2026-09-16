@@ -6,6 +6,7 @@ local TeleportService = game:GetService("TeleportService")
 local Net = require(ReplicatedStorage.Shared.Net)
 local Classes = require(ReplicatedStorage.Shared.Data.Classes)
 local BossAIService = require(script.Parent.BossAIService)
+local MonsterAIService = require(script.Parent.MonsterAIService)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 local RespawnService = require(script.Parent.RespawnService)
 
@@ -14,7 +15,22 @@ local DungeonSessionService = {}
 local EXP_REWARD_ON_VICTORY = 50 -- flat value for this slice; real EXP formulas are a later plan
 
 local BOSS_SPAWN_CFRAME = CFrame.new(0, 5, 0)
-local ENTRANCE_POSITION = Vector3.new(0, 5, -20) -- near spawn, away from the boss
+-- Moved to the far end of the lengthened entrance corridor (Studio-side
+-- geometry change, done directly in the published place -- see this plan's
+-- Studio Content section) so players have to walk past the trash mobs
+-- below to reach the boss, instead of spawning already at the chamber
+-- threshold.
+local ENTRANCE_POSITION = Vector3.new(0, 5, -105)
+
+-- Trash mob placements (spec 10a): 3 clusters of 2, spaced along the
+-- corridor between the entrance and the boss chamber. Corridor is 10 studs
+-- wide (x = -5 to 5), so +-2.5 keeps each pair comfortably clear of the walls.
+local MOB_EXP_REWARD = 5
+local MOB_POSITIONS = {
+	Vector3.new(-2.5, 2, -90), Vector3.new(2.5, 2, -90),
+	Vector3.new(-2.5, 2, -60), Vector3.new(2.5, 2, -60),
+	Vector3.new(-2.5, 2, -30), Vector3.new(2.5, 2, -30),
+}
 
 -- Hub and dungeon servers are the same published place with one shared
 -- Workspace, so the only SpawnLocation Part in it is the hub's -- Roblox's
@@ -33,16 +49,31 @@ local function moveCharacterToEntrance(character: Model)
 	end)
 end
 
+-- userId -> accumulated EXP from trash mob kills this run. Banked alongside
+-- EXP_REWARD_ON_VICTORY below, following the SAME (currently victory-only,
+-- nothing-on-wipe) behavior the boss reward already has. Not persisted to the
+-- profile until bankRewardsAndReturnToHub runs, matching the profile's own
+-- anti-dupe ordering rule (must be in memory before any teleport away).
+local pendingMobEXP = {}
+
+local function awardMobKillEXP(player: Player)
+	pendingMobEXP[player.UserId] = (pendingMobEXP[player.UserId] or 0) + MOB_EXP_REWARD
+end
+
 local function bankRewardsAndReturnToHub(result: "victory" | "wipe")
 	-- Bank BEFORE teleporting away, per spec section 1a's anti-dupe/anti-loss
 	-- ordering rule: the mutation must be in memory before the player leaves
 	-- this server, even if they disconnect the instant they land in the hub.
 	for _, player in Players:GetPlayers() do
 		local profile = PlayerDataService.GetProfile(player)
-		if profile and result == "victory" then
-			profile.Data.Character.UnspentEXP += EXP_REWARD_ON_VICTORY
+		local totalEXP = 0
+		if result == "victory" then
+			totalEXP = EXP_REWARD_ON_VICTORY + (pendingMobEXP[player.UserId] or 0)
 		end
-		Net.Get("DungeonResult"):FireClient(player, result, result == "victory" and EXP_REWARD_ON_VICTORY or 0)
+		if profile and totalEXP > 0 then
+			profile.Data.Character.UnspentEXP += totalEXP
+		end
+		Net.Get("DungeonResult"):FireClient(player, result, totalEXP)
 	end
 
 	task.wait(2) -- let the client show the result briefly before the teleport cuts the screen
@@ -102,6 +133,7 @@ function DungeonSessionService.Start(dungeonId: string)
 
 	local ended = false
 	local bossHandle
+	local stopMobs: (() -> ())? = nil
 
 	-- Both trigger paths (victory via the boss's onDeath callback, and wipe via the
 	-- polling loop below) run independently and could otherwise both fire in the
@@ -115,12 +147,17 @@ function DungeonSessionService.Start(dungeonId: string)
 		end
 		ended = true
 		RespawnService.Stop()
+		if stopMobs then
+			stopMobs()
+		end
 		bankRewardsAndReturnToHub(result)
 	end
 
 	-- Set up RespawnService before spawning the boss so death hooks are in place.
 	RespawnService.SetEntrancePosition(ENTRANCE_POSITION)
 	RespawnService.Start()
+
+	stopMobs = MonsterAIService.SpawnMobs(MOB_POSITIONS, awardMobKillEXP)
 
 	-- Disable the engine's own auto-respawn up front. A party of 2-4 players
 	-- teleported together via one TeleportAsync call do NOT all land on this
