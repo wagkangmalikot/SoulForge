@@ -178,7 +178,8 @@ end
 -- and the coroutine's own "if not alive then break end" checks handle
 -- cleanup (UnregisterEnemy/model:Destroy/onDeath) the same way a normal kill does.
 function BossAIService.ForceKill(handle)
-	handle.onDamaged(handle.currentHealth)
+	-- No attacking player -- this is a system-initiated kill (party wipe), not a combat hit.
+	handle.onDamaged(handle.currentHealth, nil)
 end
 
 return BossAIService
