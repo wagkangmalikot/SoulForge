@@ -59,6 +59,7 @@ local totalButtons = #SKILL_ORDER
 -- selected here, independent of the normal attack's own click.
 local selectedTargetId: string? = nil
 local selectedHighlight: Highlight? = nil
+local selectedDestroyingConnection: RBXScriptConnection? = nil
 
 local function clearSelection()
 	selectedTargetId = nil
@@ -66,11 +67,18 @@ local function clearSelection()
 		selectedHighlight:Destroy()
 		selectedHighlight = nil
 	end
+	if selectedDestroyingConnection then
+		selectedDestroyingConnection:Disconnect()
+		selectedDestroyingConnection = nil
+	end
 end
 
 local function selectTarget(model: Model, targetId: string)
 	if selectedHighlight then
 		selectedHighlight:Destroy()
+	end
+	if selectedDestroyingConnection then
+		selectedDestroyingConnection:Disconnect()
 	end
 
 	selectedTargetId = targetId
@@ -84,12 +92,33 @@ local function selectTarget(model: Model, targetId: string)
 
 	-- Clear the selection automatically if the target dies/despawns, so a
 	-- stale highlight -- and a targetId the server would just reject as
-	-- unknown anyway -- doesn't linger after a kill.
-	model.Destroying:Connect(function()
+	-- unknown anyway -- doesn't linger after a kill. Tracked in
+	-- selectedDestroyingConnection so switching to a DIFFERENT target can
+	-- disconnect this one instead of leaving it stacked on a model that's
+	-- still alive but no longer selected.
+	selectedDestroyingConnection = model.Destroying:Connect(function()
 		if selectedTargetId == targetId then
 			clearSelection()
 		end
 	end)
+end
+
+-- Walks the FULL ancestor chain (not just the nearest Model) to find the
+-- nearest ancestor that is both a Model and tagged "Enemy". BossAIService and
+-- MonsterAIService always tag the top-level spawned Model, but marketplace
+-- rigs commonly nest Models (grouped sub-parts, accessories, etc.) -- the
+-- nearest Model ancestor of a clicked part isn't necessarily the tagged one.
+-- Walking up guarantees we find the tagged model regardless of nesting depth,
+-- rather than silently missing the click.
+local function findTaggedEnemyAncestor(instance: Instance): Model?
+	local current: Instance? = instance
+	while current do
+		if current:IsA("Model") and CollectionService:HasTag(current, "Enemy") then
+			return current
+		end
+		current = current.Parent
+	end
+	return nil
 end
 
 local function fireSkill(skillId: string)
@@ -294,8 +323,8 @@ function HUDController.Start()
 			return
 		end
 
-		local hitModel = result.Instance:FindFirstAncestorOfClass("Model")
-		if not hitModel or not CollectionService:HasTag(hitModel, "Enemy") then
+		local hitModel = findTaggedEnemyAncestor(result.Instance)
+		if not hitModel then
 			return
 		end
 
