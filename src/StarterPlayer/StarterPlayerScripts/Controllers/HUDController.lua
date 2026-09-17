@@ -6,6 +6,7 @@ local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
@@ -144,233 +145,38 @@ local function getNearestEnemy(maxDistance: number): (Model?, string?)
 	return nil, nil
 end
 
-local function createDrawnTauntIcon(parent: Instance): Frame
-	local existing = parent:FindFirstChild("DrawnTauntIcon")
-	if existing then
+local function createSkillImageIcon(parent: Instance, imageId: string): ImageLabel
+	local existing = parent:FindFirstChild("SkillImageIcon")
+	if existing and existing:IsA("ImageLabel") then
+		existing.Image = imageId
 		existing.Visible = true
-		return existing :: Frame
+		return existing
 	end
 
-	local iconBox = Instance.new("Frame")
-	iconBox.Name = "DrawnTauntIcon"
-	iconBox.Size = UDim2.new(0.86, 0, 0.68, 0)
-	iconBox.Position = UDim2.new(0.5, 0, 0.36, 0)
-	iconBox.AnchorPoint = Vector2.new(0.5, 0.5)
-	iconBox.BackgroundTransparency = 1
-	iconBox.ClipsDescendants = false
-	iconBox.ZIndex = 2
-	iconBox.Parent = parent
+	local iconImg = Instance.new("ImageLabel")
+	iconImg.Name = "SkillImageIcon"
+	iconImg.Size = UDim2.new(0, 32, 0, 32)
+	iconImg.Position = UDim2.new(0.5, 0, 0.36, 0)
+	iconImg.AnchorPoint = Vector2.new(0.5, 0.5)
+	iconImg.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
+	iconImg.BackgroundTransparency = 0.1
+	iconImg.BorderSizePixel = 0
+	iconImg.ScaleType = Enum.ScaleType.Fit
+	iconImg.Image = imageId
+	iconImg.ZIndex = 2
+	iconImg.Parent = parent
 
-	-- 1. Fiery Rage Aura (Circular Backing)
-	local aura = Instance.new("Frame")
-	aura.Name = "RageAura"
-	aura.Size = UDim2.new(0.92, 0, 0.92, 0)
-	aura.Position = UDim2.new(0.5, 0, 0.5, 0)
-	aura.AnchorPoint = Vector2.new(0.5, 0.5)
-	aura.BackgroundColor3 = Color3.fromRGB(180, 28, 24)
-	aura.BorderSizePixel = 0
-	aura.ZIndex = 2
-	aura.Parent = iconBox
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6)
+	corner.Parent = iconImg
 
-	local auraCorner = Instance.new("UICorner")
-	auraCorner.CornerRadius = UDim.new(0.5, 0)
-	auraCorner.Parent = aura
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(240, 190, 75)
+	stroke.Thickness = 1.2
+	stroke.Transparency = 0.2
+	stroke.Parent = iconImg
 
-	local auraGrad = Instance.new("UIGradient")
-	auraGrad.Rotation = 90
-	auraGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(245, 60, 35)),
-		ColorSequenceKeypoint.new(0.6, Color3.fromRGB(175, 20, 18)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(90, 8, 12)),
-	})
-	auraGrad.Parent = aura
-
-	local auraStroke = Instance.new("UIStroke")
-	auraStroke.Color = Color3.fromRGB(255, 195, 65)
-	auraStroke.Thickness = 1.2
-	auraStroke.Transparency = 0.25
-	auraStroke.Parent = aura
-
-	-- 2. Sonic Warcry Shockwave Rings
-	local shockwave1 = Instance.new("Frame")
-	shockwave1.Name = "Shockwave1"
-	shockwave1.Size = UDim2.new(1.18, 0, 1.18, 0)
-	shockwave1.Position = UDim2.new(0.5, 0, 0.5, 0)
-	shockwave1.AnchorPoint = Vector2.new(0.5, 0.5)
-	shockwave1.BackgroundTransparency = 1
-	shockwave1.ZIndex = 2
-	shockwave1.Parent = iconBox
-
-	local sw1Corner = Instance.new("UICorner")
-	sw1Corner.CornerRadius = UDim.new(0.5, 0)
-	sw1Corner.Parent = shockwave1
-
-	local sw1Stroke = Instance.new("UIStroke")
-	sw1Stroke.Color = Color3.fromRGB(255, 215, 75)
-	sw1Stroke.Thickness = 1.2
-	sw1Stroke.Transparency = 0.45
-	sw1Stroke.Parent = shockwave1
-
-	-- 3. Armored Helmet / Roaring Head Base
-	local helmBase = Instance.new("Frame")
-	helmBase.Name = "HelmBase"
-	helmBase.Size = UDim2.new(0.56, 0, 0.60, 0)
-	helmBase.Position = UDim2.new(0.5, 0, 0.48, 0)
-	helmBase.AnchorPoint = Vector2.new(0.5, 0.5)
-	helmBase.BackgroundColor3 = Color3.fromRGB(30, 34, 46)
-	helmBase.BorderSizePixel = 0
-	helmBase.ZIndex = 3
-	helmBase.Parent = iconBox
-
-	local helmCorner = Instance.new("UICorner")
-	helmCorner.CornerRadius = UDim.new(0.35, 0)
-	helmCorner.Parent = helmBase
-
-	local helmStroke = Instance.new("UIStroke")
-	helmStroke.Color = Color3.fromRGB(240, 190, 75)
-	helmStroke.Thickness = 1.2
-	helmStroke.Parent = helmBase
-
-	-- 4. Left Horn
-	local hornL = Instance.new("Frame")
-	hornL.Name = "HornL"
-	hornL.Size = UDim2.new(0.18, 0, 0.42, 0)
-	hornL.Position = UDim2.new(0.24, 0, 0.16, 0)
-	hornL.AnchorPoint = Vector2.new(0.5, 0.5)
-	hornL.Rotation = -32
-	hornL.BackgroundColor3 = Color3.fromRGB(255, 215, 95)
-	hornL.BorderSizePixel = 0
-	hornL.ZIndex = 4
-	hornL.Parent = iconBox
-
-	local hornLCorner = Instance.new("UICorner")
-	hornLCorner.CornerRadius = UDim.new(0.5, 0)
-	hornLCorner.Parent = hornL
-
-	-- 5. Right Horn
-	local hornR = Instance.new("Frame")
-	hornR.Name = "HornR"
-	hornR.Size = UDim2.new(0.18, 0, 0.42, 0)
-	hornR.Position = UDim2.new(0.76, 0, 0.16, 0)
-	hornR.AnchorPoint = Vector2.new(0.5, 0.5)
-	hornR.Rotation = 32
-	hornR.BackgroundColor3 = Color3.fromRGB(255, 215, 95)
-	hornR.BorderSizePixel = 0
-	hornR.ZIndex = 4
-	hornR.Parent = iconBox
-
-	local hornRCorner = Instance.new("UICorner")
-	hornRCorner.CornerRadius = UDim.new(0.5, 0)
-	hornRCorner.Parent = hornR
-
-	-- 6. Helmet Crest (Center Spire)
-	local crest = Instance.new("Frame")
-	crest.Name = "Crest"
-	crest.Size = UDim2.new(0.14, 0, 0.28, 0)
-	crest.Position = UDim2.new(0.5, 0, 0.16, 0)
-	crest.AnchorPoint = Vector2.new(0.5, 0.5)
-	crest.BackgroundColor3 = Color3.fromRGB(255, 220, 110)
-	crest.BorderSizePixel = 0
-	crest.ZIndex = 4
-	crest.Parent = iconBox
-
-	local crestCorner = Instance.new("UICorner")
-	crestCorner.CornerRadius = UDim.new(0.4, 0)
-	crestCorner.Parent = crest
-
-	-- 7. Slanted Enraged Eyes (Glowing Neon Yellow/Gold)
-	local eyeL = Instance.new("Frame")
-	eyeL.Name = "EyeL"
-	eyeL.Size = UDim2.new(0.16, 0, 0.08, 0)
-	eyeL.Position = UDim2.new(0.36, 0, 0.38, 0)
-	eyeL.AnchorPoint = Vector2.new(0.5, 0.5)
-	eyeL.Rotation = 18
-	eyeL.BackgroundColor3 = Color3.fromRGB(255, 245, 130)
-	eyeL.BorderSizePixel = 0
-	eyeL.ZIndex = 5
-	eyeL.Parent = iconBox
-
-	local eyeLCorner = Instance.new("UICorner")
-	eyeLCorner.CornerRadius = UDim.new(0.5, 0)
-	eyeLCorner.Parent = eyeL
-
-	local eyeR = Instance.new("Frame")
-	eyeR.Name = "EyeR"
-	eyeR.Size = UDim2.new(0.16, 0, 0.08, 0)
-	eyeR.Position = UDim2.new(0.64, 0, 0.38, 0)
-	eyeR.AnchorPoint = Vector2.new(0.5, 0.5)
-	eyeR.Rotation = -18
-	eyeR.BackgroundColor3 = Color3.fromRGB(255, 245, 130)
-	eyeR.BorderSizePixel = 0
-	eyeR.ZIndex = 5
-	eyeR.Parent = iconBox
-
-	local eyeRCorner = Instance.new("UICorner")
-	eyeRCorner.CornerRadius = UDim.new(0.5, 0)
-	eyeRCorner.Parent = eyeR
-
-	-- 8. Wide-Open Screaming Mouth Cavity
-	local mouth = Instance.new("Frame")
-	mouth.Name = "ScreamingMouth"
-	mouth.Size = UDim2.new(0.38, 0, 0.30, 0)
-	mouth.Position = UDim2.new(0.5, 0, 0.62, 0)
-	mouth.AnchorPoint = Vector2.new(0.5, 0.5)
-	mouth.BackgroundColor3 = Color3.fromRGB(14, 6, 8)
-	mouth.BorderSizePixel = 0
-	mouth.ZIndex = 5
-	mouth.Parent = iconBox
-
-	local mouthCorner = Instance.new("UICorner")
-	mouthCorner.CornerRadius = UDim.new(0.45, 0)
-	mouthCorner.Parent = mouth
-
-	local mouthStroke = Instance.new("UIStroke")
-	mouthStroke.Color = Color3.fromRGB(200, 35, 30)
-	mouthStroke.Thickness = 1
-	mouthStroke.Parent = mouth
-
-	-- 9. Fiery Throat Glow
-	local throatGlow = Instance.new("Frame")
-	throatGlow.Name = "ThroatGlow"
-	throatGlow.Size = UDim2.new(0.55, 0, 0.45, 0)
-	throatGlow.Position = UDim2.new(0.5, 0, 0.55, 0)
-	throatGlow.AnchorPoint = Vector2.new(0.5, 0.5)
-	throatGlow.BackgroundColor3 = Color3.fromRGB(255, 95, 20)
-	throatGlow.BorderSizePixel = 0
-	throatGlow.ZIndex = 6
-	throatGlow.Parent = mouth
-
-	local throatCorner = Instance.new("UICorner")
-	throatCorner.CornerRadius = UDim.new(0.5, 0)
-	throatCorner.Parent = throatGlow
-
-	-- 10. Upper Sharp Fangs
-	local fangTop = Instance.new("Frame")
-	fangTop.Name = "FangTop"
-	fangTop.Size = UDim2.new(0.24, 0, 0.35, 0)
-	fangTop.Position = UDim2.new(0.5, 0, 0.02, 0)
-	fangTop.AnchorPoint = Vector2.new(0.5, 0)
-	fangTop.BackgroundColor3 = Color3.fromRGB(255, 255, 250)
-	fangTop.BorderSizePixel = 0
-	fangTop.ZIndex = 7
-	fangTop.Parent = mouth
-
-	local fangTopCorner = Instance.new("UICorner")
-	fangTopCorner.CornerRadius = UDim.new(0.4, 0)
-	fangTopCorner.Parent = fangTop
-
-	-- 11. Lower Sharp Fangs
-	local fangBtm = Instance.new("Frame")
-	fangBtm.Name = "FangBtm"
-	fangBtm.Size = UDim2.new(0.24, 0, 0.30, 0)
-	fangBtm.Position = UDim2.new(0.5, 0, 0.98, 0)
-	fangBtm.AnchorPoint = Vector2.new(0.5, 1)
-	fangBtm.BackgroundColor3 = Color3.fromRGB(255, 255, 250)
-	fangBtm.BorderSizePixel = 0
-	fangBtm.ZIndex = 7
-	fangBtm.Parent = mouth
-
-	return iconBox
+	return iconImg
 end
 
 local function updateSkillButtons()
@@ -386,7 +192,11 @@ local function updateSkillButtons()
 			continue
 		end
 
-		local drawnIcon = frame:FindFirstChild("DrawnTauntIcon")
+		local skillImage = frame:FindFirstChild("SkillImageIcon")
+		local oldDrawn = frame:FindFirstChild("DrawnTauntIcon")
+		if oldDrawn then
+			oldDrawn:Destroy()
+		end
 
 		if skill then
 			frame.BackgroundColor3 = Color3.fromRGB(28, 32, 44)
@@ -395,23 +205,21 @@ local function updateSkillButtons()
 			nameLabel.Text = skill.displayName or skillId
 			nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 
-			if skillId == "Taunt" then
+			local isImage = skill.icon and (string.find(skill.icon, "rbxasset") ~= nil or string.find(skill.icon, "http") ~= nil)
+			if isImage or skillId == "Taunt" then
 				iconLabel.Visible = false
-				if not drawnIcon then
-					createDrawnTauntIcon(frame)
-				else
-					drawnIcon.Visible = true
-				end
+				local imgPath = skill.icon or "rbxasset://textures/Soulforge/taunt_icon.png"
+				createSkillImageIcon(frame, imgPath)
 			else
-				if drawnIcon then
-					drawnIcon.Visible = false
+				if skillImage then
+					skillImage.Visible = false
 				end
 				iconLabel.Visible = true
 				iconLabel.Text = skill.icon or "⚔️"
 			end
 		else
-			if drawnIcon then
-				drawnIcon.Visible = false
+			if skillImage then
+				skillImage.Visible = false
 			end
 			frame.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
 			stroke.Color = Color3.fromRGB(55, 62, 75)
@@ -974,10 +782,396 @@ function HUDController.Start()
 		end
 	end)
 
+	-- ── Boss Chamber Direction Indicator ──────────────────────────────────────
+	local isBossGuideActive = false
+	local bossGuideConnection: RBXScriptConnection? = nil
+	local bossGuideArrowModel: Model? = nil
+	local bossGateBeaconModel: Model? = nil
+
+	local function getBossGateTarget(): Vector3
+		local arena = workspace:FindFirstChild("RockhideArena")
+		if arena then
+			local promptPart = arena:FindFirstChild("GatePromptPart", true)
+			if promptPart and promptPart:IsA("BasePart") then
+				return promptPart.Position
+			end
+			local gateModel = arena:FindFirstChild("BossArenaGate", true)
+			if gateModel and gateModel:IsA("Model") then
+				local cf = gateModel:GetPivot()
+				return Vector3.new(cf.Position.X, 3, cf.Position.Z)
+			end
+		end
+		return Vector3.new(0, 3, -25)
+	end
+
+	local function stopBossDirectionGuide()
+		if not isBossGuideActive then
+			return
+		end
+		isBossGuideActive = false
+
+		if bossGuideConnection then
+			bossGuideConnection:Disconnect()
+			bossGuideConnection = nil
+		end
+
+		if bossGuideArrowModel then
+			bossGuideArrowModel:Destroy()
+			bossGuideArrowModel = nil
+		end
+
+		if bossGateBeaconModel then
+			bossGateBeaconModel:Destroy()
+			bossGateBeaconModel = nil
+		end
+	end
+
+	local function startBossDirectionGuide()
+		if isBossGuideActive then
+			return
+		end
+		isBossGuideActive = true
+
+		local targetPos = getBossGateTarget()
+
+		-- 1. Create the overhead 3D guide arrow model
+		local arrowModel = Instance.new("Model")
+		arrowModel.Name = "BossGuideArrow"
+
+		local rootPart = Instance.new("Part")
+		rootPart.Name = "ArrowRoot"
+		rootPart.Size = Vector3.new(0.5, 0.5, 0.5)
+		rootPart.Transparency = 1
+		rootPart.CanCollide = false
+		rootPart.CanTouch = false
+		rootPart.CanQuery = false
+		rootPart.CastShadow = false
+		rootPart.Anchored = true
+		rootPart.Parent = arrowModel
+		arrowModel.PrimaryPart = rootPart
+
+		-- Central Arrow Shaft
+		local shaft = Instance.new("Part")
+		shaft.Name = "ArrowShaft"
+		shaft.Size = Vector3.new(0.48, 0.28, 1.9)
+		shaft.Material = Enum.Material.Neon
+		shaft.Color = Color3.fromRGB(255, 195, 35)
+		shaft.CanCollide = false
+		shaft.CanTouch = false
+		shaft.CanQuery = false
+		shaft.CastShadow = false
+		shaft.Anchored = true
+		shaft.Parent = arrowModel
+
+		-- Primary Chevron Wings (flaring backwards from tip)
+		local wingL = Instance.new("Part")
+		wingL.Name = "WingL"
+		wingL.Size = Vector3.new(0.36, 0.28, 1.25)
+		wingL.Material = Enum.Material.Neon
+		wingL.Color = Color3.fromRGB(255, 220, 60)
+		wingL.CanCollide = false
+		wingL.CanTouch = false
+		wingL.CanQuery = false
+		wingL.CastShadow = false
+		wingL.Anchored = true
+		wingL.Parent = arrowModel
+
+		local wingR = Instance.new("Part")
+		wingR.Name = "WingR"
+		wingR.Size = Vector3.new(0.36, 0.28, 1.25)
+		wingR.Material = Enum.Material.Neon
+		wingR.Color = Color3.fromRGB(255, 220, 60)
+		wingR.CanCollide = false
+		wingR.CanTouch = false
+		wingR.CanQuery = false
+		wingR.CastShadow = false
+		wingR.Anchored = true
+		wingR.Parent = arrowModel
+
+		-- Secondary Inner Chevron Wings
+		local wingL2 = Instance.new("Part")
+		wingL2.Name = "WingL2"
+		wingL2.Size = Vector3.new(0.3, 0.24, 0.95)
+		wingL2.Material = Enum.Material.Neon
+		wingL2.Color = Color3.fromRGB(255, 245, 110)
+		wingL2.CanCollide = false
+		wingL2.CanTouch = false
+		wingL2.CanQuery = false
+		wingL2.CastShadow = false
+		wingL2.Anchored = true
+		wingL2.Parent = arrowModel
+
+		local wingR2 = Instance.new("Part")
+		wingR2.Name = "WingR2"
+		wingR2.Size = Vector3.new(0.3, 0.24, 0.95)
+		wingR2.Material = Enum.Material.Neon
+		wingR2.Color = Color3.fromRGB(255, 245, 110)
+		wingR2.CanCollide = false
+		wingR2.CanTouch = false
+		wingR2.CanQuery = false
+		wingR2.CastShadow = false
+		wingR2.Anchored = true
+		wingR2.Parent = arrowModel
+
+		-- Arrow Head Jewel / Core Focal Gem
+		local gem = Instance.new("Part")
+		gem.Name = "ArrowGem"
+		gem.Shape = Enum.PartType.Ball
+		gem.Size = Vector3.new(0.65, 0.45, 0.65)
+		gem.Material = Enum.Material.Neon
+		gem.Color = Color3.fromRGB(255, 255, 230)
+		gem.CanCollide = false
+		gem.CanTouch = false
+		gem.CanQuery = false
+		gem.CastShadow = false
+		gem.Anchored = true
+		gem.Parent = arrowModel
+
+		-- Radiant Point Light
+		local light = Instance.new("PointLight")
+		light.Brightness = 2.2
+		light.Range = 14
+		light.Color = Color3.fromRGB(255, 205, 50)
+		light.Parent = gem
+
+		-- Golden Ember Sparks (streaming backwards)
+		local particles = Instance.new("ParticleEmitter")
+		particles.Rate = 12
+		particles.Lifetime = NumberRange.new(0.3, 0.6)
+		particles.Speed = NumberRange.new(1.2, 2.8)
+		particles.EmissionDirection = Enum.NormalId.Back
+		particles.SpreadAngle = Vector2.new(18, 18)
+		particles.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.28),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+		particles.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.1),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		particles.Color = ColorSequence.new(Color3.fromRGB(255, 235, 90), Color3.fromRGB(255, 140, 25))
+		particles.LightEmission = 0.95
+		particles.LightInfluence = 0
+		particles.Parent = gem
+
+		-- Overhead Billboard HUD Distance Badge
+		local billboard = Instance.new("BillboardGui")
+		billboard.Name = "DistanceBadge"
+		billboard.Size = UDim2.new(0, 154, 0, 28)
+		billboard.StudsOffset = Vector3.new(0, 1.4, 0)
+		billboard.AlwaysOnTop = true
+		billboard.MaxDistance = 450
+		billboard.ClipsDescendants = false
+		billboard.Parent = rootPart
+
+		local badgeFrame = Instance.new("Frame")
+		badgeFrame.Size = UDim2.new(1, 0, 1, 0)
+		badgeFrame.BackgroundColor3 = Color3.fromRGB(15, 17, 24)
+		badgeFrame.BackgroundTransparency = 0.22
+		badgeFrame.BorderSizePixel = 0
+		badgeFrame.Parent = billboard
+
+		local badgeCorner = Instance.new("UICorner")
+		badgeCorner.CornerRadius = UDim.new(0, 7)
+		badgeCorner.Parent = badgeFrame
+
+		local badgeStroke = Instance.new("UIStroke")
+		badgeStroke.Color = Color3.fromRGB(255, 205, 50)
+		badgeStroke.Thickness = 1.4
+		badgeStroke.Transparency = 0.2
+		badgeStroke.Parent = badgeFrame
+
+		local distLabel = Instance.new("TextLabel")
+		distLabel.Size = UDim2.new(1, -8, 1, 0)
+		distLabel.Position = UDim2.new(0, 4, 0, 0)
+		distLabel.BackgroundTransparency = 1
+		distLabel.Font = Enum.Font.GothamBold
+		distLabel.TextSize = 12
+		distLabel.TextColor3 = Color3.fromRGB(255, 235, 100)
+		distLabel.TextStrokeColor3 = Color3.fromRGB(15, 10, 0)
+		distLabel.TextStrokeTransparency = 0.3
+		distLabel.Text = "➔ BOSS GATE"
+		distLabel.Parent = badgeFrame
+
+		arrowModel.Parent = workspace
+		bossGuideArrowModel = arrowModel
+
+		-- 2. Create the Gate Beacon (Light pillar, ground ring & entrance banner at the gate)
+		local beaconModel = Instance.new("Model")
+		beaconModel.Name = "BossGateBeacon"
+
+		local pillar = Instance.new("Part")
+		pillar.Name = "BeaconPillar"
+		pillar.Size = Vector3.new(3.2, 26, 3.2)
+		pillar.CFrame = CFrame.new(targetPos.X, 13, targetPos.Z)
+		pillar.Material = Enum.Material.Neon
+		pillar.Color = Color3.fromRGB(255, 195, 45)
+		pillar.Transparency = 0.76
+		pillar.CanCollide = false
+		pillar.CanTouch = false
+		pillar.CanQuery = false
+		pillar.CastShadow = false
+		pillar.Anchored = true
+		pillar.Parent = beaconModel
+
+		local gateLight = Instance.new("PointLight")
+		gateLight.Brightness = 2.8
+		gateLight.Range = 32
+		gateLight.Color = Color3.fromRGB(255, 195, 45)
+		gateLight.Parent = pillar
+
+		-- Glowing threshold disc on the floor
+		local ring = Instance.new("Part")
+		ring.Name = "GateRing"
+		ring.Shape = Enum.PartType.Cylinder
+		ring.Size = Vector3.new(0.12, 16, 16)
+		ring.CFrame = CFrame.new(targetPos.X, 1.08, targetPos.Z) * CFrame.Angles(0, 0, math.rad(90))
+		ring.Material = Enum.Material.Neon
+		ring.Color = Color3.fromRGB(255, 205, 55)
+		ring.Transparency = 0.55
+		ring.CanCollide = false
+		ring.CanTouch = false
+		ring.CanQuery = false
+		ring.CastShadow = false
+		ring.Anchored = true
+		ring.Parent = beaconModel
+
+		-- Downward chevron indicator hovering over gate archway
+		local gateChevron = Instance.new("Part")
+		gateChevron.Name = "GateChevron"
+		gateChevron.Size = Vector3.new(1.8, 1.8, 1.8)
+		gateChevron.Shape = Enum.PartType.Ball
+		gateChevron.Material = Enum.Material.Neon
+		gateChevron.Color = Color3.fromRGB(255, 225, 60)
+		gateChevron.CanCollide = false
+		gateChevron.CanTouch = false
+		gateChevron.CanQuery = false
+		gateChevron.CastShadow = false
+		gateChevron.Anchored = true
+		gateChevron.Parent = beaconModel
+
+		local gateBb = Instance.new("BillboardGui")
+		gateBb.Name = "GateBillboard"
+		gateBb.Size = UDim2.new(0, 240, 0, 56)
+		gateBb.StudsOffset = Vector3.new(0, 3.2, 0)
+		gateBb.AlwaysOnTop = true
+		gateBb.MaxDistance = 250
+		gateBb.Parent = gateChevron
+
+		local gateBg = Instance.new("Frame")
+		gateBg.Size = UDim2.new(1, 0, 1, 0)
+		gateBg.BackgroundColor3 = Color3.fromRGB(15, 16, 22)
+		gateBg.BackgroundTransparency = 0.2
+		gateBg.Parent = gateBb
+
+		local gateBgCorner = Instance.new("UICorner")
+		gateBgCorner.CornerRadius = UDim.new(0, 8)
+		gateBgCorner.Parent = gateBg
+
+		local gateBgStroke = Instance.new("UIStroke")
+		gateBgStroke.Color = Color3.fromRGB(255, 210, 50)
+		gateBgStroke.Thickness = 1.5
+		gateBgStroke.Parent = gateBg
+
+		local gateArrowIcon = Instance.new("TextLabel")
+		gateArrowIcon.Size = UDim2.new(1, 0, 0.36, 0)
+		gateArrowIcon.Position = UDim2.new(0, 0, 0.02, 0)
+		gateArrowIcon.BackgroundTransparency = 1
+		gateArrowIcon.Font = Enum.Font.GothamBold
+		gateArrowIcon.TextSize = 16
+		gateArrowIcon.TextColor3 = Color3.fromRGB(255, 220, 60)
+		gateArrowIcon.Text = "▼  ENTER CHAMBER  ▼"
+		gateArrowIcon.Parent = gateBg
+
+		local gateTitle = Instance.new("TextLabel")
+		gateTitle.Size = UDim2.new(1, 0, 0.34, 0)
+		gateTitle.Position = UDim2.new(0, 0, 0.36, 0)
+		gateTitle.BackgroundTransparency = 1
+		gateTitle.Font = Enum.Font.GothamBold
+		gateTitle.TextSize = 13
+		gateTitle.TextColor3 = Color3.fromRGB(255, 240, 150)
+		gateTitle.Text = "⚡ BOSS GATE UNLOCKED ⚡"
+		gateTitle.Parent = gateBg
+
+		local gateSub = Instance.new("TextLabel")
+		gateSub.Size = UDim2.new(1, 0, 0.28, 0)
+		gateSub.Position = UDim2.new(0, 0, 0.7, 0)
+		gateSub.BackgroundTransparency = 1
+		gateSub.Font = Enum.Font.Gotham
+		gateSub.TextSize = 10
+		gateSub.TextColor3 = Color3.fromRGB(200, 205, 220)
+		gateSub.Text = "[Approach to Awaken Rockhide]"
+		gateSub.Parent = gateBg
+
+		beaconModel.Parent = workspace
+		bossGateBeaconModel = beaconModel
+
+		-- 3. Connect RenderStepped to update orientation and position every frame
+		bossGuideConnection = RunService.RenderStepped:Connect(function()
+			if not workspace:FindFirstChild("RockhideArena") then
+				stopBossDirectionGuide()
+				return
+			end
+
+			local character = Players.LocalPlayer and Players.LocalPlayer.Character
+			local root = character and character:FindFirstChild("HumanoidRootPart")
+			if not root or not root:IsA("BasePart") then
+				return
+			end
+
+			local playerPos = root.Position
+			-- Automatically complete and cleanup once player enters the arena!
+			if playerPos.Z > -18 then
+				stopBossDirectionGuide()
+				return
+			end
+
+			local currentTarget = getBossGateTarget()
+			local diffX = currentTarget.X - playerPos.X
+			local diffZ = currentTarget.Z - playerPos.Z
+			local horizontalDist = math.sqrt(diffX * diffX + diffZ * diffZ)
+
+			local dirUnit = horizontalDist > 0.1 and Vector3.new(diffX / horizontalDist, 0, diffZ / horizontalDist) or Vector3.new(0, 0, -1)
+
+			local now = os.clock()
+			-- Dynamic hover bobbing + forward surge pulse
+			local bob = math.sin(now * 4.5) * 0.32
+			local surge = (math.sin(now * 6.5) + 1) * 0.5 * 0.28
+			local arrowCenter = playerPos + Vector3.new(0, 4.8 + bob, 0) + (dirUnit * surge)
+
+			-- Orient arrow toward target in horizontal plane (LookVector = dirUnit)
+			local arrowCFrame = CFrame.lookAt(arrowCenter, arrowCenter + dirUnit)
+
+			-- Update root and all arrow parts relative to arrowCFrame
+			rootPart.CFrame = arrowCFrame
+			shaft.CFrame = arrowCFrame * CFrame.new(0, 0, 0.45)
+			wingL.CFrame = arrowCFrame * CFrame.new(-0.45, 0, -0.2) * CFrame.Angles(0, math.rad(30), 0)
+			wingR.CFrame = arrowCFrame * CFrame.new(0.45, 0, -0.2) * CFrame.Angles(0, math.rad(-30), 0)
+			wingL2.CFrame = arrowCFrame * CFrame.new(-0.35, 0, 0.45) * CFrame.Angles(0, math.rad(30), 0)
+			wingR2.CFrame = arrowCFrame * CFrame.new(0.35, 0, 0.45) * CFrame.Angles(0, math.rad(-30), 0)
+			gem.CFrame = arrowCFrame * CFrame.new(0, 0, -0.9)
+
+			-- Update real-time distance badge
+			local distMeters = math.max(1, math.floor(horizontalDist / 3))
+			distLabel.Text = ("➔ BOSS GATE  %dm"):format(distMeters)
+
+			-- Gate Beacon downward chevron bobbing & ring pulse
+			if gateChevron and gateChevron.Parent then
+				local gateBob = math.sin(now * 3.5) * 0.65
+				gateChevron.CFrame = CFrame.new(currentTarget.X, 13.5 + gateBob, currentTarget.Z)
+			end
+			if ring and ring.Parent then
+				local ringAlpha = 0.45 + (math.sin(now * 4) * 0.2)
+				ring.Transparency = ringAlpha
+			end
+		end)
+	end
+
 	Net.Get("DungeonObjectiveChanged").OnClientEvent:Connect(function(text, currentKills, totalRequired, isUnlocked, isOpen)
 		objectiveCard.Visible = true
 		updateObjectivePosition()
 		if isOpen then
+			stopBossDirectionGuide()
 			objDesc.TextColor3 = Color3.fromRGB(255, 120, 100)
 			objDesc.Text = "👑 " .. text
 			objProgressFill.Size = UDim2.new(1, 0, 1, 0)
@@ -987,12 +1181,14 @@ function HUDController.Start()
 			task.delay(0.5, clearEntranceBarriers)
 			task.delay(1.5, clearEntranceBarriers)
 		elseif isUnlocked then
+			startBossDirectionGuide()
 			objDesc.TextColor3 = Color3.fromRGB(100, 255, 150)
-			objDesc.Text = "✨ " .. text .. " [UNLOCKED]"
+			objDesc.Text = "✨ " .. text .. " ➔ FOLLOW ARROW"
 			objProgressFill.Size = UDim2.new(1, 0, 1, 0)
 			objProgressFill.BackgroundColor3 = Color3.fromRGB(100, 255, 150)
-			objStroke.Color = Color3.fromRGB(100, 255, 150)
+			objStroke.Color = Color3.fromRGB(255, 215, 60)
 		else
+			stopBossDirectionGuide()
 			objDesc.TextColor3 = Color3.fromRGB(240, 240, 250)
 			objDesc.Text = ("⚔️ %s (%d / %d)"):format(text, currentKills, totalRequired)
 			local frac = math.clamp(currentKills / math.max(1, totalRequired), 0, 1)
@@ -1294,6 +1490,7 @@ function HUDController.Start()
 	local menuStroke = Instance.new("UIStroke")
 	menuStroke.Color = Color3.fromRGB(210, 170, 70)
 	menuStroke.Thickness = 1.6
+	menuStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	menuStroke.Parent = skillsMenuBtn
 
 	skillsMenuBtn.Activated:Connect(function()
@@ -1521,7 +1718,7 @@ function HUDController.Start()
 	end)
 
 	-- ── Per-Frame Cooldown & Lock Display Loop ────────────────────────────────
-	game:GetService("RunService").Heartbeat:Connect(function()
+	RunService.Heartbeat:Connect(function()
 		local now = os.clock()
 
 		-- Attack button cooldown
