@@ -21,7 +21,7 @@ local REMOTE_NAMES = {
 	"RequestChannelRevive",   -- client -> server: {downedUserId}
 	"CancelChannelRevive",    -- client -> server
 	"ReviveProgress",         -- server -> client: {reviverUserId, downedUserId, progress}
-	"DungeonResult",          -- server -> client: {result = "victory" | "wipe", expEarned}
+	"DungeonResult",          -- server -> client: {result = "victory" | "wipe", expEarned, fragmentsEarned, goldEarned}
 	"ShowCharacterCreation",     -- server -> client: tells this client to show the create screen (first-timer, no existing character)
 	"SubmitCharacterCreation",   -- client -> server: no args -- name comes from player.DisplayName, class is always Tank
 	"ShowCharacterChoice",       -- server -> client: {level} -- tells this client to show the Load/Create New choice (returning player)
@@ -29,7 +29,19 @@ local REMOTE_NAMES = {
 	"RequestCreateNewCharacter", -- client -> server: no args -- reset Character to defaults (keeping DisplayName/HasCreatedCharacter) and spawn
 	"RequestLevelUp",          -- client -> server (no args)
 	"CharacterDataChanged",    -- server -> client: {level, unspentEXP} -- fires on spawn and after each level-up
+	"WeaponAttack",            -- server -> client: {userId, attackType} -- triggers sword swing / shield bash visuals
+	"RequestUnlockSkill",      -- client -> server: {skillId} -- spends 1 SkillPoint to unlock a skill in the tree
+	"RequestEquipSkill",       -- client -> server: {skillId, slotIndex} -- equips an unlocked skill to slot 1-4
+	"SkillDataChanged",        -- server -> client: {skillPoints, unlockedSkills, equippedSkills} -- syncs skill tree state
+	"DungeonObjectiveChanged", -- server -> client: {objectiveText, currentKills, totalRequired, isUnlocked, isOpen}
+	"RequestOpenBossGate",     -- client -> server: asks server to open the unlocked boss gate
+	"RequestCharacterState",   -- client -> server: requests current character creation / selection state
+	"TargetTaunted",          -- server -> client: {enemyModel} -- plays visual taunted feedback / billboard on target
+	"BossEffect",             -- server -> client: {effectType, position, data} -- screen shake, flash, aura pulses
+	"EquipmentDataChanged",   -- server -> client: {equippedWeapon, equippedShield, storedEquipment, craftingMaterials}
+	"RequestEquipEquipment",  -- client -> server: {equipmentId} -- switches active weapon/shield set
 }
+
 
 local remotes = {}
 

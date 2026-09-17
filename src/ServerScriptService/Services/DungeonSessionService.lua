@@ -7,29 +7,39 @@ local Net = require(ReplicatedStorage.Shared.Net)
 local Classes = require(ReplicatedStorage.Shared.Data.Classes)
 local BossAIService = require(script.Parent.BossAIService)
 local MonsterAIService = require(script.Parent.MonsterAIService)
+local DungeonMapService = require(script.Parent.DungeonMapService)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 local RespawnService = require(script.Parent.RespawnService)
+local WeaponService = require(script.Parent.WeaponService)
 
 local DungeonSessionService = {}
 
-local EXP_REWARD_ON_VICTORY = 50 -- flat value for this slice; real EXP formulas are a later plan
-
-local BOSS_SPAWN_CFRAME = CFrame.new(0, 5, 0)
--- Moved to the far end of the lengthened entrance corridor (Studio-side
--- geometry change, done directly in the published place -- see this plan's
--- Studio Content section) so players have to walk past the trash mobs
--- below to reach the boss, instead of spawning already at the chamber
--- threshold.
-local ENTRANCE_POSITION = Vector3.new(0, 5, -105)
-
--- Trash mob placements (spec 10a): 3 clusters of 2, spaced along the
--- corridor between the entrance and the boss chamber. Corridor is 10 studs
--- wide (x = -5 to 5), so +-2.5 keeps each pair comfortably clear of the walls.
+-- Flat values for this slice; real formulas (dungeon tier, player level, party
+-- size, etc.) are a later plan. Wipe rewards are 20% of the victory reward for
+-- all three types, and the per-mob-kill bonus is banked regardless of outcome
+-- (see bankRewardsAndReturnToHub below).
+local EXP_REWARD_ON_VICTORY = 50
+local EXP_REWARD_ON_WIPE = 10
 local MOB_EXP_REWARD = 5
+
+local FRAGMENT_REWARD_ON_VICTORY = 5
+local FRAGMENT_REWARD_ON_WIPE = 1
+local MOB_FRAGMENT_REWARD = 1
+
+local GOLD_REWARD_ON_VICTORY = 25
+local GOLD_REWARD_ON_WIPE = 5
+local MOB_GOLD_REWARD = 5
+
+-- Grand Colosseum Center (deep inside the boss arena, facing toward the gate at Z = -25)
+local BOSS_SPAWN_CFRAME = CFrame.new(0, 1, 45) * CFrame.Angles(0, math.pi, 0)
+
+-- Staging Antechamber safe entrance platform (Z = -285)
+local ENTRANCE_POSITION = Vector3.new(0, 5, -285)
+
+-- Trash mob placements: 1 minion for fast testing of gate opening and boss entry
 local MOB_POSITIONS = {
-	Vector3.new(-2.5, 2, -90), Vector3.new(2.5, 2, -90),
-	Vector3.new(-2.5, 2, -60), Vector3.new(2.5, 2, -60),
-	Vector3.new(-2.5, 2, -30), Vector3.new(2.5, 2, -30),
+	-- Central Colonnade - Test Sentinel
+	Vector3.new(0, 3, -100),
 }
 
 -- Hub and dungeon servers are the same published place with one shared
@@ -49,15 +59,20 @@ local function moveCharacterToEntrance(character: Model)
 	end)
 end
 
--- userId -> accumulated EXP from trash mob kills this run. Banked alongside
--- EXP_REWARD_ON_VICTORY below, following the SAME (currently victory-only,
--- nothing-on-wipe) behavior the boss reward already has. Not persisted to the
--- profile until bankRewardsAndReturnToHub runs, matching the profile's own
--- anti-dupe ordering rule (must be in memory before any teleport away).
+-- userId -> accumulated EXP/fragments/gold from trash mob kills this run.
+-- Banked alongside the victory/wipe base rewards below, in bankRewardsAndReturnToHub,
+-- REGARDLESS of outcome (unlike the victory/wipe base rewards, which do differ by
+-- outcome) -- a kill is a kill, whether or not the run ultimately wipes. Not
+-- persisted to the profile until bankRewardsAndReturnToHub runs, matching the
+-- profile's own anti-dupe ordering rule (must be in memory before any teleport away).
 local pendingMobEXP = {}
+local pendingMobFragments = {}
+local pendingMobGold = {}
 
-local function awardMobKillEXP(player: Player)
+local function awardMobKillRewards(player: Player)
 	pendingMobEXP[player.UserId] = (pendingMobEXP[player.UserId] or 0) + MOB_EXP_REWARD
+	pendingMobFragments[player.UserId] = (pendingMobFragments[player.UserId] or 0) + MOB_FRAGMENT_REWARD
+	pendingMobGold[player.UserId] = (pendingMobGold[player.UserId] or 0) + MOB_GOLD_REWARD
 end
 
 local function bankRewardsAndReturnToHub(result: "victory" | "wipe")
@@ -66,14 +81,23 @@ local function bankRewardsAndReturnToHub(result: "victory" | "wipe")
 	-- this server, even if they disconnect the instant they land in the hub.
 	for _, player in Players:GetPlayers() do
 		local profile = PlayerDataService.GetProfile(player)
-		local totalEXP = 0
-		if result == "victory" then
-			totalEXP = EXP_REWARD_ON_VICTORY + (pendingMobEXP[player.UserId] or 0)
+
+		local expBase = (result == "victory") and EXP_REWARD_ON_VICTORY or EXP_REWARD_ON_WIPE
+		local fragmentBase = (result == "victory") and FRAGMENT_REWARD_ON_VICTORY or FRAGMENT_REWARD_ON_WIPE
+		local goldBase = (result == "victory") and GOLD_REWARD_ON_VICTORY or GOLD_REWARD_ON_WIPE
+
+		local totalEXP = expBase + (pendingMobEXP[player.UserId] or 0)
+		local totalFragments = fragmentBase + (pendingMobFragments[player.UserId] or 0)
+		local totalGold = goldBase + (pendingMobGold[player.UserId] or 0)
+
+		if profile then
+			local charData = profile.Data.Character
+			charData.UnspentEXP += totalEXP
+			charData.CraftingMaterials.RockhideFragment = (charData.CraftingMaterials.RockhideFragment or 0) + totalFragments
+			charData.Gold += totalGold
 		end
-		if profile and totalEXP > 0 then
-			profile.Data.Character.UnspentEXP += totalEXP
-		end
-		Net.Get("DungeonResult"):FireClient(player, result, totalEXP)
+
+		Net.Get("DungeonResult"):FireClient(player, result, totalEXP, totalFragments, totalGold)
 	end
 
 	task.wait(2) -- let the client show the result briefly before the teleport cuts the screen
@@ -82,13 +106,23 @@ local function bankRewardsAndReturnToHub(result: "victory" | "wipe")
 		TeleportService:TeleportAsync(game.PlaceId, Players:GetPlayers())
 	end)
 	if not teleportOk then
-		-- EXP is already banked above (in-memory, per the anti-dupe ordering rule), so a
-		-- failed teleport here just strands players rather than losing/duping rewards.
-		-- A retry or player-facing message is a reasonable follow-up but out of scope
-		-- for this vertical slice; at minimum this must not fail silently.
-		warn("DungeonSessionService: TeleportAsync back to hub failed", teleportErr)
+		warn("DungeonSessionService: TeleportAsync back to hub failed:", teleportErr)
+		-- Fallback so player is never stranded without a character or camera
+		Players.CharacterAutoLoads = true
+		for _, player in Players:GetPlayers() do
+			if not player.Character or not player.Character.Parent then
+				player:LoadCharacter()
+			end
+			task.defer(function()
+				local root = player.Character and player.Character:WaitForChild("HumanoidRootPart", 5)
+				if root then
+					root.CFrame = CFrame.new(ENTRANCE_POSITION)
+				end
+			end)
+		end
 	end
 end
+
 
 -- Hooks the downed/revive system for a single player.  Called once for every
 -- player whose character has already spawned by the time DungeonSessionService
@@ -119,6 +153,8 @@ local function hookPlayerDeath(player: Player, character: Model)
 	humanoid.Died:Connect(function()
 		RespawnService.OnPlayerDowned(player)
 	end)
+
+	WeaponService.EquipWeapons(character)
 end
 
 function DungeonSessionService.Start(dungeonId: string)
@@ -135,6 +171,26 @@ function DungeonSessionService.Start(dungeonId: string)
 	local bossHandle
 	local stopMobs: (() -> ())? = nil
 
+	local totalMobs = #MOB_POSITIONS
+	local mobsRemaining = totalMobs
+	local isGateUnlocked = false
+	local isGateOpen = false
+
+	local function syncObjective(player: Player?)
+		local objText = "Slay Dungeon Guardians"
+		if isGateOpen then
+			objText = "Defeat Rockhide the Earthbreaker"
+		elseif isGateUnlocked then
+			objText = "Open Boss Chamber Gate"
+		end
+		local kills = totalMobs - mobsRemaining
+		if player then
+			Net.Get("DungeonObjectiveChanged"):FireClient(player, objText, kills, totalMobs, isGateUnlocked, isGateOpen)
+		else
+			Net.Get("DungeonObjectiveChanged"):FireAllClients(objText, kills, totalMobs, isGateUnlocked, isGateOpen)
+		end
+	end
+
 	-- Both trigger paths (victory via the boss's onDeath callback, and wipe via the
 	-- polling loop below) run independently and could otherwise both fire in the
 	-- window between a boss death and the wipe loop's next tick (e.g. players die in
@@ -146,6 +202,7 @@ function DungeonSessionService.Start(dungeonId: string)
 			return
 		end
 		ended = true
+		DungeonMapService.UnsealBossGate()
 		RespawnService.Stop()
 		if stopMobs then
 			stopMobs()
@@ -153,11 +210,44 @@ function DungeonSessionService.Start(dungeonId: string)
 		bankRewardsAndReturnToHub(result)
 	end
 
+	local function handleOpenGate()
+		if not isGateUnlocked or isGateOpen or ended then
+			return
+		end
+		isGateOpen = true
+
+		DungeonMapService.OpenBossGate(function()
+			-- Awaken Rockhide in the boss arena!
+			if not bossHandle and not ended then
+				bossHandle = BossAIService.SpawnBoss("Rockhide", BOSS_SPAWN_CFRAME, function()
+					endSession("victory")
+				end)
+			end
+			syncObjective()
+		end)
+	end
+
+	-- Build the grand MMO dungeon environment (antechamber, labyrinth, boss colosseum)
+	DungeonMapService.BuildDungeon()
+	DungeonMapService.UpdateGateStatus(mobsRemaining, totalMobs)
+	DungeonMapService.SetOnGateOpenRequested(handleOpenGate)
+
+	Net.Get("RequestOpenBossGate").OnServerEvent:Connect(function(player)
+		handleOpenGate()
+	end)
+
 	-- Set up RespawnService before spawning the boss so death hooks are in place.
 	RespawnService.SetEntrancePosition(ENTRANCE_POSITION)
 	RespawnService.Start()
 
-	stopMobs = MonsterAIService.SpawnMobs(MOB_POSITIONS, awardMobKillEXP)
+	stopMobs = MonsterAIService.SpawnMobs(MOB_POSITIONS, awardMobKillRewards, function(remaining, total)
+		mobsRemaining = remaining
+		DungeonMapService.UpdateGateStatus(mobsRemaining, totalMobs)
+		if mobsRemaining == 0 and not isGateUnlocked then
+			isGateUnlocked = true
+		end
+		syncObjective()
+	end)
 
 	-- Disable the engine's own auto-respawn up front. A party of 2-4 players
 	-- teleported together via one TeleportAsync call do NOT all land on this
@@ -256,25 +346,28 @@ function DungeonSessionService.Start(dungeonId: string)
 	-- must already have somewhere to go -- otherwise, with CharacterAutoLoads off
 	-- and Main.server.lua's dispatch listener already consumed (:Once), that
 	-- player would get no character for the whole dungeon.
-	Players.PlayerAdded:Connect(spawnAndHook)
+	Players.PlayerAdded:Connect(function(player)
+		spawnAndHook(player)
+		syncObjective(player)
+	end)
 	for _, player in Players:GetPlayers() do
 		spawnAndHook(player)
+		syncObjective(player)
 	end
 
-	bossHandle = BossAIService.SpawnBoss("Rockhide", BOSS_SPAWN_CFRAME, function()
-		endSession("victory")
-	end)
-
-	-- Wipe detection: if every connected player's Humanoid health is 0 (and
-	-- RespawnService's bleed-out timer hasn't respawned them yet), call a wipe.
-	-- The downed/revive loop (RespawnService) lets players recover before the
-	-- bleed-out expires, so this check won't fire as long as someone is being revived.
+	-- Wipe detection:
+	-- 1. Wait a 10s grace period on dungeon start so players connecting/loading character models don't trigger a false wipe.
+	-- 2. Do NOT declare a wipe if any player is alive (Health > 0) OR if any player is currently downed and in their bleedout/revive window.
+	-- 3. Require 3 consecutive checks (3 seconds) of no alive and no downed players before declaring a wipe, preventing respawn transition races.
 	task.spawn(function()
+		task.wait(10)
+		local consecutiveWipeTicks = 0
 		while not ended do
 			task.wait(1)
 			if ended then
 				break
 			end
+
 			local anyAlive = false
 			for _, player in Players:GetPlayers() do
 				local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
@@ -283,16 +376,27 @@ function DungeonSessionService.Start(dungeonId: string)
 					break
 				end
 			end
-			if not anyAlive and #Players:GetPlayers() > 0 then
-				-- Call endSession first so it wins the race even though ForceKill
-				-- triggers the boss's own onDeath("victory") attempt -- by then
-				-- `ended` is already true, so that attempt is a no-op.
-				endSession("wipe")
-				BossAIService.ForceKill(bossHandle)
-				break
+
+			local isAnyoneDowned = RespawnService.IsAnyoneDowned()
+
+			if not anyAlive and not isAnyoneDowned and #Players:GetPlayers() > 0 then
+				consecutiveWipeTicks += 1
+				if consecutiveWipeTicks >= 3 then
+					-- Call endSession first so it wins the race even though ForceKill
+					-- triggers the boss's own onDeath("victory") attempt -- by then
+					-- `ended` is already true, so that attempt is a no-op.
+					endSession("wipe")
+					if bossHandle then
+						BossAIService.ForceKill(bossHandle)
+					end
+					break
+				end
+			else
+				consecutiveWipeTicks = 0
 			end
 		end
 	end)
+
 end
 
 return DungeonSessionService

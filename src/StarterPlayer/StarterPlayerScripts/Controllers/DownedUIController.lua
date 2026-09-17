@@ -78,6 +78,12 @@ function DownedUIController.Start()
 		reviveBarBackground.Visible = false
 	end)
 
+	player.CharacterAdded:Connect(function()
+		downedLabel.Visible = false
+		reviveBarBackground.Visible = false
+	end)
+
+
 	Net.Get("ReviveProgress").OnClientEvent:Connect(function(reviverUserId, downedUserId, progress)
 		if progress <= 0 then
 			reviveBarBackground.Visible = false
@@ -100,14 +106,15 @@ function DownedUIController.Start()
 		reviveBarBackground.Visible = true
 	end)
 
-	Net.Get("DungeonResult").OnClientEvent:Connect(function(result, expEarned)
+	Net.Get("DungeonResult").OnClientEvent:Connect(function(result, expEarned, fragmentsEarned, goldEarned)
 		-- Hide downed overlay if it was showing when the session ended.
 		downedLabel.Visible = false
 		reviveBarBackground.Visible = false
 
+		local rewardsText = ("+%d EXP, +%d Fragments, +%d Gold"):format(expEarned, fragmentsEarned, goldEarned)
 		resultLabel.Text = result == "victory"
-			and ("VICTORY! +" .. expEarned .. " EXP — returning to hub…")
-			or "WIPED — returning to hub…"
+			and ("VICTORY! " .. rewardsText .. " — returning to hub…")
+			or ("WIPED — " .. rewardsText .. " — returning to hub…")
 		resultLabel.Visible = true
 	end)
 end

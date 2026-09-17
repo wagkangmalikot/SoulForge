@@ -11,6 +11,20 @@ local DEFAULT_DATA = {
 		Level = 1,
 		ClassId = "Tank",
 		UnspentEXP = 0,
+		SkillPoints = 0,
+		UnlockedSkills = {"Taunt"},
+		EquippedSkills = {"Taunt"},
+		EquippedWeapon = "Standard",
+		EquippedShield = "Standard",
+		StoredEquipment = {"Standard", "Sunforged"},
+		CraftingMaterials = {
+			IronIngot = 8,
+			OakTimber = 6,
+			LeatherStrap = 4,
+			SunstoneCore = 1,
+			AncientRune = 2,
+		},
+		Gold = 0,
 		Name = "",                    -- set at character creation (spec 2b), TextService-filtered
 		HasCreatedCharacter = false,  -- gates whether the creation screen shows on join
 	},
@@ -77,6 +91,42 @@ local function onPlayerAdded(player: Player)
 
 	profile:AddUserId(player.UserId)
 	profile:Reconcile() -- fills in any DEFAULT_DATA fields missing from old saves
+
+	local charData = profile.Data.Character
+	if charData then
+		if not charData.SkillPoints then
+			charData.SkillPoints = math.max(0, (charData.Level or 1) - 1)
+		end
+		if not charData.UnlockedSkills or #charData.UnlockedSkills == 0 then
+			charData.UnlockedSkills = {"Taunt"}
+		end
+		if not charData.EquippedSkills or #charData.EquippedSkills == 0 then
+			charData.EquippedSkills = {"Taunt"}
+		end
+		if not charData.EquippedWeapon then
+			charData.EquippedWeapon = "Standard"
+		end
+		if not charData.EquippedShield then
+			charData.EquippedShield = "Standard"
+		end
+		if not charData.StoredEquipment or #charData.StoredEquipment == 0 then
+			charData.StoredEquipment = {"Standard", "Sunforged"}
+		end
+		if not charData.CraftingMaterials then
+			charData.CraftingMaterials = {
+				IronIngot = 8,
+				OakTimber = 6,
+				LeatherStrap = 4,
+				SunstoneCore = 1,
+				AncientRune = 2,
+			}
+		end
+		if charData.Gold == nil then
+			-- nil-check, not a truthiness/length check like the array fields above --
+			-- 0 is a valid already-set value that must not be overwritten back to 0.
+			charData.Gold = 0
+		end
+	end
 
 	profile:ListenToRelease(function()
 		profiles[player.UserId] = nil
