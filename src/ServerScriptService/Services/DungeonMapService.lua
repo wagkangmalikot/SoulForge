@@ -431,18 +431,47 @@ function DungeonMapService.BuildDungeon(): Model
 		Vector3.new(12.5, WALL_HEIGHT - 4, 2.5), CFrame.new(6.25, FLOOR_Y + (WALL_HEIGHT - 4) / 2, gateZ))
 
 
-	-- Glowing Runic Barrier Part (blocks passage until guardians are defeated)
+	-- Glowing Runic Barrier Part (blocks passage until guardians are defeated).
+	-- Transparency is high enough, and pulses further, so the sculpted vault
+	-- doors behind it stay visible as a shimmering ward rather than a flat wall.
 	local barrier = Instance.new("Part")
 	barrier.Name = "RunicBarrier"
 	barrier.Size = Vector3.new(25, WALL_HEIGHT - 4, 3.5)
 	barrier.CFrame = CFrame.new(0, FLOOR_Y + (WALL_HEIGHT - 4) / 2, gateZ)
 	barrier.Color = BARRIER_COLOR
 	barrier.Material = Enum.Material.Neon
-	barrier.Transparency = 0.4
+	barrier.Transparency = 0.65
 	barrier.CanCollide = true
 	barrier.Anchored = true
 	barrier.Parent = gateModel
 	gateBarrierPart = barrier
+
+	-- Looping breathing pulse: OpenBossGate()'s fade-out tween (created later,
+	-- when the gate unlocks) targets the same Transparency property and takes
+	-- over cleanly when it plays; this loop doesn't need to be cancelled
+	-- explicitly because the barrier is destroyed shortly after that fade-out.
+	local barrierPulse = TweenService:Create(
+		barrier,
+		TweenInfo.new(1.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+		{ Transparency = 0.78 }
+	)
+	barrierPulse:Play()
+
+	local barrierSparkles = Instance.new("ParticleEmitter")
+	barrierSparkles.Color = ColorSequence.new(BARRIER_COLOR)
+	barrierSparkles.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.25),
+		NumberSequenceKeypoint.new(1, 0.05),
+	})
+	barrierSparkles.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.3),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	barrierSparkles.Lifetime = NumberRange.new(1.5, 2.5)
+	barrierSparkles.Rate = 12
+	barrierSparkles.Speed = NumberRange.new(1, 2)
+	barrierSparkles.SpreadAngle = Vector2.new(15, 15)
+	barrierSparkles.Parent = barrier
 
 	-- 3D Status Billboard above the gate arch
 	local displayPart = Instance.new("Part")
