@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local Net = require(ReplicatedStorage.Shared.Net)
 local Skills = require(ReplicatedStorage.Shared.Data.Skills)
 local PlayerDataService = require(script.Parent.PlayerDataService)
+local RespawnService = require(script.Parent.RespawnService)
 
 local CombatService = {}
 
@@ -37,9 +38,10 @@ function CombatService.GetEnemy(targetId: string)
 	return enemies[targetId]
 end
 
-local NORMAL_ATTACK_COOLDOWN = 1
-local NORMAL_ATTACK_DAMAGE = 5
-local NORMAL_ATTACK_RANGE = 8
+local NORMAL_ATTACK_COOLDOWN = 0.55
+local NORMAL_ATTACK_DAMAGE = 8
+local NORMAL_ATTACK_RANGE = 20
+
 
 local function isOnCooldown(userId: number, skillId: string, cooldown: number): boolean
 	local perPlayer = lastCastAt[userId]
@@ -59,16 +61,29 @@ local function markCast(userId: number, skillId: string)
 end
 
 local function onCastSkill(player: Player, skillId: string, targetId: string?)
+	if RespawnService.IsPlayerDowned(player.UserId) then
+		return -- downed players' Character/Humanoid stay alive during bleed-out/revive, so this must be checked explicitly
+	end
+
 	local skill = Skills[skillId]
 	if not skill then
 		return -- unknown skillId: silently ignore (section 15, whitelist real Data lookups)
 	end
 
-	-- Skill unlock level (spec section 2b): a skill isn't castable until the
-	-- player's Character.Level meets its unlockLevel, checked server-side --
-	-- never trust a client that only shows a skill as "locked" cosmetically.
+	-- Skill unlock validation: verify skill is actually unlocked in player's skill tree.
 	local profile = PlayerDataService.GetProfile(player)
-	if not profile or profile.Data.Character.Level < (skill.unlockLevel or 1) then
+	if not profile then
+		return
+	end
+	local unlocked = profile.Data.Character.UnlockedSkills or {"Taunt"}
+	local isUnlocked = false
+	for _, id in ipairs(unlocked) do
+		if id == skillId then
+			isUnlocked = true
+			break
+		end
+	end
+	if not isUnlocked then
 		return
 	end
 
@@ -82,15 +97,11 @@ local function onCastSkill(player: Player, skillId: string, targetId: string?)
 		return
 	end
 
-	-- Resolved once and reused for both the range check and the damage
-	-- application below, rather than looking the target up twice. The
-	-- client's targetId is never trusted on its own -- GetEnemy either
-	-- returns nil (target doesn't exist / already dead) or a live handle
-	-- whose actual current position is what the range check uses.
+	local isAoeOrSelf = (skillId == "Taunt" or skillId == "Earthshaker" or skillId == "IronWill" or skillId == "FortressAura")
 	local enemy = targetId and enemies[targetId]
-	if skill.range > 0 then
+	if skill.range > 0 and not isAoeOrSelf then
 		if not enemy or not enemy.model.PrimaryPart then
-			return -- no valid target in range: reject, no client-tolerance loophole beyond this check
+			return
 		end
 		local distance = (enemy.model.PrimaryPart.Position - rootPart.Position).Magnitude
 		if distance > skill.range then
@@ -99,16 +110,61 @@ local function onCastSkill(player: Player, skillId: string, targetId: string?)
 	end
 
 	markCast(player.UserId, skillId)
+	Net.Get("WeaponAttack"):FireAllClients(player.UserId, skillId)
 
-	if skill.damage > 0 and enemy then
-		enemy.onDamaged(skill.damage, player)
+	if skillId == "Taunt" then
+		-- AoE Warcry: Taunts all enemies within skill.range (30 studs)
+		local tauntRadius = skill.range > 0 and skill.range or 30
+		for _, e in pairs(enemies) do
+			if e and e.model and e.model.Parent then
+				local part = e.model.PrimaryPart or e.model:FindFirstChildWhichIsA("BasePart")
+				if part then
+					local dist = (part.Position - rootPart.Position).Magnitude
+					if dist <= tauntRadius then
+						if e.onTaunted then
+							e.onTaunted(player)
+						end
+						Net.Get("TargetTaunted"):FireAllClients(e.model)
+					end
+				end
+			end
+		end
+	elseif skillId == "Earthshaker" then
+		-- AoE slam: damage all registered enemies within range
+		local aoeRadius = skill.range > 0 and skill.range or 16
+		for _, e in pairs(enemies) do
+			if e and e.model and e.model.PrimaryPart and e.model.Parent then
+				local dist = (e.model.PrimaryPart.Position - rootPart.Position).Magnitude
+				if dist <= aoeRadius then
+					e.onDamaged(skill.damage, player)
+				end
+			end
+		end
+	elseif skillId == "IronWill" then
+		-- Self sustain: restore 40 health
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			local heal = skill.healAmount or 40
+			humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + heal)
+			Net.Get("HealthChanged"):FireAllClients(player.UserId, humanoid.Health, humanoid.MaxHealth)
+		end
+	else
+		if enemy then
+			if (skillId == "Taunt" or skillId == "ProvokingStrike") and enemy.onTaunted then
+				enemy.onTaunted(player)
+			end
+			if skill.damage > 0 then
+				enemy.onDamaged(skill.damage, player)
+			end
+		end
 	end
 end
 
 local function onCastNormalAttack(player: Player, targetId: string?)
-	if not targetId then
-		return
+	if RespawnService.IsPlayerDowned(player.UserId) then
+		return -- downed players' Character/Humanoid stay alive during bleed-out/revive, so this must be checked explicitly
 	end
+
 	local lastCast = lastNormalAttackAt[player.UserId]
 	if lastCast and (os.clock() - lastCast) < NORMAL_ATTACK_COOLDOWN then
 		return
@@ -120,18 +176,47 @@ local function onCastNormalAttack(player: Player, targetId: string?)
 		return
 	end
 
-	local enemy = enemies[targetId]
-	if not enemy or not enemy.model.PrimaryPart then
-		return
-	end
-	local distance = (enemy.model.PrimaryPart.Position - rootPart.Position).Magnitude
-	if distance > NORMAL_ATTACK_RANGE then
-		return
+	lastNormalAttackAt[player.UserId] = os.clock()
+	Net.Get("WeaponAttack"):FireAllClients(player.UserId, "Slash")
+
+	-- 1. Try specified target first with dynamic model size padding
+	local targetEnemy = targetId and enemies[targetId]
+	if targetEnemy and targetEnemy.model and targetEnemy.model.Parent then
+		local part = targetEnemy.model.PrimaryPart or targetEnemy.model:FindFirstChildWhichIsA("BasePart")
+		if part then
+			local extents = targetEnemy.model:GetExtentsSize()
+			local radius = math.max(extents.X, extents.Z) * 0.5
+			local dist = (part.Position - rootPart.Position).Magnitude
+			if dist <= (NORMAL_ATTACK_RANGE + radius) then
+				targetEnemy.onDamaged(NORMAL_ATTACK_DAMAGE, player)
+				return
+			end
+		end
 	end
 
-	lastNormalAttackAt[player.UserId] = os.clock()
-	enemy.onDamaged(NORMAL_ATTACK_DAMAGE, player)
+	-- 2. Proximity fallback: hit closest enemy in melee reach (great for untargeted swings / mobs moving)
+	local closestEnemy = nil
+	local closestDist = math.huge
+	for _, e in pairs(enemies) do
+		if e and e.model and e.model.Parent then
+			local part = e.model.PrimaryPart or e.model:FindFirstChildWhichIsA("BasePart")
+			if part then
+				local extents = e.model:GetExtentsSize()
+				local radius = math.max(extents.X, extents.Z) * 0.5
+				local dist = (part.Position - rootPart.Position).Magnitude - radius
+				if dist <= NORMAL_ATTACK_RANGE and dist < closestDist then
+					closestDist = dist
+					closestEnemy = e
+				end
+			end
+		end
+	end
+
+	if closestEnemy then
+		closestEnemy.onDamaged(NORMAL_ATTACK_DAMAGE, player)
+	end
 end
+
 
 function CombatService.ApplyDamageToPlayer(player: Player, amount: number)
 	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
@@ -167,11 +252,12 @@ function CombatService.Start()
 	end)
 
 	Net.Get("CastNormalAttack").OnServerEvent:Connect(function(player, targetId)
-		if type(targetId) ~= "string" then
+		if targetId ~= nil and type(targetId) ~= "string" then
 			return
 		end
 		onCastNormalAttack(player, targetId)
 	end)
+
 
 	Players.PlayerRemoving:Connect(function(player)
 		lastCastAt[player.UserId] = nil
