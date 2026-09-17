@@ -22,12 +22,18 @@ local HUDController = {}
 local TOTAL_SLOTS = 4
 local equippedSkills: {string} = {"Taunt"}
 
-local ATTACK_BUTTON_SIZE   = 136  -- px, extra large circular action button
-local ACTION_BAR_Y_CENTER  = 92   -- px above bottom edge for shared vertical center
-local ATTACK_RIGHT_MARGIN  = 24   -- px from right edge
-local SKILL_BUTTON_SIZE    = 64   -- px, square with rounded corners
-local BUTTON_GAP           = 8    -- px between buttons
-local RIGHT_MARGIN         = 24   -- px from right edge
+local ATTACK_BUTTON_SIZE = 76   -- px circular primary action button
+local SKILL_BUTTON_SIZE  = 46   -- px compact skill buttons in radial arc
+local ATTACK_POS_X       = -135 -- px from right edge (leaves clear room for mobile jump button)
+local ATTACK_POS_Y       = -72  -- px from bottom edge
+
+-- Radial arc offsets relative to (ATTACK_POS_X, ATTACK_POS_Y)
+local SKILL_SLOT_OFFSETS = {
+	[1] = Vector2.new(-66, 0),     -- Slot 1 (Taunt): 9:00 (left)
+	[2] = Vector2.new(-50, -48),   -- Slot 2: 10:30 (up-left)
+	[3] = Vector2.new(0, -66),     -- Slot 3: 12:00 (up)
+	[4] = Vector2.new(48, -48),    -- Slot 4: 1:30 (up-right)
+}
 
 local TARGET_RAYCAST_DISTANCE = 500
 
@@ -138,6 +144,235 @@ local function getNearestEnemy(maxDistance: number): (Model?, string?)
 	return nil, nil
 end
 
+local function createDrawnTauntIcon(parent: Instance): Frame
+	local existing = parent:FindFirstChild("DrawnTauntIcon")
+	if existing then
+		existing.Visible = true
+		return existing :: Frame
+	end
+
+	local iconBox = Instance.new("Frame")
+	iconBox.Name = "DrawnTauntIcon"
+	iconBox.Size = UDim2.new(0.86, 0, 0.68, 0)
+	iconBox.Position = UDim2.new(0.5, 0, 0.36, 0)
+	iconBox.AnchorPoint = Vector2.new(0.5, 0.5)
+	iconBox.BackgroundTransparency = 1
+	iconBox.ClipsDescendants = false
+	iconBox.ZIndex = 2
+	iconBox.Parent = parent
+
+	-- 1. Fiery Rage Aura (Circular Backing)
+	local aura = Instance.new("Frame")
+	aura.Name = "RageAura"
+	aura.Size = UDim2.new(0.92, 0, 0.92, 0)
+	aura.Position = UDim2.new(0.5, 0, 0.5, 0)
+	aura.AnchorPoint = Vector2.new(0.5, 0.5)
+	aura.BackgroundColor3 = Color3.fromRGB(180, 28, 24)
+	aura.BorderSizePixel = 0
+	aura.ZIndex = 2
+	aura.Parent = iconBox
+
+	local auraCorner = Instance.new("UICorner")
+	auraCorner.CornerRadius = UDim.new(0.5, 0)
+	auraCorner.Parent = aura
+
+	local auraGrad = Instance.new("UIGradient")
+	auraGrad.Rotation = 90
+	auraGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(245, 60, 35)),
+		ColorSequenceKeypoint.new(0.6, Color3.fromRGB(175, 20, 18)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(90, 8, 12)),
+	})
+	auraGrad.Parent = aura
+
+	local auraStroke = Instance.new("UIStroke")
+	auraStroke.Color = Color3.fromRGB(255, 195, 65)
+	auraStroke.Thickness = 1.2
+	auraStroke.Transparency = 0.25
+	auraStroke.Parent = aura
+
+	-- 2. Sonic Warcry Shockwave Rings
+	local shockwave1 = Instance.new("Frame")
+	shockwave1.Name = "Shockwave1"
+	shockwave1.Size = UDim2.new(1.18, 0, 1.18, 0)
+	shockwave1.Position = UDim2.new(0.5, 0, 0.5, 0)
+	shockwave1.AnchorPoint = Vector2.new(0.5, 0.5)
+	shockwave1.BackgroundTransparency = 1
+	shockwave1.ZIndex = 2
+	shockwave1.Parent = iconBox
+
+	local sw1Corner = Instance.new("UICorner")
+	sw1Corner.CornerRadius = UDim.new(0.5, 0)
+	sw1Corner.Parent = shockwave1
+
+	local sw1Stroke = Instance.new("UIStroke")
+	sw1Stroke.Color = Color3.fromRGB(255, 215, 75)
+	sw1Stroke.Thickness = 1.2
+	sw1Stroke.Transparency = 0.45
+	sw1Stroke.Parent = shockwave1
+
+	-- 3. Armored Helmet / Roaring Head Base
+	local helmBase = Instance.new("Frame")
+	helmBase.Name = "HelmBase"
+	helmBase.Size = UDim2.new(0.56, 0, 0.60, 0)
+	helmBase.Position = UDim2.new(0.5, 0, 0.48, 0)
+	helmBase.AnchorPoint = Vector2.new(0.5, 0.5)
+	helmBase.BackgroundColor3 = Color3.fromRGB(30, 34, 46)
+	helmBase.BorderSizePixel = 0
+	helmBase.ZIndex = 3
+	helmBase.Parent = iconBox
+
+	local helmCorner = Instance.new("UICorner")
+	helmCorner.CornerRadius = UDim.new(0.35, 0)
+	helmCorner.Parent = helmBase
+
+	local helmStroke = Instance.new("UIStroke")
+	helmStroke.Color = Color3.fromRGB(240, 190, 75)
+	helmStroke.Thickness = 1.2
+	helmStroke.Parent = helmBase
+
+	-- 4. Left Horn
+	local hornL = Instance.new("Frame")
+	hornL.Name = "HornL"
+	hornL.Size = UDim2.new(0.18, 0, 0.42, 0)
+	hornL.Position = UDim2.new(0.24, 0, 0.16, 0)
+	hornL.AnchorPoint = Vector2.new(0.5, 0.5)
+	hornL.Rotation = -32
+	hornL.BackgroundColor3 = Color3.fromRGB(255, 215, 95)
+	hornL.BorderSizePixel = 0
+	hornL.ZIndex = 4
+	hornL.Parent = iconBox
+
+	local hornLCorner = Instance.new("UICorner")
+	hornLCorner.CornerRadius = UDim.new(0.5, 0)
+	hornLCorner.Parent = hornL
+
+	-- 5. Right Horn
+	local hornR = Instance.new("Frame")
+	hornR.Name = "HornR"
+	hornR.Size = UDim2.new(0.18, 0, 0.42, 0)
+	hornR.Position = UDim2.new(0.76, 0, 0.16, 0)
+	hornR.AnchorPoint = Vector2.new(0.5, 0.5)
+	hornR.Rotation = 32
+	hornR.BackgroundColor3 = Color3.fromRGB(255, 215, 95)
+	hornR.BorderSizePixel = 0
+	hornR.ZIndex = 4
+	hornR.Parent = iconBox
+
+	local hornRCorner = Instance.new("UICorner")
+	hornRCorner.CornerRadius = UDim.new(0.5, 0)
+	hornRCorner.Parent = hornR
+
+	-- 6. Helmet Crest (Center Spire)
+	local crest = Instance.new("Frame")
+	crest.Name = "Crest"
+	crest.Size = UDim2.new(0.14, 0, 0.28, 0)
+	crest.Position = UDim2.new(0.5, 0, 0.16, 0)
+	crest.AnchorPoint = Vector2.new(0.5, 0.5)
+	crest.BackgroundColor3 = Color3.fromRGB(255, 220, 110)
+	crest.BorderSizePixel = 0
+	crest.ZIndex = 4
+	crest.Parent = iconBox
+
+	local crestCorner = Instance.new("UICorner")
+	crestCorner.CornerRadius = UDim.new(0.4, 0)
+	crestCorner.Parent = crest
+
+	-- 7. Slanted Enraged Eyes (Glowing Neon Yellow/Gold)
+	local eyeL = Instance.new("Frame")
+	eyeL.Name = "EyeL"
+	eyeL.Size = UDim2.new(0.16, 0, 0.08, 0)
+	eyeL.Position = UDim2.new(0.36, 0, 0.38, 0)
+	eyeL.AnchorPoint = Vector2.new(0.5, 0.5)
+	eyeL.Rotation = 18
+	eyeL.BackgroundColor3 = Color3.fromRGB(255, 245, 130)
+	eyeL.BorderSizePixel = 0
+	eyeL.ZIndex = 5
+	eyeL.Parent = iconBox
+
+	local eyeLCorner = Instance.new("UICorner")
+	eyeLCorner.CornerRadius = UDim.new(0.5, 0)
+	eyeLCorner.Parent = eyeL
+
+	local eyeR = Instance.new("Frame")
+	eyeR.Name = "EyeR"
+	eyeR.Size = UDim2.new(0.16, 0, 0.08, 0)
+	eyeR.Position = UDim2.new(0.64, 0, 0.38, 0)
+	eyeR.AnchorPoint = Vector2.new(0.5, 0.5)
+	eyeR.Rotation = -18
+	eyeR.BackgroundColor3 = Color3.fromRGB(255, 245, 130)
+	eyeR.BorderSizePixel = 0
+	eyeR.ZIndex = 5
+	eyeR.Parent = iconBox
+
+	local eyeRCorner = Instance.new("UICorner")
+	eyeRCorner.CornerRadius = UDim.new(0.5, 0)
+	eyeRCorner.Parent = eyeR
+
+	-- 8. Wide-Open Screaming Mouth Cavity
+	local mouth = Instance.new("Frame")
+	mouth.Name = "ScreamingMouth"
+	mouth.Size = UDim2.new(0.38, 0, 0.30, 0)
+	mouth.Position = UDim2.new(0.5, 0, 0.62, 0)
+	mouth.AnchorPoint = Vector2.new(0.5, 0.5)
+	mouth.BackgroundColor3 = Color3.fromRGB(14, 6, 8)
+	mouth.BorderSizePixel = 0
+	mouth.ZIndex = 5
+	mouth.Parent = iconBox
+
+	local mouthCorner = Instance.new("UICorner")
+	mouthCorner.CornerRadius = UDim.new(0.45, 0)
+	mouthCorner.Parent = mouth
+
+	local mouthStroke = Instance.new("UIStroke")
+	mouthStroke.Color = Color3.fromRGB(200, 35, 30)
+	mouthStroke.Thickness = 1
+	mouthStroke.Parent = mouth
+
+	-- 9. Fiery Throat Glow
+	local throatGlow = Instance.new("Frame")
+	throatGlow.Name = "ThroatGlow"
+	throatGlow.Size = UDim2.new(0.55, 0, 0.45, 0)
+	throatGlow.Position = UDim2.new(0.5, 0, 0.55, 0)
+	throatGlow.AnchorPoint = Vector2.new(0.5, 0.5)
+	throatGlow.BackgroundColor3 = Color3.fromRGB(255, 95, 20)
+	throatGlow.BorderSizePixel = 0
+	throatGlow.ZIndex = 6
+	throatGlow.Parent = mouth
+
+	local throatCorner = Instance.new("UICorner")
+	throatCorner.CornerRadius = UDim.new(0.5, 0)
+	throatCorner.Parent = throatGlow
+
+	-- 10. Upper Sharp Fangs
+	local fangTop = Instance.new("Frame")
+	fangTop.Name = "FangTop"
+	fangTop.Size = UDim2.new(0.24, 0, 0.35, 0)
+	fangTop.Position = UDim2.new(0.5, 0, 0.02, 0)
+	fangTop.AnchorPoint = Vector2.new(0.5, 0)
+	fangTop.BackgroundColor3 = Color3.fromRGB(255, 255, 250)
+	fangTop.BorderSizePixel = 0
+	fangTop.ZIndex = 7
+	fangTop.Parent = mouth
+
+	local fangTopCorner = Instance.new("UICorner")
+	fangTopCorner.CornerRadius = UDim.new(0.4, 0)
+	fangTopCorner.Parent = fangTop
+
+	-- 11. Lower Sharp Fangs
+	local fangBtm = Instance.new("Frame")
+	fangBtm.Name = "FangBtm"
+	fangBtm.Size = UDim2.new(0.24, 0, 0.30, 0)
+	fangBtm.Position = UDim2.new(0.5, 0, 0.98, 0)
+	fangBtm.AnchorPoint = Vector2.new(0.5, 1)
+	fangBtm.BackgroundColor3 = Color3.fromRGB(255, 255, 250)
+	fangBtm.BorderSizePixel = 0
+	fangBtm.ZIndex = 7
+	fangBtm.Parent = mouth
+
+	return iconBox
+end
+
 local function updateSkillButtons()
 	for i = 1, TOTAL_SLOTS do
 		local skillId = equippedSkills[i]
@@ -151,19 +386,39 @@ local function updateSkillButtons()
 			continue
 		end
 
+		local drawnIcon = frame:FindFirstChild("DrawnTauntIcon")
+
 		if skill then
 			frame.BackgroundColor3 = Color3.fromRGB(28, 32, 44)
 			stroke.Color = Color3.fromRGB(220, 180, 75)
-			stroke.Thickness = 2
+			stroke.Thickness = 1.8
 			nameLabel.Text = skill.displayName or skillId
 			nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-			iconLabel.Text = skill.icon or "⚔️"
+
+			if skillId == "Taunt" then
+				iconLabel.Visible = false
+				if not drawnIcon then
+					createDrawnTauntIcon(frame)
+				else
+					drawnIcon.Visible = true
+				end
+			else
+				if drawnIcon then
+					drawnIcon.Visible = false
+				end
+				iconLabel.Visible = true
+				iconLabel.Text = skill.icon or "⚔️"
+			end
 		else
+			if drawnIcon then
+				drawnIcon.Visible = false
+			end
 			frame.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
 			stroke.Color = Color3.fromRGB(55, 62, 75)
 			stroke.Thickness = 1.4
 			nameLabel.Text = "EQUIP"
 			nameLabel.TextColor3 = Color3.fromRGB(130, 140, 160)
+			iconLabel.Visible = true
 			iconLabel.Text = "➕"
 		end
 	end
@@ -237,14 +492,13 @@ function HUDController.Start()
 	local screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "HUD"
 	screenGui.ResetOnSpawn = false
-	screenGui.IgnoreGuiInset = true
 	screenGui.Parent = playerGui
 
-	-- ── Player Unit Frame (Bottom-Left) ─────────────────────────────────────────
+	-- ── Player Unit Frame (Top-Left: leaves bottom-left 100% free for mobile joystick) ─
 	local playerFrame = Instance.new("Frame")
 	playerFrame.Name = "PlayerUnitFrame"
-	playerFrame.Size = UDim2.new(0, 330, 0, 56)
-	playerFrame.Position = UDim2.new(0, 20, 1, -78)
+	playerFrame.Size = UDim2.new(0, 240, 0, 46)
+	playerFrame.Position = UDim2.new(0, 16, 0, 48)
 	playerFrame.BackgroundColor3 = Color3.fromRGB(16, 18, 26)
 	playerFrame.BackgroundTransparency = 0.15
 	playerFrame.BorderSizePixel = 0
@@ -268,25 +522,25 @@ function HUDController.Start()
 	-- Level / Class Shield Badge (Left)
 	local levelBadge = Instance.new("Frame")
 	levelBadge.Name = "LevelBadge"
-	levelBadge.Size = UDim2.new(0, 44, 0, 44)
-	levelBadge.Position = UDim2.new(0, 6, 0.5, -22)
+	levelBadge.Size = UDim2.new(0, 36, 0, 36)
+	levelBadge.Position = UDim2.new(0, 5, 0.5, -18)
 	levelBadge.BackgroundColor3 = Color3.fromRGB(22, 26, 36)
 	levelBadge.BorderSizePixel = 0
 	levelBadge.Parent = playerFrame
 
 	local badgeCorner = Instance.new("UICorner")
-	badgeCorner.CornerRadius = UDim.new(0, 8)
+	badgeCorner.CornerRadius = UDim.new(0, 7)
 	badgeCorner.Parent = levelBadge
 
 	local badgeStroke = Instance.new("UIStroke")
 	badgeStroke.Color = Color3.fromRGB(220, 180, 75)
-	badgeStroke.Thickness = 1.5
+	badgeStroke.Thickness = 1.4
 	badgeStroke.Parent = levelBadge
 
 	local badgeIcon = Instance.new("TextLabel")
 	badgeIcon.Name = "ClassIcon"
-	badgeIcon.Size = UDim2.new(1, 0, 0.48, 0)
-	badgeIcon.Position = UDim2.new(0, 0, 0.04, 0)
+	badgeIcon.Size = UDim2.new(1, 0, 0.46, 0)
+	badgeIcon.Position = UDim2.new(0, 0, 0.02, 0)
 	badgeIcon.BackgroundTransparency = 1
 	badgeIcon.Text = "🛡️"
 	badgeIcon.TextScaled = true
@@ -294,8 +548,8 @@ function HUDController.Start()
 
 	local levelLabel = Instance.new("TextLabel")
 	levelLabel.Name = "LevelText"
-	levelLabel.Size = UDim2.new(1, 0, 0.42, 0)
-	levelLabel.Position = UDim2.new(0, 0, 0.52, 0)
+	levelLabel.Size = UDim2.new(1, 0, 0.44, 0)
+	levelLabel.Position = UDim2.new(0, 0, 0.50, 0)
 	levelLabel.BackgroundTransparency = 1
 	levelLabel.Font = Enum.Font.GothamBold
 	levelLabel.TextColor3 = Color3.fromRGB(255, 225, 120)
@@ -309,11 +563,11 @@ function HUDController.Start()
 	-- Player Name & Class Subtitle
 	local playerNameLabel = Instance.new("TextLabel")
 	playerNameLabel.Name = "PlayerName"
-	playerNameLabel.Size = UDim2.new(1, -62, 0, 16)
-	playerNameLabel.Position = UDim2.new(0, 56, 0, 6)
+	playerNameLabel.Size = UDim2.new(1, -48, 0, 14)
+	playerNameLabel.Position = UDim2.new(0, 46, 0, 4)
 	playerNameLabel.BackgroundTransparency = 1
 	playerNameLabel.Font = Enum.Font.GothamBold
-	playerNameLabel.TextSize = 12
+	playerNameLabel.TextSize = 11
 	playerNameLabel.TextColor3 = Color3.fromRGB(240, 242, 248)
 	playerNameLabel.TextStrokeColor3 = Color3.fromRGB(12, 14, 18)
 	playerNameLabel.TextStrokeTransparency = 0.3
@@ -324,8 +578,8 @@ function HUDController.Start()
 	-- Health Bar Container
 	local playerHealthBg = Instance.new("Frame")
 	playerHealthBg.Name = "HealthBg"
-	playerHealthBg.Size = UDim2.new(1, -64, 0, 22)
-	playerHealthBg.Position = UDim2.new(0, 56, 0, 26)
+	playerHealthBg.Size = UDim2.new(1, -50, 0, 18)
+	playerHealthBg.Position = UDim2.new(0, 46, 0, 21)
 	playerHealthBg.BackgroundColor3 = Color3.fromRGB(10, 12, 16)
 	playerHealthBg.BorderSizePixel = 0
 	playerHealthBg.ClipsDescendants = true
@@ -595,11 +849,11 @@ function HUDController.Start()
 		end
 	end)
 
-	-- ── Dungeon Objective Tracker (Top-Left) ──────────────────────────────────
+	-- ── Dungeon Objective Tracker (Top-Left, below Player Unit Frame) ─────────
 	local objectiveCard = Instance.new("Frame")
 	objectiveCard.Name = "DungeonObjectiveCard"
-	objectiveCard.Size = UDim2.new(0, 270, 0, 78)
-	objectiveCard.Position = UDim2.new(0, 16, 0, 195)
+	objectiveCard.Size = UDim2.new(0, 240, 0, 56)
+	objectiveCard.Position = UDim2.new(0, 16, 0, 100)
 	objectiveCard.BackgroundColor3 = Color3.fromRGB(16, 20, 28)
 	objectiveCard.BackgroundTransparency = 0.15
 	objectiveCard.BorderSizePixel = 0
@@ -617,39 +871,39 @@ function HUDController.Start()
 
 	local objStroke = Instance.new("UIStroke")
 	objStroke.Color = Color3.fromRGB(195, 155, 65)
-	objStroke.Thickness = 1.6
+	objStroke.Thickness = 1.4
 	objStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	objStroke.Parent = objectiveCard
 
 	local objHeader = Instance.new("TextLabel")
-	objHeader.Size = UDim2.new(1, -20, 0, 20)
-	objHeader.Position = UDim2.new(0, 10, 0, 6)
+	objHeader.Size = UDim2.new(1, -16, 0, 16)
+	objHeader.Position = UDim2.new(0, 8, 0, 4)
 	objHeader.BackgroundTransparency = 1
 	objHeader.TextColor3 = Color3.fromRGB(255, 215, 80)
 	objHeader.TextStrokeColor3 = Color3.fromRGB(10, 12, 16)
 	objHeader.TextStrokeTransparency = 0.2
 	objHeader.Font = Enum.Font.GothamBold
-	objHeader.TextSize = 13
+	objHeader.TextSize = 11
 	objHeader.TextXAlignment = Enum.TextXAlignment.Left
 	objHeader.Text = "📜 DUNGEON OBJECTIVE"
 	objHeader.Parent = objectiveCard
 
 	local objDesc = Instance.new("TextLabel")
-	objDesc.Size = UDim2.new(1, -20, 0, 22)
-	objDesc.Position = UDim2.new(0, 10, 0, 26)
+	objDesc.Size = UDim2.new(1, -16, 0, 16)
+	objDesc.Position = UDim2.new(0, 8, 0, 19)
 	objDesc.BackgroundTransparency = 1
 	objDesc.TextColor3 = Color3.fromRGB(240, 242, 250)
 	objDesc.TextStrokeColor3 = Color3.fromRGB(10, 12, 16)
 	objDesc.TextStrokeTransparency = 0.3
 	objDesc.Font = Enum.Font.GothamMedium
-	objDesc.TextSize = 12
+	objDesc.TextSize = 10
 	objDesc.TextXAlignment = Enum.TextXAlignment.Left
 	objDesc.Text = "Slay Dungeon Guardians (0 / 10)"
 	objDesc.Parent = objectiveCard
 
 	local objProgressBg = Instance.new("Frame")
-	objProgressBg.Size = UDim2.new(1, -20, 0, 8)
-	objProgressBg.Position = UDim2.new(0, 10, 0, 54)
+	objProgressBg.Size = UDim2.new(1, -16, 0, 8)
+	objProgressBg.Position = UDim2.new(0, 8, 0, 39)
 	objProgressBg.BackgroundColor3 = Color3.fromRGB(10, 12, 16)
 	objProgressBg.BorderSizePixel = 0
 	objProgressBg.ClipsDescendants = true
@@ -698,9 +952,9 @@ function HUDController.Start()
 		local partyGui = playerGui:FindFirstChild("PartyUI")
 		local statusLabel = partyGui and partyGui:FindFirstChild("StatusLabel")
 		if statusLabel and statusLabel.Visible and statusLabel.Text ~= "" and statusLabel.Text ~= "No party" then
-			objectiveCard.Position = UDim2.new(0, 16, 0, 135)
+			objectiveCard.Position = UDim2.new(0, 16, 0, 148)
 		else
-			objectiveCard.Position = UDim2.new(0, 16, 0, 72)
+			objectiveCard.Position = UDim2.new(0, 16, 0, 100)
 		end
 	end
 
@@ -889,7 +1143,7 @@ function HUDController.Start()
 	attackFrame.Name = "AttackButton"
 	attackFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 	attackFrame.Size = UDim2.new(0, ATTACK_BUTTON_SIZE, 0, ATTACK_BUTTON_SIZE)
-	attackFrame.Position = UDim2.new(1, -ATTACK_RIGHT_MARGIN - (ATTACK_BUTTON_SIZE / 2), 1, -ACTION_BAR_Y_CENTER)
+	attackFrame.Position = UDim2.new(1, ATTACK_POS_X, 1, ATTACK_POS_Y)
 	attackFrame.BackgroundColor3 = Color3.fromRGB(215, 45, 38)
 	attackFrame.BorderSizePixel = 0
 	attackFrame.Parent = screenGui
@@ -909,14 +1163,14 @@ function HUDController.Start()
 
 	local attackStroke = Instance.new("UIStroke")
 	attackStroke.Color = Color3.fromRGB(255, 218, 85)
-	attackStroke.Thickness = 4.5
+	attackStroke.Thickness = 3
 	attackStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	attackStroke.Parent = attackFrame
 
 	-- Inner decorative ring for beveled action plate
 	local innerRing = Instance.new("Frame")
 	innerRing.Name = "InnerRing"
-	innerRing.Size = UDim2.new(1, -14, 1, -14)
+	innerRing.Size = UDim2.new(1, -10, 1, -10)
 	innerRing.Position = UDim2.new(0.5, 0, 0.5, 0)
 	innerRing.AnchorPoint = Vector2.new(0.5, 0.5)
 	innerRing.BackgroundTransparency = 1
@@ -946,14 +1200,15 @@ function HUDController.Start()
 	-- Attack Label
 	local attackLabel = Instance.new("TextLabel")
 	attackLabel.Name = "Label"
-	attackLabel.Size = UDim2.new(1, 0, 0.20, 0)
+	attackLabel.Size = UDim2.new(1, 0, 0.22, 0)
 	attackLabel.Position = UDim2.new(0, 0, 0.52, 0)
 	attackLabel.BackgroundTransparency = 1
 	attackLabel.TextColor3 = Color3.fromRGB(255, 245, 215)
 	attackLabel.TextStrokeColor3 = Color3.fromRGB(20, 10, 10)
 	attackLabel.TextStrokeTransparency = 0.2
 	attackLabel.Font = Enum.Font.GothamBlack
-	attackLabel.TextScaled = true
+	attackLabel.TextSize = 10
+	attackLabel.TextScaled = false
 	attackLabel.Text = "ATTACK"
 	attackLabel.ZIndex = 2
 	attackLabel.Parent = attackFrame
@@ -1014,15 +1269,11 @@ function HUDController.Start()
 
 	attackButton.Activated:Connect(triggerAttackButtonPress)
 
-	-- ── Skill Buttons (1-4) ────────────────────────────────────────────────────
-	local skillYOffset = ACTION_BAR_Y_CENTER - (SKILL_BUTTON_SIZE / 2)
-	local skillBaseOffset = ATTACK_RIGHT_MARGIN + ATTACK_BUTTON_SIZE + 16
-
-	-- Dedicated Skills menu button
+	-- ── Dedicated Skills Menu Button (Top-Right: keeps screen center completely clear) ─
 	local skillsMenuBtn = Instance.new("TextButton")
 	skillsMenuBtn.Name = "SkillsMenuButton"
-	skillsMenuBtn.Size = UDim2.new(0, 124, 0, 32)
-	skillsMenuBtn.Position = UDim2.new(1, -skillBaseOffset - (TOTAL_SLOTS * (SKILL_BUTTON_SIZE + BUTTON_GAP)) + BUTTON_GAP, 1, -skillYOffset - SKILL_BUTTON_SIZE - 40)
+	skillsMenuBtn.Size = UDim2.new(0, 96, 0, 32)
+	skillsMenuBtn.Position = UDim2.new(1, -112, 0, 48)
 	skillsMenuBtn.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
 	skillsMenuBtn.BorderSizePixel = 0
 	skillsMenuBtn.Font = Enum.Font.GothamBold
@@ -1050,19 +1301,20 @@ function HUDController.Start()
 	end)
 
 	for i = 1, TOTAL_SLOTS do
-		local xOffset = skillBaseOffset + (TOTAL_SLOTS - i) * (SKILL_BUTTON_SIZE + BUTTON_GAP)
+		local offset = SKILL_SLOT_OFFSETS[i] or Vector2.new(-66 * i, 0)
 
 		local frame = Instance.new("Frame")
 		frame.Name = "SkillSlot_" .. i
+		frame.AnchorPoint = Vector2.new(0.5, 0.5)
 		frame.Size = UDim2.new(0, SKILL_BUTTON_SIZE, 0, SKILL_BUTTON_SIZE)
-		frame.Position = UDim2.new(1, -xOffset - SKILL_BUTTON_SIZE, 1, -skillYOffset - SKILL_BUTTON_SIZE)
+		frame.Position = UDim2.new(1, ATTACK_POS_X + offset.X, 1, ATTACK_POS_Y + offset.Y)
 		frame.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
 		frame.BorderSizePixel = 0
 		frame.Parent = screenGui
 		slotFrames[i] = frame
 
 		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 10)
+		corner.CornerRadius = UDim.new(0, 8)
 		corner.Parent = frame
 
 		local slotGrad = Instance.new("UIGradient")
@@ -1072,16 +1324,44 @@ function HUDController.Start()
 
 		local stroke = Instance.new("UIStroke")
 		stroke.Color = Color3.fromRGB(220, 180, 75)
-		stroke.Thickness = 2
+		stroke.Thickness = 1.8
 		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		stroke.Parent = frame
 		slotStrokes[i] = stroke
 
+		-- Desktop Hotkey Pill (1, 2, 3, 4)
+		local hotkeyBadge = Instance.new("Frame")
+		hotkeyBadge.Name = "HotkeyBadge"
+		hotkeyBadge.Size = UDim2.new(0, 12, 0, 12)
+		hotkeyBadge.Position = UDim2.new(0, 2, 0, 2)
+		hotkeyBadge.BackgroundColor3 = Color3.fromRGB(10, 12, 16)
+		hotkeyBadge.BackgroundTransparency = 0.2
+		hotkeyBadge.BorderSizePixel = 0
+		hotkeyBadge.ZIndex = 4
+		hotkeyBadge.Parent = frame
+
+		local hkCorner = Instance.new("UICorner")
+		hkCorner.CornerRadius = UDim.new(0, 3)
+		hkCorner.Parent = hotkeyBadge
+
+		local hkText = Instance.new("TextLabel")
+		hkText.Size = UDim2.new(1, 0, 1, 0)
+		hkText.BackgroundTransparency = 1
+		hkText.Font = Enum.Font.GothamBold
+		hkText.TextSize = 8
+		hkText.TextColor3 = Color3.fromRGB(240, 205, 90)
+		hkText.Text = tostring(i)
+		hkText.ZIndex = 5
+		hkText.Parent = hotkeyBadge
+
 		-- Icon Label
 		local iconLabel = Instance.new("TextLabel")
-		iconLabel.Size = UDim2.new(1, 0, 0.44, 0)
-		iconLabel.Position = UDim2.new(0, 0, 0.14, 0)
+		iconLabel.Size = UDim2.new(1, 0, 0.52, 0)
+		iconLabel.Position = UDim2.new(0, 0, 0.08, 0)
 		iconLabel.BackgroundTransparency = 1
+		iconLabel.Font = Enum.Font.GothamBold
+		iconLabel.TextStrokeColor3 = Color3.fromRGB(12, 14, 20)
+		iconLabel.TextStrokeTransparency = 0.35
 		iconLabel.Text = ""
 		iconLabel.TextScaled = true
 		iconLabel.ZIndex = 2
@@ -1091,35 +1371,36 @@ function HUDController.Start()
 		-- Skill Name Banner Plate
 		local namePlate = Instance.new("Frame")
 		namePlate.Name = "NamePlate"
-		namePlate.Size = UDim2.new(1, 0, 0.32, 0)
-		namePlate.Position = UDim2.new(0, 0, 0.68, 0)
-		namePlate.BackgroundColor3 = Color3.fromRGB(12, 14, 20)
-		namePlate.BackgroundTransparency = 0.25
+		namePlate.Size = UDim2.new(1, 0, 0.28, 0)
+		namePlate.Position = UDim2.new(0, 0, 0.72, 0)
+		namePlate.BackgroundColor3 = Color3.fromRGB(10, 12, 16)
+		namePlate.BackgroundTransparency = 0.2
 		namePlate.BorderSizePixel = 0
-		namePlate.ZIndex = 2
+		namePlate.ZIndex = 3
 		namePlate.Parent = frame
 
 		local nameCorner = Instance.new("UICorner")
-		nameCorner.CornerRadius = UDim.new(0, 6)
+		nameCorner.CornerRadius = UDim.new(0, 5)
 		nameCorner.Parent = namePlate
 
 		local nameLabel = Instance.new("TextLabel")
-		nameLabel.Size = UDim2.new(1, -4, 1, 0)
-		nameLabel.Position = UDim2.new(0, 2, 0, 0)
+		nameLabel.Size = UDim2.new(1, -2, 1, 0)
+		nameLabel.Position = UDim2.new(0, 1, 0, 0)
 		nameLabel.BackgroundTransparency = 1
 		nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		nameLabel.Font = Enum.Font.GothamBold
-		nameLabel.TextScaled = true
+		nameLabel.TextSize = 9
+		nameLabel.TextScaled = false
 		nameLabel.Text = ""
-		nameLabel.ZIndex = 3
+		nameLabel.ZIndex = 4
 		nameLabel.Parent = namePlate
 		slotNameLabels[i] = nameLabel
 
 		-- Cooldown / Lock Label
 		local cdLabel = Instance.new("TextLabel")
 		cdLabel.Name = "CooldownLabel"
-		cdLabel.Size = UDim2.new(1, 0, 0.48, 0)
-		cdLabel.Position = UDim2.new(0, 0, 0.26, 0)
+		cdLabel.Size = UDim2.new(1, 0, 0.50, 0)
+		cdLabel.Position = UDim2.new(0, 0, 0.22, 0)
 		cdLabel.BackgroundTransparency = 1
 		cdLabel.TextColor3 = Color3.fromRGB(255, 225, 60)
 		cdLabel.TextStrokeColor3 = Color3.fromRGB(10, 10, 15)
@@ -1142,7 +1423,7 @@ function HUDController.Start()
 		slotDimOverlays[i] = dimOverlay
 
 		local dimCorner = Instance.new("UICorner")
-		dimCorner.CornerRadius = UDim.new(0, 10)
+		dimCorner.CornerRadius = UDim.new(0, 8)
 		dimCorner.Parent = dimOverlay
 
 		local button = Instance.new("TextButton")
@@ -1183,13 +1464,44 @@ function HUDController.Start()
 		updateSkillButtons()
 	end)
 
-	-- ── Pointer Input Handling (Mouse Click and Mobile Touch) ───────────────────
+	-- ── Input Handling (Keyboard Shortcuts, Mouse Click, Mobile Touch) ─────────
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+		if gameProcessed then
+			return
+		end
+
+		-- Desktop Keyboard Shortcuts (1-4 skills, F attack, K skills menu)
+		if input.UserInputType == Enum.UserInputType.Keyboard then
+			if input.KeyCode == Enum.KeyCode.One or input.KeyCode == Enum.KeyCode.KeypadOne then
+				local skillId = equippedSkills[1]
+				if skillId then fireSkill(skillId) end
+				return
+			elseif input.KeyCode == Enum.KeyCode.Two or input.KeyCode == Enum.KeyCode.KeypadTwo then
+				local skillId = equippedSkills[2]
+				if skillId then fireSkill(skillId) end
+				return
+			elseif input.KeyCode == Enum.KeyCode.Three or input.KeyCode == Enum.KeyCode.KeypadThree then
+				local skillId = equippedSkills[3]
+				if skillId then fireSkill(skillId) end
+				return
+			elseif input.KeyCode == Enum.KeyCode.Four or input.KeyCode == Enum.KeyCode.KeypadFour then
+				local skillId = equippedSkills[4]
+				if skillId then fireSkill(skillId) end
+				return
+			elseif input.KeyCode == Enum.KeyCode.F or input.KeyCode == Enum.KeyCode.E then
+				fireNormalAttack()
+				return
+			elseif input.KeyCode == Enum.KeyCode.K or input.KeyCode == Enum.KeyCode.T then
+				SkillTreeUIController.Toggle()
+				return
+			end
+		end
+
 		-- Mouse Click or Mobile Touch Tap: selecting targets in 3D world only (NO attack)
 		local isMouseClick = (input.UserInputType == Enum.UserInputType.MouseButton1)
 		local isTouch = (input.UserInputType == Enum.UserInputType.Touch)
 
-		if (isMouseClick or isTouch) and not gameProcessed then
+		if isMouseClick or isTouch then
 			local camera = workspace.CurrentCamera
 			if camera then
 				local screenPos = (isTouch and input.Position) or UserInputService:GetMouseLocation()
