@@ -619,7 +619,7 @@ function DungeonMapService.UpdateGateStatus(mobsRemaining: number, totalMobs: nu
 		end
 		if gateStatusLabel then
 			gateStatusLabel.TextColor3 = Color3.fromRGB(100, 255, 140)
-			gateStatusLabel.Text = "✨ [UNLOCKED - PRESS 'E' TO OPEN]"
+			gateStatusLabel.Text = "✨ [UNLOCKED - INTERACT TO OPEN]"
 		end
 		if gatePrompt then
 			gatePrompt.ActionText = "Open Boss Gate"
