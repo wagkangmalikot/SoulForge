@@ -850,12 +850,38 @@ function HUDController.Start()
 		rootPart.Parent = arrowModel
 		arrowModel.PrimaryPart = rootPart
 
-		-- Central Arrow Shaft
+		-- Aerodynamic Diamond Spearhead (outer gold)
+		local diamondHead = Instance.new("Part")
+		diamondHead.Name = "DiamondHead"
+		diamondHead.Size = Vector3.new(1.6, 0.32, 1.6)
+		diamondHead.Material = Enum.Material.Neon
+		diamondHead.Color = Color3.fromRGB(250, 190, 30)
+		diamondHead.CanCollide = false
+		diamondHead.CanTouch = false
+		diamondHead.CanQuery = false
+		diamondHead.CastShadow = false
+		diamondHead.Anchored = true
+		diamondHead.Parent = arrowModel
+
+		-- Glowing Inner Gem (nested crystal in spearhead)
+		local coreGem = Instance.new("Part")
+		coreGem.Name = "CoreGem"
+		coreGem.Size = Vector3.new(0.85, 0.38, 0.85)
+		coreGem.Material = Enum.Material.Neon
+		coreGem.Color = Color3.fromRGB(255, 255, 220)
+		coreGem.CanCollide = false
+		coreGem.CanTouch = false
+		coreGem.CanQuery = false
+		coreGem.CastShadow = false
+		coreGem.Anchored = true
+		coreGem.Parent = arrowModel
+
+		-- Arrow Shaft / Spine
 		local shaft = Instance.new("Part")
 		shaft.Name = "ArrowShaft"
-		shaft.Size = Vector3.new(0.48, 0.28, 1.9)
+		shaft.Size = Vector3.new(0.48, 0.26, 1.8)
 		shaft.Material = Enum.Material.Neon
-		shaft.Color = Color3.fromRGB(255, 195, 35)
+		shaft.Color = Color3.fromRGB(255, 195, 40)
 		shaft.CanCollide = false
 		shaft.CanTouch = false
 		shaft.CanQuery = false
@@ -863,86 +889,55 @@ function HUDController.Start()
 		shaft.Anchored = true
 		shaft.Parent = arrowModel
 
-		-- Primary Chevron Wings (flaring backwards from tip)
-		local wingL = Instance.new("Part")
-		wingL.Name = "WingL"
-		wingL.Size = Vector3.new(0.36, 0.28, 1.25)
-		wingL.Material = Enum.Material.Neon
-		wingL.Color = Color3.fromRGB(255, 220, 60)
-		wingL.CanCollide = false
-		wingL.CanTouch = false
-		wingL.CanQuery = false
-		wingL.CastShadow = false
-		wingL.Anchored = true
-		wingL.Parent = arrowModel
+		-- Left Fletching Fin
+		local tailL = Instance.new("Part")
+		tailL.Name = "TailL"
+		tailL.Size = Vector3.new(0.24, 0.28, 0.85)
+		tailL.Material = Enum.Material.Neon
+		tailL.Color = Color3.fromRGB(255, 215, 60)
+		tailL.CanCollide = false
+		tailL.CanTouch = false
+		tailL.CanQuery = false
+		tailL.CastShadow = false
+		tailL.Anchored = true
+		tailL.Parent = arrowModel
 
-		local wingR = Instance.new("Part")
-		wingR.Name = "WingR"
-		wingR.Size = Vector3.new(0.36, 0.28, 1.25)
-		wingR.Material = Enum.Material.Neon
-		wingR.Color = Color3.fromRGB(255, 220, 60)
-		wingR.CanCollide = false
-		wingR.CanTouch = false
-		wingR.CanQuery = false
-		wingR.CastShadow = false
-		wingR.Anchored = true
-		wingR.Parent = arrowModel
+		-- Right Fletching Fin
+		local tailR = Instance.new("Part")
+		tailR.Name = "TailR"
+		tailR.Size = Vector3.new(0.24, 0.28, 0.85)
+		tailR.Material = Enum.Material.Neon
+		tailR.Color = Color3.fromRGB(255, 215, 60)
+		tailR.CanCollide = false
+		tailR.CanTouch = false
+		tailR.CanQuery = false
+		tailR.CastShadow = false
+		tailR.Anchored = true
+		tailR.Parent = arrowModel
 
-		-- Secondary Inner Chevron Wings
-		local wingL2 = Instance.new("Part")
-		wingL2.Name = "WingL2"
-		wingL2.Size = Vector3.new(0.3, 0.24, 0.95)
-		wingL2.Material = Enum.Material.Neon
-		wingL2.Color = Color3.fromRGB(255, 245, 110)
-		wingL2.CanCollide = false
-		wingL2.CanTouch = false
-		wingL2.CanQuery = false
-		wingL2.CastShadow = false
-		wingL2.Anchored = true
-		wingL2.Parent = arrowModel
+		-- Ground Navigation Chevron (projected onto floor ahead of player)
+		local groundChevron = Instance.new("Part")
+		groundChevron.Name = "GroundChevron"
+		groundChevron.Size = Vector3.new(2.2, 0.05, 2.2)
+		groundChevron.Material = Enum.Material.Neon
+		groundChevron.Color = Color3.fromRGB(255, 205, 45)
+		groundChevron.Transparency = 0.4
+		groundChevron.CanCollide = false
+		groundChevron.CanTouch = false
+		groundChevron.CanQuery = false
+		groundChevron.CastShadow = false
+		groundChevron.Anchored = true
+		groundChevron.Parent = arrowModel
 
-		local wingR2 = Instance.new("Part")
-		wingR2.Name = "WingR2"
-		wingR2.Size = Vector3.new(0.3, 0.24, 0.95)
-		wingR2.Material = Enum.Material.Neon
-		wingR2.Color = Color3.fromRGB(255, 245, 110)
-		wingR2.CanCollide = false
-		wingR2.CanTouch = false
-		wingR2.CanQuery = false
-		wingR2.CastShadow = false
-		wingR2.Anchored = true
-		wingR2.Parent = arrowModel
-
-		-- Arrow Head Jewel / Core Focal Gem
-		local gem = Instance.new("Part")
-		gem.Name = "ArrowGem"
-		gem.Shape = Enum.PartType.Ball
-		gem.Size = Vector3.new(0.65, 0.45, 0.65)
-		gem.Material = Enum.Material.Neon
-		gem.Color = Color3.fromRGB(255, 255, 230)
-		gem.CanCollide = false
-		gem.CanTouch = false
-		gem.CanQuery = false
-		gem.CastShadow = false
-		gem.Anchored = true
-		gem.Parent = arrowModel
-
-		-- Radiant Point Light
-		local light = Instance.new("PointLight")
-		light.Brightness = 2.2
-		light.Range = 14
-		light.Color = Color3.fromRGB(255, 205, 50)
-		light.Parent = gem
-
-		-- Golden Ember Sparks (streaming backwards)
+		-- Golden Ember Sparks (streaming backwards from tail)
 		local particles = Instance.new("ParticleEmitter")
-		particles.Rate = 12
-		particles.Lifetime = NumberRange.new(0.3, 0.6)
-		particles.Speed = NumberRange.new(1.2, 2.8)
+		particles.Rate = 8
+		particles.Lifetime = NumberRange.new(0.25, 0.5)
+		particles.Speed = NumberRange.new(1.0, 2.2)
 		particles.EmissionDirection = Enum.NormalId.Back
-		particles.SpreadAngle = Vector2.new(18, 18)
+		particles.SpreadAngle = Vector2.new(15, 15)
 		particles.Size = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.28),
+			NumberSequenceKeypoint.new(0, 0.2),
 			NumberSequenceKeypoint.new(1, 0),
 		})
 		particles.Transparency = NumberSequence.new({
@@ -950,15 +945,15 @@ function HUDController.Start()
 			NumberSequenceKeypoint.new(1, 1),
 		})
 		particles.Color = ColorSequence.new(Color3.fromRGB(255, 235, 90), Color3.fromRGB(255, 140, 25))
-		particles.LightEmission = 0.95
+		particles.LightEmission = 0.9
 		particles.LightInfluence = 0
-		particles.Parent = gem
+		particles.Parent = shaft
 
 		-- Overhead Billboard HUD Distance Badge
 		local billboard = Instance.new("BillboardGui")
 		billboard.Name = "DistanceBadge"
-		billboard.Size = UDim2.new(0, 154, 0, 28)
-		billboard.StudsOffset = Vector3.new(0, 1.4, 0)
+		billboard.Size = UDim2.new(0, 150, 0, 28)
+		billboard.StudsOffset = Vector3.new(0, 1.8, 0)
 		billboard.AlwaysOnTop = true
 		billboard.MaxDistance = 450
 		billboard.ClipsDescendants = false
@@ -990,7 +985,7 @@ function HUDController.Start()
 		distLabel.TextColor3 = Color3.fromRGB(255, 235, 100)
 		distLabel.TextStrokeColor3 = Color3.fromRGB(15, 10, 0)
 		distLabel.TextStrokeTransparency = 0.3
-		distLabel.Text = "➔ BOSS GATE"
+		distLabel.Text = "⚡ BOSS GATE"
 		distLabel.Parent = badgeFrame
 
 		arrowModel.Parent = workspace
@@ -1107,6 +1102,9 @@ function HUDController.Start()
 		bossGateBeaconModel = beaconModel
 
 		-- 3. Connect RenderStepped to update orientation and position every frame
+		local rayParams = RaycastParams.new()
+		rayParams.FilterType = Enum.RaycastFilterType.Exclude
+
 		bossGuideConnection = RunService.RenderStepped:Connect(function()
 			if not workspace:FindFirstChild("RockhideArena") then
 				stopBossDirectionGuide()
@@ -1135,25 +1133,33 @@ function HUDController.Start()
 
 			local now = os.clock()
 			-- Dynamic hover bobbing + forward surge pulse
-			local bob = math.sin(now * 4.5) * 0.32
-			local surge = (math.sin(now * 6.5) + 1) * 0.5 * 0.28
-			local arrowCenter = playerPos + Vector3.new(0, 4.8 + bob, 0) + (dirUnit * surge)
+			local bob = math.sin(now * 4.5) * 0.28
+			local surge = (math.sin(now * 6.5) + 1) * 0.5 * 0.24
+			local arrowCenter = playerPos + Vector3.new(0, 5.0 + bob, 0) + (dirUnit * surge)
 
-			-- Orient arrow toward target in horizontal plane (LookVector = dirUnit)
-			local arrowCFrame = CFrame.lookAt(arrowCenter, arrowCenter + dirUnit)
+			-- Orient arrow toward target with slight downward pitch so top face is clearly visible from 3rd-person camera
+			local lookCF = CFrame.lookAt(arrowCenter, arrowCenter + dirUnit)
+			local tiltCF = lookCF * CFrame.Angles(math.rad(-16), 0, 0)
 
-			-- Update root and all arrow parts relative to arrowCFrame
-			rootPart.CFrame = arrowCFrame
-			shaft.CFrame = arrowCFrame * CFrame.new(0, 0, 0.45)
-			wingL.CFrame = arrowCFrame * CFrame.new(-0.45, 0, -0.2) * CFrame.Angles(0, math.rad(30), 0)
-			wingR.CFrame = arrowCFrame * CFrame.new(0.45, 0, -0.2) * CFrame.Angles(0, math.rad(-30), 0)
-			wingL2.CFrame = arrowCFrame * CFrame.new(-0.35, 0, 0.45) * CFrame.Angles(0, math.rad(30), 0)
-			wingR2.CFrame = arrowCFrame * CFrame.new(0.35, 0, 0.45) * CFrame.Angles(0, math.rad(-30), 0)
-			gem.CFrame = arrowCFrame * CFrame.new(0, 0, -0.9)
+			-- Update root and all arrow parts relative to tiltCF
+			rootPart.CFrame = tiltCF
+			diamondHead.CFrame = tiltCF * CFrame.new(0, 0, -0.6) * CFrame.Angles(0, math.rad(45), 0)
+			coreGem.CFrame = tiltCF * CFrame.new(0, 0, -0.6) * CFrame.Angles(0, math.rad(45), 0)
+			shaft.CFrame = tiltCF * CFrame.new(0, 0, 0.75)
+			tailL.CFrame = tiltCF * CFrame.new(-0.38, 0, 1.5) * CFrame.Angles(0, math.rad(28), 0)
+			tailR.CFrame = tiltCF * CFrame.new(0.38, 0, 1.5) * CFrame.Angles(0, math.rad(-28), 0)
+
+			-- Update ground chevron ahead of player
+			rayParams.FilterDescendantsInstances = {character, arrowModel, beaconModel}
+			local floorRay = workspace:Raycast(playerPos + (dirUnit * 4.2) + Vector3.new(0, 4, 0), Vector3.new(0, -12, 0), rayParams)
+			local floorY = floorRay and (floorRay.Position.Y + 0.08) or (playerPos.Y - 2.92)
+			local floorPos = Vector3.new(playerPos.X + dirUnit.X * 4.2, floorY, playerPos.Z + dirUnit.Z * 4.2)
+			groundChevron.CFrame = CFrame.lookAt(floorPos, floorPos + dirUnit) * CFrame.Angles(0, math.rad(45), 0)
+			groundChevron.Transparency = 0.35 + (math.sin(now * 4.5) * 0.18)
 
 			-- Update real-time distance badge
 			local distMeters = math.max(1, math.floor(horizontalDist / 3))
-			distLabel.Text = ("➔ BOSS GATE  %dm"):format(distMeters)
+			distLabel.Text = ("⚡ BOSS GATE  %dm"):format(distMeters)
 
 			-- Gate Beacon downward chevron bobbing & ring pulse
 			if gateChevron and gateChevron.Parent then
@@ -1183,7 +1189,7 @@ function HUDController.Start()
 		elseif isUnlocked then
 			startBossDirectionGuide()
 			objDesc.TextColor3 = Color3.fromRGB(100, 255, 150)
-			objDesc.Text = "✨ " .. text .. " ➔ FOLLOW ARROW"
+			objDesc.Text = "✨ " .. text .. " [UNLOCKED]"
 			objProgressFill.Size = UDim2.new(1, 0, 1, 0)
 			objProgressFill.BackgroundColor3 = Color3.fromRGB(100, 255, 150)
 			objStroke.Color = Color3.fromRGB(255, 215, 60)
@@ -1481,11 +1487,6 @@ function HUDController.Start()
 	local menuCorner = Instance.new("UICorner")
 	menuCorner.CornerRadius = UDim.new(0, 8)
 	menuCorner.Parent = skillsMenuBtn
-
-	local menuGrad = Instance.new("UIGradient")
-	menuGrad.Rotation = 45
-	menuGrad.Color = ColorSequence.new(Color3.fromRGB(36, 42, 58), Color3.fromRGB(18, 22, 32))
-	menuGrad.Parent = skillsMenuBtn
 
 	local menuStroke = Instance.new("UIStroke")
 	menuStroke.Color = Color3.fromRGB(210, 170, 70)
