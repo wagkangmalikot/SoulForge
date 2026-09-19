@@ -23,12 +23,12 @@ local REMOTE_NAMES = {
 	"ReviveProgress",         -- server -> client: {reviverUserId, downedUserId, progress}
 	"DungeonResult",          -- server -> client: {result = "victory" | "wipe", expEarned, fragmentsEarned, goldEarned}
 	"ShowCharacterCreation",     -- server -> client: tells this client to show the create screen (first-timer, no existing character)
-	"SubmitCharacterCreation",   -- client -> server: no args -- name comes from player.DisplayName, class is always Tank
+	"SubmitCharacterCreation",   -- client -> server: {classId} -- name comes from player.DisplayName
 	"ShowCharacterChoice",       -- server -> client: {level} -- tells this client to show the Load/Create New choice (returning player)
 	"RequestLoadCharacter",      -- client -> server: no args -- spawn as the existing character
-	"RequestCreateNewCharacter", -- client -> server: no args -- reset Character to defaults (keeping DisplayName/HasCreatedCharacter) and spawn
+	"RequestCreateNewCharacter", -- client -> server: {classId} -- reset Character to defaults (keeping DisplayName/HasCreatedCharacter) and spawn
 	"RequestLevelUp",          -- client -> server (no args)
-	"CharacterDataChanged",    -- server -> client: {level, unspentEXP} -- fires on spawn and after each level-up
+	"CharacterDataChanged",    -- server -> client: {level, unspentEXP, classId} -- fires on spawn and after each level-up
 	"WeaponAttack",            -- server -> client: {userId, attackType} -- triggers sword swing / shield bash visuals
 	"RequestUnlockSkill",      -- client -> server: {skillId} -- spends 1 SkillPoint to unlock a skill in the tree
 	"RequestEquipSkill",       -- client -> server: {skillId, slotIndex} -- equips an unlocked skill to slot 1-4
