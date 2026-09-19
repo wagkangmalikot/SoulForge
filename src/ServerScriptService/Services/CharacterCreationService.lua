@@ -136,8 +136,15 @@ local function onSubmitCharacterCreation(player: Player, classId: any)
 	end
 	actionInFlight[player.UserId] = true
 
+	local validatedClassId = validateClassId(classId)
 	profile.Data.Character.Name = player.DisplayName
-	profile.Data.Character.ClassId = validateClassId(classId)
+	profile.Data.Character.ClassId = validatedClassId
+	-- table.clone, not a direct reference -- Classes[validatedClassId].startingSkills must
+	-- stay the same shared table for every player; SkillTreeService later mutates a
+	-- character's own UnlockedSkills/EquippedSkills in place (table.insert), which would
+	-- corrupt that shared class-data table for everyone if it weren't cloned here.
+	profile.Data.Character.UnlockedSkills = table.clone(Classes[validatedClassId].startingSkills)
+	profile.Data.Character.EquippedSkills = table.clone(Classes[validatedClassId].startingSkills)
 	profile.Data.Character.HasCreatedCharacter = true
 
 	loadCharacterAndNotify(player, profile, "after submission")
@@ -175,10 +182,13 @@ local function onRequestCreateNewCharacter(player: Player, classId: any)
 	-- first-timer creation screen instead of the choice screen. Setting
 	-- HasCreatedCharacter is not part of this reset, so that risk doesn't
 	-- apply here.
+	local validatedClassId = validateClassId(classId)
 	profile.Data.Character.Level = 1
 	profile.Data.Character.UnspentEXP = 999999
 	profile.Data.Character.SkillPoints = 50
-	profile.Data.Character.ClassId = validateClassId(classId)
+	profile.Data.Character.ClassId = validatedClassId
+	profile.Data.Character.UnlockedSkills = table.clone(Classes[validatedClassId].startingSkills)
+	profile.Data.Character.EquippedSkills = table.clone(Classes[validatedClassId].startingSkills)
 	profile.Data.Character.Name = player.DisplayName
 
 	loadCharacterAndNotify(player, profile, "after create-new")
