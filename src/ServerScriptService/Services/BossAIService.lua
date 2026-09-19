@@ -1,12 +1,612 @@
 -- src/ServerScriptService/Services/BossAIService.lua
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 
 local Net = require(ReplicatedStorage.Shared.Net)
 local BossAttacks = require(ReplicatedStorage.Shared.Data.BossAttacks)
 local CombatService = require(script.Parent.CombatService)
 
 local BossAIService = {}
+
+local BOSS_AGGRO_RADIUS = 80
+local BOSS_ATTACK_RADIUS = 13.5
+local BOSS_PHASE1_SPEED = 11.5
+local BOSS_PHASE2_SPEED = 14.5
+
+-- ── WORLD-SPACE VISUAL EFFECTS ────────────────────────────────────────────────
+-- All effects are pure BasePart geometry — no external asset IDs required.
+
+-- Returns the actual ground floor Y beneath a position via downward raycast
+local function getGroundY(pos: Vector3, fallbackY: number?): number
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Exclude
+	local ignore = {}
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p.Character then table.insert(ignore, p.Character) end
+	end
+	for _, m in ipairs(workspace:GetChildren()) do
+		if m:IsA("Model") and (string.find(m.Name, "Boss") or string.find(m.Name, "Rockhide") or m:FindFirstChild("Humanoid")) then
+			table.insert(ignore, m)
+		end
+	end
+	rayParams.FilterDescendantsInstances = ignore
+
+	local origin = Vector3.new(pos.X, math.max(pos.Y + 20, 35), pos.Z)
+	local result = workspace:Raycast(origin, Vector3.new(0, -100, 0), rayParams)
+	if result then
+		return result.Position.Y
+	end
+	return fallbackY or 1.0 -- exact dungeon floor level from DungeonMapService
+end
+
+-- Calculates the vertical distance from the boss's PrimaryPart down to the lowest point of any of its BaseParts
+local function getFootOffset(model: Model): number
+	local primary = model.PrimaryPart
+	if not primary then return 6 end
+
+	local minY = math.huge
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") and part.Name ~= "_BossAuraLight" then
+			local cf = part.CFrame
+			local sz = part.Size
+			-- Calculate world-space half height along world Y taking rotation into account
+			local halfY = 0.5 * (
+				math.abs(cf.RightVector.Y) * sz.X +
+				math.abs(cf.UpVector.Y) * sz.Y +
+				math.abs(cf.LookVector.Y) * sz.Z
+			)
+			local bottomY = cf.Position.Y - halfY
+			if bottomY < minY then
+				minY = bottomY
+			end
+		end
+	end
+
+	if minY == math.huge then
+		return 6
+	end
+
+	return primary.Position.Y - minY
+end
+
+-- Spawns a flat neon ring that expands outward and fades over `duration` seconds
+local function spawnShockwaveRing(position: Vector3, startRadius: number, endRadius: number, color: Color3, duration: number, thickness: number)
+	local groundY = getGroundY(position) + 0.15
+	local ring = Instance.new("Part")
+	ring.Name = "BossShockwave"
+	ring.Shape = Enum.PartType.Cylinder
+	local d = startRadius * 2
+	ring.Size = Vector3.new(thickness or 0.25, d, d)
+	ring.Orientation = Vector3.new(0, 0, 90)
+	ring.Position = Vector3.new(position.X, groundY, position.Z)
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.CastShadow = false
+	ring.Material = Enum.Material.Neon
+	ring.Color = color
+	ring.Transparency = 0.55
+	ring.Parent = workspace
+
+	local endD = endRadius * 2
+	TweenService:Create(ring, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = Vector3.new(thickness or 0.25, endD, endD),
+		Transparency = 1,
+	}):Play()
+	task.delay(duration + 0.05, function()
+		if ring and ring.Parent then ring:Destroy() end
+	end)
+	return ring
+end
+
+-- Spawns a flat ground scorch/crater disc that fades out
+local function spawnGroundScorch(position: Vector3, radius: number, color: Color3, duration: number)
+	local groundY = getGroundY(position) + 0.10
+	local disc = Instance.new("Part")
+	disc.Name = "BossScorch"
+	disc.Shape = Enum.PartType.Cylinder
+	local d = radius * 2
+	disc.Size = Vector3.new(0.15, d, d)
+	disc.Orientation = Vector3.new(0, 0, 90)
+	disc.Position = Vector3.new(position.X, groundY, position.Z)
+	disc.Anchored = true
+	disc.CanCollide = false
+	disc.CastShadow = false
+	disc.Material = Enum.Material.Neon
+	disc.Color = color
+	disc.Transparency = 0.65
+	disc.Parent = workspace
+	TweenService:Create(disc, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Transparency = 1,
+	}):Play()
+	task.delay(duration + 0.05, function()
+		if disc and disc.Parent then disc:Destroy() end
+	end)
+	return disc
+end
+
+-- Spawns a rising neon pillar of fire/light
+local function spawnFirePillar(position: Vector3, height: number, color: Color3, duration: number)
+	local groundY = getGroundY(position) + 0.10
+	local pillar = Instance.new("Part")
+	pillar.Name = "BossFirePillar"
+	pillar.Size = Vector3.new(3.5, 0.5, 3.5)
+	pillar.Position = Vector3.new(position.X, groundY, position.Z)
+	pillar.Anchored = true
+	pillar.CanCollide = false
+	pillar.CastShadow = false
+	pillar.Material = Enum.Material.Neon
+	pillar.Color = color
+	pillar.Transparency = 0.10
+	pillar.Parent = workspace
+
+	local pt = Instance.new("PointLight")
+	pt.Color = color
+	pt.Brightness = 6
+	pt.Range = 28
+	pt.Parent = pillar
+
+	-- Rise and fade
+	TweenService:Create(pillar, TweenInfo.new(duration * 0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = Vector3.new(3.5, height, 3.5),
+		Position = Vector3.new(position.X, groundY + height / 2, position.Z),
+		Transparency = 0.4,
+	}):Play()
+	task.delay(duration * 0.7, function()
+		if not (pillar and pillar.Parent) then return end
+		TweenService:Create(pillar, TweenInfo.new(duration * 0.3, Enum.EasingStyle.Linear), {
+			Transparency = 1,
+		}):Play()
+		task.delay(duration * 0.3 + 0.05, function()
+			if pillar and pillar.Parent then pillar:Destroy() end
+		end)
+	end)
+	return pillar
+end
+
+-- Spawns a quick burst orb at a position (charge spark / boulder impact)
+local function spawnBurstOrb(position: Vector3, radius: number, color: Color3, duration: number)
+	local orb = Instance.new("Part")
+	orb.Name = "BossBurstOrb"
+	orb.Shape = Enum.PartType.Ball
+	local sz = radius * 2
+	orb.Size = Vector3.new(sz, sz, sz)
+	orb.Position = position
+	orb.Anchored = true
+	orb.CanCollide = false
+	orb.CastShadow = false
+	orb.Material = Enum.Material.Neon
+	orb.Color = color
+	orb.Transparency = 0.0
+	orb.Parent = workspace
+
+	local lt = Instance.new("PointLight")
+	lt.Color = color
+	lt.Brightness = 5
+	lt.Range = 20
+	lt.Parent = orb
+
+	TweenService:Create(orb, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = Vector3.new(sz * 3, sz * 3, sz * 3),
+		Transparency = 1,
+	}):Play()
+	task.delay(duration + 0.05, function()
+		if orb and orb.Parent then orb:Destroy() end
+	end)
+	return orb
+end
+
+-- Spawns a small footstep dust puff at ground level
+local function spawnFootstepDust(position: Vector3)
+	local groundY = getGroundY(position) + 0.10
+	local dust = Instance.new("Part")
+	dust.Name = "BossFootDust"
+	dust.Shape = Enum.PartType.Cylinder
+	dust.Size = Vector3.new(0.2, 2, 2)
+	dust.Orientation = Vector3.new(0, 0, 90)
+	dust.Position = Vector3.new(position.X, groundY, position.Z)
+	dust.Anchored = true
+	dust.CanCollide = false
+	dust.CastShadow = false
+	dust.Material = Enum.Material.SmoothPlastic
+	dust.Color = Color3.fromRGB(160, 140, 100)
+	dust.Transparency = 0.4
+	dust.Parent = workspace
+	TweenService:Create(dust, TweenInfo.new(0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = Vector3.new(0.2, 8, 8),
+		Transparency = 1,
+	}):Play()
+	task.delay(0.6, function()
+		if dust and dust.Parent then dust:Destroy() end
+	end)
+end
+
+-- ── AUDIO, PHYSICS & WORLD-SPACE COMBAT EFFECTS ──────────────────────────────
+
+-- Plays a 3D positional audio effect safely with volume and pitch adjustments
+local function playSound(name: string, soundId: string, parent: Instance, volume: number?, pitch: number?)
+	pcall(function()
+		local snd = Instance.new("Sound")
+		snd.Name = name
+		snd.SoundId = soundId
+		snd.Volume = volume or 1.0
+		snd.PlaybackSpeed = pitch or 1.0
+		snd.RollOffMaxDistance = 160
+		snd.RollOffMinDistance = 15
+		snd.Parent = parent
+		snd:Play()
+		task.delay(3.5, function()
+			if snd and snd.Parent then snd:Destroy() end
+		end)
+	end)
+end
+
+-- Applies directional physical impulse to knock back players hit by heavy attacks
+local function applyKnockback(player: Player, fromPos: Vector3, force: number, upward: number?)
+	pcall(function()
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+		if root and hum and hum.Health > 0 then
+			local delta = (root.Position - fromPos)
+			local horizontal = Vector3.new(delta.X, 0, delta.Z)
+			local dir = horizontal.Magnitude > 0.5 and horizontal.Unit or Vector3.new(0, 0, 1)
+			root.AssemblyLinearVelocity = dir * force + Vector3.new(0, upward or 18, 0)
+		end
+	end)
+end
+
+-- Spawns a radial ring of jagged earthen rock spikes with custom stone meshes that erupt from the ground
+local function spawnRockSpikes(center: Vector3, count: number, radius: number, duration: number, height: number)
+	for i = 1, count do
+		local angle = (i / count) * math.pi * 2 + (math.random() - 0.5) * 0.35
+		local r = radius * (0.60 + math.random() * 0.40)
+		local spikePos = Vector3.new(center.X + math.cos(angle) * r, 0, center.Z + math.sin(angle) * r)
+		local groundY = getGroundY(spikePos)
+		local spikeHeight = height * (0.75 + math.random() * 0.50)
+		local spikeThickness = math.random(16, 26) / 10
+
+		local spike = Instance.new("Part")
+		spike.Name = "BossRockSpike"
+		spike.Size = Vector3.new(spikeThickness, spikeHeight, spikeThickness)
+		spike.Material = Enum.Material.Rock
+		spike.Color = math.random() > 0.35 and Color3.fromRGB(72, 68, 62) or Color3.fromRGB(150, 65, 20)
+		spike.Anchored = true
+		spike.CanCollide = false
+		spike.CastShadow = true
+
+		local sMesh = Instance.new("SpecialMesh")
+		sMesh.MeshType = Enum.MeshType.FileMesh
+		sMesh.MeshId = "rbxassetid://1290033"
+		sMesh.TextureId = "rbxassetid://1290034"
+		sMesh.Scale = Vector3.new(spikeThickness * 0.9, spikeHeight * 0.38, spikeThickness * 0.9)
+		sMesh.Parent = spike
+
+		local tiltAngleX = math.rad(math.random(-22, 22))
+		local tiltAngleZ = math.rad(math.random(-22, 22))
+		local baseCF = CFrame.new(spikePos.X, groundY - spikeHeight * 0.6, spikePos.Z) * CFrame.Angles(tiltAngleX, math.rad(math.random(0, 360)), tiltAngleZ)
+		spike.CFrame = baseCF
+		spike.Parent = workspace
+
+		-- Erupt upward out of the earth
+		local targetCF = baseCF + Vector3.new(0, spikeHeight * 0.72, 0)
+		TweenService:Create(spike, TweenInfo.new(0.12 + math.random() * 0.05, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			CFrame = targetCF,
+		}):Play()
+
+		task.delay(0.02, function()
+			spawnFootstepDust(Vector3.new(spikePos.X, groundY, spikePos.Z))
+		end)
+
+		-- Sink back down into the earth and clean up
+		task.delay(duration * 0.75, function()
+			if not (spike and spike.Parent) then return end
+			local sinkTween = TweenService:Create(spike, TweenInfo.new(duration * 0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+				CFrame = baseCF,
+				Transparency = 1,
+			})
+			sinkTween:Play()
+			task.delay(duration * 0.25 + 0.05, function()
+				if spike and spike.Parent then spike:Destroy() end
+			end)
+		end)
+	end
+end
+
+-- Spawns realistic 3D shattered rock stones with meshes and particle trails that fly away dynamically in ballistic arcs
+local function spawnFlyingDebris(origin: Vector3, count: number, maxSpread: number, heightMin: number, heightMax: number)
+	local spread = maxSpread or 20
+	local hMin = heightMin or 6
+	local hMax = heightMax or 14
+
+	for i = 1, count do
+		local shard = Instance.new("Part")
+		shard.Name = "FlyingStoneShard"
+		local shardScale = math.random(10, 24) / 10 -- 1.0 to 2.4 studs
+		shard.Size = Vector3.new(shardScale, shardScale, shardScale)
+		shard.Material = Enum.Material.Rock
+		shard.Color = math.random() > 0.4 and Color3.fromRGB(68, 64, 58) or Color3.fromRGB(150, 68, 22)
+		shard.Position = origin + Vector3.new(0, 1.2, 0)
+		shard.Anchored = true
+		shard.CanCollide = false
+		shard.CastShadow = true
+
+		-- Mesh for realistic rock facet structure
+		local sMesh = Instance.new("SpecialMesh")
+		sMesh.MeshType = Enum.MeshType.FileMesh
+		sMesh.MeshId = "rbxassetid://1290033"
+		sMesh.TextureId = "rbxassetid://1290034"
+		sMesh.Scale = Vector3.new(
+			shardScale * (0.8 + math.random() * 0.4),
+			shardScale * (0.8 + math.random() * 0.4),
+			shardScale * (0.8 + math.random() * 0.4)
+		)
+		sMesh.Parent = shard
+		shard.Parent = workspace
+
+		-- Calculate ballistic dispersion trajectory
+		local angle = (i / count) * math.pi * 2 + (math.random() - 0.5) * 0.5
+		local dist = spread * (0.45 + math.random() * 0.55)
+		local peakY = math.random(hMin, hMax)
+		local endPosRaw = origin + Vector3.new(math.cos(angle) * dist, 0, math.sin(angle) * dist)
+		local endFloor = getGroundY(endPosRaw) + (shardScale * 0.3)
+		local finalPos = Vector3.new(endPosRaw.X, endFloor, endPosRaw.Z)
+
+		-- Particle trail on heavier flying rocks
+		if shardScale > 1.3 then
+			local att = Instance.new("Attachment")
+			att.Parent = shard
+			local embers = Instance.new("ParticleEmitter")
+			embers.Name = "ShardTrail"
+			embers.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+			embers.Color = ColorSequence.new(Color3.fromRGB(255, 140, 30))
+			embers.Size = NumberSequence.new(0.6, 0.1)
+			embers.Lifetime = NumberRange.new(0.18, 0.35)
+			embers.Rate = 22
+			embers.Speed = NumberRange.new(2, 6)
+			embers.LightEmission = 1
+			embers.Parent = att
+		end
+
+		task.spawn(function()
+			local flyDur = 0.40 + math.random() * 0.25
+			local flyStart = os.clock()
+			local rotSpeed = Vector3.new(math.random(-24, 24), math.random(-24, 24), math.random(-24, 24))
+			local curRot = Vector3.new(math.random(0, 360), math.random(0, 360), math.random(0, 360))
+
+			while (os.clock() - flyStart) < flyDur do
+				local alpha = math.clamp((os.clock() - flyStart) / flyDur, 0, 1)
+				local arcY = 4 * peakY * alpha * (1 - alpha)
+				local currentP = (origin + Vector3.new(0, 1.2, 0)):Lerp(finalPos, alpha) + Vector3.new(0, arcY, 0)
+				curRot = curRot + rotSpeed * 0.03
+				if shard and shard.Parent then
+					shard.CFrame = CFrame.new(currentP) * CFrame.Angles(math.rad(curRot.X), math.rad(curRot.Y), math.rad(curRot.Z))
+				else
+					break
+				end
+				task.wait(0.02)
+			end
+
+			-- Land on ground with impact dust
+			if shard and shard.Parent then
+				shard.Position = finalPos
+				spawnFootstepDust(finalPos)
+
+				task.wait(0.6 + math.random() * 0.5)
+				if shard and shard.Parent then
+					local fadeTween = TweenService:Create(shard, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+						Transparency = 1,
+						Position = finalPos - Vector3.new(0, 0.8, 0),
+					})
+					fadeTween:Play()
+					task.delay(0.38, function()
+						if shard and shard.Parent then shard:Destroy() end
+					end)
+				end
+			end
+		end)
+	end
+end
+
+-- Spawns a glowing neon slash crescent sweeping horizontally in front of the boss
+local function spawnCleaveArc(originPos: Vector3, forwardDir: Vector3, radius: number, duration: number)
+	local groundY = getGroundY(originPos)
+	local dir = (Vector3.new(forwardDir.X, 0, forwardDir.Z)).Magnitude > 0.1 and (Vector3.new(forwardDir.X, 0, forwardDir.Z)).Unit or Vector3.new(0, 0, 1)
+	local arcPos = originPos + dir * (radius * 0.45)
+	local arcCenter = Vector3.new(arcPos.X, groundY + 3.5, arcPos.Z)
+
+	local blade = Instance.new("Part")
+	blade.Name = "BossCleaveBlade"
+	blade.Shape = Enum.PartType.Cylinder
+	local diameter = radius * 1.8
+	blade.Size = Vector3.new(0.35, diameter, diameter)
+	blade.CFrame = CFrame.lookAt(arcCenter, arcCenter + dir) * CFrame.Angles(0, 0, math.rad(90))
+	blade.Material = Enum.Material.Neon
+	blade.Color = Color3.fromRGB(255, 110, 30)
+	blade.Transparency = 0.35
+	blade.Anchored = true
+	blade.CanCollide = false
+	blade.CastShadow = false
+	blade.Parent = workspace
+
+	local lt = Instance.new("PointLight")
+	lt.Color = Color3.fromRGB(255, 120, 30)
+	lt.Brightness = 4
+	lt.Range = radius * 1.4
+	lt.Parent = blade
+
+	TweenService:Create(blade, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = Vector3.new(0.35, diameter * 1.35, diameter * 1.35),
+		CFrame = blade.CFrame + dir * 6,
+		Transparency = 1,
+	}):Play()
+
+	task.delay(duration + 0.05, function()
+		if blade and blade.Parent then blade:Destroy() end
+	end)
+end
+
+-- Spawns a physical 3D rock boulder with high-detail rock mesh and blazing smoke trail that arcs through the air and detonates
+local function hurlBoulder(startPos: Vector3, targetPos: Vector3, duration: number, onImpact: () -> ())
+	local boulder = Instance.new("Part")
+	boulder.Name = "BossBoulder"
+	boulder.Size = Vector3.new(4.6, 4.6, 4.6)
+	boulder.Material = Enum.Material.Rock
+	boulder.Color = Color3.fromRGB(68, 62, 56)
+	boulder.Position = startPos
+	boulder.Anchored = true
+	boulder.CanCollide = false
+	boulder.CastShadow = true
+
+	local bMesh = Instance.new("SpecialMesh")
+	bMesh.MeshType = Enum.MeshType.FileMesh
+	bMesh.MeshId = "rbxassetid://1290033"
+	bMesh.TextureId = "rbxassetid://1290034"
+	bMesh.Scale = Vector3.new(4.4, 4.4, 4.4)
+	bMesh.Parent = boulder
+	boulder.Parent = workspace
+
+	-- Fiery incandescent core
+	local core = Instance.new("Part")
+	core.Name = "BoulderCore"
+	core.Shape = Enum.PartType.Ball
+	core.Size = Vector3.new(2.8, 2.8, 2.8)
+	core.Material = Enum.Material.Neon
+	core.Color = Color3.fromRGB(255, 90, 20)
+	core.Transparency = 0.35
+	core.Position = startPos
+	core.Anchored = true
+	core.CanCollide = false
+	core.Parent = boulder
+
+	-- Light source
+	local lt = Instance.new("PointLight")
+	lt.Color = Color3.fromRGB(255, 110, 30)
+	lt.Brightness = 5.5
+	lt.Range = 22
+	lt.Parent = boulder
+
+	-- Trailing smoke and fire particle emitters
+	local att = Instance.new("Attachment")
+	att.Name = "BoulderTrailAtt"
+	att.Parent = boulder
+
+	local smoke = Instance.new("ParticleEmitter")
+	smoke.Name = "SmokeTrail"
+	smoke.Texture = "rbxasset://textures/particles/smoke_main.dds"
+	smoke.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 120, 30)),
+		ColorSequenceKeypoint.new(0.3, Color3.fromRGB(180, 70, 20)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(42, 38, 36)),
+	})
+	smoke.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1.8),
+		NumberSequenceKeypoint.new(1, 4.5),
+	})
+	smoke.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.25),
+		NumberSequenceKeypoint.new(1, 1.0),
+	})
+	smoke.Lifetime = NumberRange.new(0.4, 0.65)
+	smoke.Rate = 55
+	smoke.Speed = NumberRange.new(2, 6)
+	smoke.SpreadAngle = Vector2.new(15, 15)
+	smoke.Parent = att
+
+	local embers = Instance.new("ParticleEmitter")
+	embers.Name = "Embers"
+	embers.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	embers.Color = ColorSequence.new(Color3.fromRGB(255, 160, 40))
+	embers.Size = NumberSequence.new(0.8, 0.2)
+	embers.Lifetime = NumberRange.new(0.3, 0.55)
+	embers.Rate = 45
+	embers.Speed = NumberRange.new(6, 14)
+	embers.LightEmission = 1
+	embers.Parent = att
+
+	local startTime = os.clock()
+	local apexHeight = math.max(9, (targetPos - startPos).Magnitude * 0.38)
+	local curRot = Vector3.new(math.random(0, 360), math.random(0, 360), math.random(0, 360))
+	local rotSpeed = Vector3.new(22, 35, 18)
+
+	task.spawn(function()
+		while (os.clock() - startTime) < duration do
+			local alpha = math.clamp((os.clock() - startTime) / duration, 0, 1)
+			local arcY = 4 * apexHeight * alpha * (1 - alpha)
+			local currentPos = startPos:Lerp(targetPos, alpha) + Vector3.new(0, arcY, 0)
+			curRot = curRot + rotSpeed * 0.03
+			if boulder and boulder.Parent then
+				boulder.CFrame = CFrame.new(currentPos) * CFrame.Angles(math.rad(curRot.X), math.rad(curRot.Y), math.rad(curRot.Z))
+				core.Position = currentPos
+			end
+			task.wait(0.02)
+		end
+
+		if boulder and boulder.Parent then
+			boulder:Destroy()
+		end
+
+		-- Detonation: 18-22 meshed rock shards violently blasted outward
+		spawnFlyingDebris(targetPos, math.random(18, 22), 26, 8, 16)
+
+		onImpact()
+	end)
+end
+
+-- ── PROCEDURAL JOINT & BODY POSE ANIMATORS ───────────────────────────────────
+
+local function poseJoint(joint: Motor6D?, origC0: CFrame?, offset: CFrame, dur: number)
+	if joint and origC0 then
+		TweenService:Create(joint, TweenInfo.new(dur, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			C0 = origC0 * offset,
+		}):Play()
+	end
+end
+
+local function poseArms(joints, leftRot: CFrame, rightRot: CFrame, dur: number)
+	poseJoint(joints.leftShoulder, joints.origLeftShoulderC0, leftRot, dur)
+	poseJoint(joints.rightShoulder, joints.origRightShoulderC0, rightRot, dur)
+end
+
+local function poseLegs(joints, leftRot: CFrame, rightRot: CFrame, dur: number)
+	poseJoint(joints.leftHip, joints.origLeftHipC0, leftRot, dur)
+	poseJoint(joints.rightHip, joints.origRightHipC0, rightRot, dur)
+end
+
+local function poseNeck(joints, rot: CFrame, dur: number)
+	poseJoint(joints.neck, joints.origNeckC0, rot, dur)
+end
+
+local function poseTorso(joints, rot: CFrame, dur: number)
+	if joints.rootJoint and joints.origRootJointC0 then
+		poseJoint(joints.rootJoint, joints.origRootJointC0, rot, dur)
+	end
+end
+
+local function resetAllJoints(joints, dur: number)
+	poseArms(joints, CFrame.new(), CFrame.new(), dur)
+	poseLegs(joints, CFrame.new(), CFrame.new(), dur)
+	poseNeck(joints, CFrame.new(), dur)
+	poseTorso(joints, CFrame.new(), dur)
+end
+
+-- Attaches a temporary coloured PointLight to the boss torso (auto-removes after duration)
+local function attachBossLight(torso: BasePart, color: Color3, brightness: number, range: number, duration: number): PointLight
+	local existing = torso:FindFirstChild("_BossAuraLight")
+	if existing then existing:Destroy() end
+	local lt = Instance.new("PointLight")
+	lt.Name = "_BossAuraLight"
+	lt.Color = color
+	lt.Brightness = brightness
+	lt.Range = range
+	lt.Parent = torso
+	if duration > 0 then
+		task.delay(duration, function()
+			if lt and lt.Parent then lt:Destroy() end
+		end)
+	end
+	return lt
+end
 
 -- Returns the phase whose hpThreshold applies at the given health, plus its 1-based index
 -- in bossData.phases (used to populate BossStateChanged's documented phaseIndex argument).
@@ -23,16 +623,302 @@ local function pickPhase(bossData, currentHealth: number, maxHealth: number)
 	return chosen, chosenIndex
 end
 
--- CombatService.onCastSkill's range check reads `enemy.model.PrimaryPart.Position` for
--- whichever enemy is currently registered under a given targetId (see CombatService.lua),
--- which requires `model` to be a Model with PrimaryPart set — a
--- bare Part has no PrimaryPart property. Boss art assets live directly in the published
--- place under ReplicatedStorage.Assets (not Rojo-managed source, same as the hub's
--- RockhidePortal/LevelUpShrine scenery Parts -- binary content isn't practical to keep
--- in git this way), named "<bossId>BossTemplate", each already a Model with its
--- PrimaryPart set to the correct height for the telegraph ground-projection math in the
--- attack loop below to keep working unmodified. Falls back to a plain placeholder Part
--- for any boss that doesn't have a template yet, so this never hard-fails.
+-- Finds a limb part using keyword matching
+local function findLimbPart(model: Model, keywords: {string}): BasePart?
+	for _, desc in model:GetDescendants() do
+		if desc:IsA("BasePart") then
+			local cleanName = string.lower(desc.Name):gsub("[%s_%-]", "")
+			for _, kw in keywords do
+				if string.find(cleanName, kw) then
+					return desc
+				end
+			end
+		end
+	end
+	return nil
+end
+
+-- Connects a limb part to parentPart with a Motor6D joint while preserving its rest transform
+-- Uses the true joint socket pivot (top of limb) so rotating C0 pivots naturally without detaching
+local function getOrCreateMotor6D(limb: BasePart?, parentPart: BasePart, jointName: string, isArm: boolean?): Motor6D?
+	if not limb or limb == parentPart then
+		return nil
+	end
+
+	-- Check if existing joint connects parentPart and limb
+	for _, desc in limb.Parent:GetDescendants() do
+		if desc:IsA("Motor6D") and ((desc.Part0 == parentPart and desc.Part1 == limb) or (desc.Part0 == limb and desc.Part1 == parentPart)) then
+			if desc.Part0 ~= parentPart then
+				desc.Part0 = parentPart
+				desc.Part1 = limb
+			end
+			return desc
+		end
+	end
+
+	-- Remove any rigid weld constraints on limb so it can rotate
+	for _, child in limb:GetChildren() do
+		if child:IsA("WeldConstraint") or child:IsA("Weld") then
+			child:Destroy()
+		end
+	end
+	for _, child in parentPart:GetChildren() do
+		if (child:IsA("WeldConstraint") or child:IsA("Weld")) and (child.Part0 == limb or child.Part1 == limb) then
+			child:Destroy()
+		end
+	end
+
+	local motor = Instance.new("Motor6D")
+	motor.Name = jointName
+	motor.Part0 = parentPart
+	motor.Part1 = limb
+
+	-- Calculate the true socket pivot:
+	-- For an arm, the shoulder socket is at the TOP of the arm (facing torso).
+	-- Using this socket pivot guarantees the arm rotates around the shoulder without translating away!
+	local limbRelToTorso = parentPart.CFrame:PointToObjectSpace(limb.Position)
+	local topY = limb.Size.Y * 0.42
+	local inwardX = (limbRelToTorso.X < 0) and (limb.Size.X * 0.25) or (-limb.Size.X * 0.25)
+	local pivotOffsetInLimb = isArm and Vector3.new(inwardX, topY, 0) or Vector3.new(0, topY, 0)
+	local pivotWorldCFrame = limb.CFrame * CFrame.new(pivotOffsetInLimb)
+
+	motor.C0 = parentPart.CFrame:ToObjectSpace(pivotWorldCFrame)
+	motor.C1 = CFrame.new(pivotOffsetInLimb)
+	motor.Parent = parentPart
+	return motor
+end
+
+-- Auto-rigs and locks model integrity:
+-- 1. Classifies limbs (arms, legs, head, torso) geometrically and by keywords
+-- 2. Connects limbs via Motor6D joints with true shoulder/hip pivot sockets
+-- 3. Welds limb-specific subparts (forearm, hand, claws, armor) to their parent limb, NOT torso
+-- 4. Disables Humanoid death/ragdoll logic so the head never disappears
+local function ensureModelIntegrityAndRig(model: Model)
+	local primary = model.PrimaryPart
+	if not primary then
+		primary = model:FindFirstChild("HumanoidRootPart")
+			or model:FindFirstChild("Torso")
+			or model:FindFirstChild("UpperTorso")
+			or model:FindFirstChild("Body")
+			or model:FindFirstChildWhichIsA("BasePart")
+		model.PrimaryPart = primary
+	end
+	if not primary then
+		return nil, {}
+	end
+
+	-- Ensure Humanoid exists with self-destruct behaviors disabled
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		humanoid = Instance.new("Humanoid")
+		humanoid.Parent = model
+	end
+	humanoid.RequiresNeck = false
+	humanoid.BreakJointsOnDeath = false
+	humanoid.Health = 10000000
+	humanoid.MaxHealth = 10000000
+	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+	humanoid.NameDisplayDistance = 0
+	humanoid.HealthDisplayDistance = 0
+	pcall(function()
+		humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+		humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+		humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+	end)
+
+	local torso = findLimbPart(model, {"torso", "uppertorso", "lowertorso", "body", "chest", "root"})
+		or primary
+
+	-- Classify limbs
+	local leftArm = findLimbPart(model, {"leftarm", "larm", "leftupperarm", "leftforearm", "leftcrystal", "lefthand", "leftwrist"})
+	local rightArm = findLimbPart(model, {"rightarm", "rarm", "rightupperarm", "rightforearm", "rightcrystal", "righthand", "rightwrist"})
+	local leftLeg = findLimbPart(model, {"leftleg", "lleg", "leftupperleg", "leftthigh", "leftfoot", "leftshin"})
+	local rightLeg = findLimbPart(model, {"rightleg", "rleg", "rightupperleg", "rightthigh", "rightfoot", "rightshin"})
+	local head = findLimbPart(model, {"head", "skull", "face", "horn", "horns"})
+
+	-- Geometric classification fallback
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") and part ~= torso and part ~= primary then
+			local relPos = torso.CFrame:PointToObjectSpace(part.Position)
+			local name = string.lower(part.Name)
+			if string.find(name, "arm") or string.find(name, "hand") or string.find(name, "crystal") then
+				if relPos.X < -0.3 and not leftArm then
+					leftArm = part
+				elseif relPos.X > 0.3 and not rightArm then
+					rightArm = part
+				end
+			elseif string.find(name, "leg") or string.find(name, "foot") then
+				if relPos.X < -0.2 and not leftLeg then
+					leftLeg = part
+				elseif relPos.X > 0.2 and not rightLeg then
+					rightLeg = part
+				end
+			end
+		end
+	end
+
+	-- Connect limbs with Motor6D joints using true socket pivots
+	local leftShoulder = getOrCreateMotor6D(leftArm, torso, "LeftShoulder", true)
+	local rightShoulder = getOrCreateMotor6D(rightArm, torso, "RightShoulder", true)
+	local leftHip = getOrCreateMotor6D(leftLeg, torso, "LeftHip", false)
+	local rightHip = getOrCreateMotor6D(rightLeg, torso, "RightHip", false)
+	local neck = getOrCreateMotor6D(head, torso, "Neck", false)
+
+	local rootJoint: Motor6D? = nil
+	if primary ~= torso then
+		rootJoint = getOrCreateMotor6D(torso, primary, "RootJoint", false)
+	end
+
+	local jointed = {
+		[primary] = true,
+		[torso] = true,
+	}
+	if leftArm then jointed[leftArm] = true end
+	if rightArm then jointed[rightArm] = true end
+	if leftLeg then jointed[leftLeg] = true end
+	if rightLeg then jointed[rightLeg] = true end
+	if head then jointed[head] = true end
+
+	-- Unanchor all animated limbs and weld sub-parts to their proper parent limb
+	-- (so forearms/hands/crystals move with the arm rather than being pinned to the torso)
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") and part ~= primary then
+			part.Anchored = false
+			part.CanCollide = false
+			part.Massless = true
+
+			if not jointed[part] then
+				local targetLimb = torso
+				local pName = string.lower(part.Name)
+				local relPos = torso.CFrame:PointToObjectSpace(part.Position)
+
+				local isLeftName = string.find(pName, "left") or string.find(pName, "l_") or string.sub(pName, 1, 1) == "l"
+				local isRightName = string.find(pName, "right") or string.find(pName, "r_") or string.sub(pName, 1, 1) == "r"
+				local isArmName = string.find(pName, "arm") or string.find(pName, "hand") or string.find(pName, "wrist") or string.find(pName, "claw") or string.find(pName, "crystal") or string.find(pName, "shoulder") or string.find(pName, "finger") or string.find(pName, "forearm") or string.find(pName, "bicep")
+				local isLegName = string.find(pName, "leg") or string.find(pName, "foot") or string.find(pName, "thigh") or string.find(pName, "shin") or string.find(pName, "knee") or string.find(pName, "calf") or string.find(pName, "toe")
+				local isHeadName = string.find(pName, "head") or string.find(pName, "skull") or string.find(pName, "horn") or string.find(pName, "face") or string.find(pName, "jaw") or string.find(pName, "eye") or string.find(pName, "teeth") or string.find(pName, "ear")
+
+				if leftArm and (isLeftName and isArmName or (relPos.X < -0.6 and relPos.Y > -1.5 and not isLegName)) then
+					targetLimb = leftArm
+				elseif rightArm and (isRightName and isArmName or (relPos.X > 0.6 and relPos.Y > -1.5 and not isLegName)) then
+					targetLimb = rightArm
+				elseif leftLeg and (isLeftName and isLegName or (relPos.X < -0.2 and relPos.Y <= -1.5)) then
+					targetLimb = leftLeg
+				elseif rightLeg and (isRightName and isLegName or (relPos.X > 0.2 and relPos.Y <= -1.5)) then
+					targetLimb = rightLeg
+				elseif head and (isHeadName or relPos.Y > (torso.Size.Y * 0.40)) then
+					targetLimb = head
+				end
+
+				local weld = Instance.new("WeldConstraint")
+				weld.Name = "IntegrityWeld_" .. part.Name
+				weld.Part0 = targetLimb
+				weld.Part1 = part
+				weld.Parent = targetLimb
+			end
+		end
+	end
+
+	primary.Anchored = true
+	primary.CanCollide = true
+
+	local joints = {
+		torso = torso,
+		leftShoulder = leftShoulder,
+		rightShoulder = rightShoulder,
+		leftHip = leftHip,
+		rightHip = rightHip,
+		neck = neck,
+		rootJoint = rootJoint,
+		origLeftShoulderC0 = leftShoulder and leftShoulder.C0,
+		origRightShoulderC0 = rightShoulder and rightShoulder.C0,
+		origLeftHipC0 = leftHip and leftHip.C0,
+		origRightHipC0 = rightHip and rightHip.C0,
+		origNeckC0 = neck and neck.C0,
+		origRootJointC0 = rootJoint and rootJoint.C0,
+	}
+
+	return primary, joints
+end
+
+-- Sets up walking and attack animations if authored, falling back to standard IDs
+local function setupBossAnimations(model: Model): (AnimationTrack?, AnimationTrack?)
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return nil, nil
+	end
+
+	local animator = humanoid:FindFirstChildOfClass("Animator")
+	if not animator then
+		animator = Instance.new("Animator")
+		animator.Parent = humanoid
+	end
+
+	local walkAnim: Animation? = nil
+	local attackAnim: Animation? = nil
+
+	for _, desc in model:GetDescendants() do
+		if desc:IsA("Animation") then
+			local lower = string.lower(desc.Name)
+			if string.find(lower, "walk") or string.find(lower, "run") or string.find(lower, "move") then
+				walkAnim = desc
+			elseif string.find(lower, "attack") or string.find(lower, "slam") or string.find(lower, "slash") or string.find(lower, "pound") then
+				attackAnim = desc
+			end
+		end
+	end
+
+	local assets = ReplicatedStorage:FindFirstChild("Assets")
+	if assets then
+		for _, desc in assets:GetDescendants() do
+			if desc:IsA("Animation") then
+				local lower = string.lower(desc.Name)
+				if not walkAnim and (string.find(lower, "bosswalk") or string.find(lower, "walk")) then
+					walkAnim = desc
+				elseif not attackAnim and (string.find(lower, "bossattack") or string.find(lower, "slam")) then
+					attackAnim = desc
+				end
+			end
+		end
+	end
+
+	local isR15 = model:FindFirstChild("UpperTorso") ~= nil
+		or model:FindFirstChild("LeftUpperArm") ~= nil
+		or (humanoid.RigType == Enum.HumanoidRigType.R15)
+
+	local defaultWalkId = isR15 and "rbxassetid://507777826" or "rbxassetid://180426353"
+
+	if not walkAnim then
+		walkAnim = Instance.new("Animation")
+		walkAnim.Name = "BossWalkAnim"
+		walkAnim.AnimationId = defaultWalkId
+	end
+
+	local walkTrack: AnimationTrack? = nil
+	local attackTrack: AnimationTrack? = nil
+
+	pcall(function()
+		if walkAnim then
+			walkTrack = animator:LoadAnimation(walkAnim)
+			if walkTrack then
+				walkTrack.Priority = Enum.AnimationPriority.Movement
+				walkTrack.Looped = true
+			end
+		end
+		if attackAnim then
+			attackTrack = animator:LoadAnimation(attackAnim)
+			if attackTrack then
+				attackTrack.Priority = Enum.AnimationPriority.Action4
+				attackTrack.Looped = false
+			end
+		end
+	end)
+
+	return walkTrack, attackTrack
+end
+
+-- Boss art assets live under ReplicatedStorage.Assets
 local function createBossModel(bossId: string, spawnCFrame: CFrame): Model
 	local assets = ReplicatedStorage:FindFirstChild("Assets")
 	local template = assets and assets:FindFirstChild(bossId .. "BossTemplate")
@@ -41,7 +927,6 @@ local function createBossModel(bossId: string, spawnCFrame: CFrame): Model
 	if template then
 		model = template:Clone()
 		model.Name = bossId
-		model:PivotTo(spawnCFrame)
 	else
 		model = Instance.new("Model")
 		model.Name = bossId
@@ -49,27 +934,89 @@ local function createBossModel(bossId: string, spawnCFrame: CFrame): Model
 		local torso = Instance.new("Part")
 		torso.Name = "Torso"
 		torso.Size = Vector3.new(6, 10, 6)
-		torso.Anchored = true
-		torso.CFrame = spawnCFrame
+		torso.Color = Color3.fromRGB(80, 78, 75)
 		torso.Parent = model
 
 		model.PrimaryPart = torso
 	end
 
+	model:PivotTo(spawnCFrame)
 	CollectionService:AddTag(model, "Enemy")
 	model.Parent = workspace
 
 	return model
 end
 
-function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (() -> ())?)
+function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (() -> ())?, onAggro: (() -> ())?)
 	local bossData = require(ReplicatedStorage.Shared.Data.Bosses[bossId])
 
 	local model = createBossModel(bossId, spawnCFrame)
+	local primary, joints = ensureModelIntegrityAndRig(model)
+	local walkTrack, attackTrack = setupBossAnimations(model)
+
+	-- Calculate dynamic vertical distance from PrimaryPart to bottom of feet
+	local footOffset = getFootOffset(model)
+	local spawnFloorY = getGroundY(spawnCFrame.Position)
+	local adjustedSpawnPos = Vector3.new(spawnCFrame.X, spawnFloorY + footOffset, spawnCFrame.Z)
+	local adjustedCFrame = CFrame.new(adjustedSpawnPos) * spawnCFrame.Rotation
+	model:PivotTo(adjustedCFrame)
+	if primary then
+		primary.CFrame = adjustedCFrame
+	end
 
 	local currentHealth = bossData.maxHealth
 	local alive = true
+	local inCombat = false
+	local targetPlayer: Player? = nil
+	local aggroTriggered = false
 	local firedPhaseTransitions = {}
+
+	-- Cache all colorable parts once for O(1) flash hit (avoids GetDescendants every attack)
+	local _flashParts = {}
+	local _flashHitCount = 0
+	local function refreshFlashParts()
+		_flashParts = {}
+		for _, part in model:GetDescendants() do
+			if part:IsA("BasePart") and part.Material ~= Enum.Material.Neon then
+				_flashParts[#_flashParts + 1] = { part = part, orig = part.Color }
+			end
+		end
+	end
+	refreshFlashParts()
+
+	local function flashHit()
+		_flashHitCount += 1
+		-- Only flash every 2nd hit to reduce per-frame cost
+		if _flashHitCount % 2 ~= 1 then return end
+		for _, entry in _flashParts do
+			local part = entry.part
+			if part and part.Parent then
+				part.Color = Color3.fromRGB(255, 80, 70)
+				task.delay(0.10, function()
+					if part and part.Parent then
+						part.Color = entry.orig
+					end
+				end)
+			end
+		end
+	end
+
+	local function triggerAggro(player: Player?)
+		if inCombat and aggroTriggered then
+			return
+		end
+		inCombat = true
+		aggroTriggered = true
+		if player then
+			targetPlayer = player
+		end
+		if onAggro then
+			onAggro()
+		end
+
+		local _, phaseIndex = pickPhase(bossData, currentHealth, bossData.maxHealth)
+		Net.Get("BossStateChanged"):FireAllClients(bossId, phaseIndex, currentHealth, bossData.maxHealth)
+	end
 
 	local handle = {
 		model = model,
@@ -77,30 +1024,122 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 		maxHealth = bossData.maxHealth,
 	}
 
-	-- Second parameter is unused here (only trash mobs need to know who
-	-- landed the killing blow, to award its EXP trickle) -- kept for
-	-- interface parity so CombatService.onCastSkill/onCastNormalAttack can
-	-- call any registered enemy's onDamaged the same way regardless of which
-	-- kind of enemy it is.
-	function handle.onDamaged(amount: number, _attackingPlayer: Player?)
+	function handle.onDamaged(amount: number, attackingPlayer: Player?)
 		if not alive then
 			return
 		end
 		currentHealth = math.max(0, currentHealth - amount)
 		handle.currentHealth = currentHealth
+		flashHit()
+
+		triggerAggro(attackingPlayer)
+
 		local _, phaseIndex = pickPhase(bossData, currentHealth, bossData.maxHealth)
 		Net.Get("BossStateChanged"):FireAllClients(bossId, phaseIndex, currentHealth, bossData.maxHealth)
+
 		if currentHealth <= 0 then
 			alive = false
+			Net.Get("BossStateChanged"):FireAllClients(bossId, 0, 0, bossData.maxHealth)
+		end
+	end
+
+	function handle.onTaunted(player: Player)
+		if alive then
+			targetPlayer = player
+			triggerAggro(player)
 		end
 	end
 
 	CombatService.RegisterEnemy(bossId, handle)
 
-	task.spawn(function()
-		while alive do
-			local phase = pickPhase(bossData, currentHealth, bossData.maxHealth)
+	-- ── PROCEDURAL GAIT ANIMATOR ──────────────────────────────────────────
+	local isWalking = false
+	local isAttacking = false
+	local walkCycle = 0
+	local lastFootDustTime = 0
 
+	-- Persistent ambient aura light on the boss torso
+	local auraLight = attachBossLight(joints.torso or primary, Color3.fromRGB(200, 60, 20), 2.5, 22, -1)
+
+	task.spawn(function()
+		while alive and model.Parent do
+			task.wait(0.033)
+			if not alive or not model.Parent then
+				break
+			end
+
+			if isWalking and not isAttacking then
+				walkCycle = (walkCycle + 0.30) % (2 * math.pi)
+				local legAngle = math.sin(walkCycle) * math.rad(32)
+				local armAngle = -legAngle * 0.75
+
+				if joints.leftHip and joints.origLeftHipC0 then
+					joints.leftHip.C0 = joints.origLeftHipC0 * CFrame.Angles(legAngle, 0, 0)
+				end
+				if joints.rightHip and joints.origRightHipC0 then
+					joints.rightHip.C0 = joints.origRightHipC0 * CFrame.Angles(-legAngle, 0, 0)
+				end
+				if joints.leftShoulder and joints.origLeftShoulderC0 then
+					joints.leftShoulder.C0 = joints.origLeftShoulderC0 * CFrame.Angles(armAngle, 0, 0)
+				end
+				if joints.rightShoulder and joints.origRightShoulderC0 then
+					joints.rightShoulder.C0 = joints.origRightShoulderC0 * CFrame.Angles(-armAngle, 0, 0)
+				end
+
+				-- Footstep dust: spawn a puff at each foot-strike (when legAngle crosses zero)
+				local now = os.clock()
+				if math.abs(math.sin(walkCycle)) < 0.12 and (now - lastFootDustTime) > 0.38 and primary then
+					lastFootDustTime = now
+					local footPos = primary.Position - Vector3.new(0, footOffset, 0)
+					spawnFootstepDust(footPos)
+					-- Pulse aura light briefly brighter on each footstep
+					if auraLight and auraLight.Parent then
+						auraLight.Brightness = 6
+						task.delay(0.15, function()
+							if auraLight and auraLight.Parent then
+								auraLight.Brightness = 2.5
+							end
+						end)
+					end
+				end
+			elseif not isAttacking then
+				if joints.leftHip and joints.origLeftHipC0 and joints.leftHip.C0 ~= joints.origLeftHipC0 then
+					joints.leftHip.C0 = joints.origLeftHipC0
+				end
+				if joints.rightHip and joints.origRightHipC0 and joints.rightHip.C0 ~= joints.origRightHipC0 then
+					joints.rightHip.C0 = joints.origRightHipC0
+				end
+				if joints.leftShoulder and joints.origLeftShoulderC0 and joints.leftShoulder.C0 ~= joints.origLeftShoulderC0 then
+					joints.leftShoulder.C0 = joints.origLeftShoulderC0
+				end
+				if joints.rightShoulder and joints.origRightShoulderC0 and joints.rightShoulder.C0 ~= joints.origRightShoulderC0 then
+					joints.rightShoulder.C0 = joints.origRightShoulderC0
+				end
+				if joints.neck and joints.origNeckC0 and joints.neck.C0 ~= joints.origNeckC0 then
+					joints.neck.C0 = joints.origNeckC0
+				end
+				if joints.rootJoint and joints.origRootJointC0 and joints.rootJoint.C0 ~= joints.origRootJointC0 then
+					joints.rootJoint.C0 = joints.origRootJointC0
+				end
+			end
+		end
+	end)
+
+	-- ── 60 FPS COMBAT & PURSUIT AI LOOP ────────────────────────────────────
+	task.spawn(function()
+		local currentTween: Tween? = nil
+		local lastAttackTime = os.clock()
+
+		while alive do
+			task.wait(0.20)
+			if not alive or not model.Parent or not model.PrimaryPart then
+				break
+			end
+
+			local phase, phaseIndex = pickPhase(bossData, currentHealth, bossData.maxHealth)
+			local moveSpeed = (phaseIndex > 1) and BOSS_PHASE2_SPEED or BOSS_PHASE1_SPEED
+
+			-- Phase transition: dramatic visual + world effects + screen shake
 			if not firedPhaseTransitions[phase.hpThreshold] and phase.hpThreshold < 1.0 then
 				firedPhaseTransitions[phase.hpThreshold] = true
 				local transition
@@ -111,42 +1150,685 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 					end
 				end
 				if transition then
+					isWalking = false
+					if walkTrack and walkTrack.IsPlaying then
+						walkTrack:Stop(0.2)
+					end
+					if currentTween then
+						currentTween:Cancel()
+					end
+
+					local tPos = model.PrimaryPart.Position
+					local floorY = tPos.Y - model.PrimaryPart.Size.Y / 2
+
+					-- Phase 3 enrage gets deeper crimson, Phase 2 gets orange
+					local isEnragePhase = phase.hpThreshold <= 0.25
+					local pillarColor = isEnragePhase
+						and Color3.fromRGB(255, 30, 10)
+						or Color3.fromRGB(255, 140, 20)
+					local ringColor = isEnragePhase
+						and Color3.fromRGB(255, 60, 20)
+						or Color3.fromRGB(255, 180, 40)
+
+					-- Flash boss body
+					for _, entry in _flashParts do
+						if entry.part and entry.part.Parent then
+							entry.part.Color = pillarColor
+						end
+					end
+
+					-- Upgrade aura light color for new phase
+					if auraLight and auraLight.Parent then
+						auraLight.Color = pillarColor
+						auraLight.Brightness = 10
+						auraLight.Range = 40
+					end
+
+					-- Fire pillar ring: 6 pillars radiating outward
+					local pillarHeight = isEnragePhase and 28 or 20
+					for i = 1, 6 do
+						local angle = (i / 6) * 2 * math.pi
+						local offset = Vector3.new(math.cos(angle) * 7, 0, math.sin(angle) * 7)
+						task.delay((i - 1) * 0.07, function()
+							if alive then
+								spawnFirePillar(
+									Vector3.new(tPos.X + offset.X, floorY, tPos.Z + offset.Z),
+									pillarHeight, pillarColor,
+									transition.duration * 0.9
+								)
+							end
+						end)
+					end
+
+					-- Central burst orb
+					spawnBurstOrb(
+						Vector3.new(tPos.X, tPos.Y, tPos.Z),
+						isEnragePhase and 6 or 4, pillarColor, 0.6
+					)
+
+					-- Expanding shockwave ring at ground level
+					task.delay(0.25, function()
+						if alive then
+							spawnShockwaveRing(
+								Vector3.new(tPos.X, floorY + 0.15, tPos.Z),
+								4, isEnragePhase and 42 or 32,
+								ringColor, transition.duration * 0.8, 0.5
+							)
+							-- Second inner ring slightly delayed
+							task.delay(0.15, function()
+								if alive then
+									spawnShockwaveRing(
+										Vector3.new(tPos.X, floorY + 0.35, tPos.Z),
+										2, isEnragePhase and 22 or 16,
+										pillarColor, transition.duration * 0.6, 0.3
+									)
+								end
+							end)
+						end
+					end)
+
+					-- Screen shake + flash signal to all clients
+					Net.Get("BossEffect"):FireAllClients(
+						isEnragePhase and "enrageShake" or "phaseShake",
+						tPos,
+						{ intensity = isEnragePhase and 1.0 or 0.6, duration = 0.8 }
+					)
+
 					task.wait(transition.duration)
+
+					-- Restore boss colors after roar
+					for _, entry in _flashParts do
+						if entry.part and entry.part.Parent then
+							entry.part.Color = entry.orig
+						end
+					end
+					-- Settle aura to new phase brightness
+					if auraLight and auraLight.Parent then
+						auraLight.Brightness = isEnragePhase and 5 or 3.5
+						auraLight.Range = isEnragePhase and 30 or 25
+					end
+
 					if not alive then
 						break
 					end
 				end
 			end
 
-			local waitTime = phase.attackIntervalRange[1]
+			-- 1. Aggro check: detect any player entering the arena
+			local myPos = model.PrimaryPart.Position
+			if not inCombat then
+				for _, player in ipairs(Players:GetPlayers()) do
+					local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+					local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+					if root and hum and hum.Health > 0 then
+						-- Only aggro if player has actually entered the boss arena chamber (Z >= -22)
+						if root.Position.Z >= -22 and (root.Position - myPos).Magnitude <= BOSS_AGGRO_RADIUS then
+							triggerAggro(player)
+							break
+						end
+					end
+				end
+			end
+
+			-- 2. Target validation
+			if not inCombat or not targetPlayer or not targetPlayer.Character then
+				if isWalking then
+					isWalking = false
+					if walkTrack and walkTrack.IsPlaying then
+						walkTrack:Stop(0.2)
+					end
+				end
+				continue
+			end
+
+			local targetRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+			local targetHum = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
+			if not targetRoot or not targetHum or targetHum.Health <= 0 then
+				-- Find next closest living player
+				local closestPlayer: Player? = nil
+				local closestDist = math.huge
+				for _, player in ipairs(Players:GetPlayers()) do
+					local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+					local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+					if root and hum and hum.Health > 0 then
+						local d = (root.Position - myPos).Magnitude
+						if d < closestDist then
+							closestDist = d
+							closestPlayer = player
+						end
+					end
+				end
+
+				if closestPlayer then
+					targetPlayer = closestPlayer
+					targetRoot = closestPlayer.Character and closestPlayer.Character:FindFirstChild("HumanoidRootPart")
+				else
+					inCombat = false
+					targetPlayer = nil
+					if currentTween then
+						currentTween:Cancel()
+					end
+					if isWalking then
+						isWalking = false
+						if walkTrack and walkTrack.IsPlaying then
+							walkTrack:Stop(0.2)
+						end
+					end
+					continue
+				end
+			end
+
+			if not targetRoot then
+				continue
+			end
+
+			local targetPos = targetRoot.Position
+			local flatTarget = Vector3.new(targetPos.X, myPos.Y, targetPos.Z)
+			local dist = (flatTarget - myPos).Magnitude
+
+			-- 3. Boss Movement & Pursuit towards player
+			if not isAttacking then
+				if dist > BOSS_ATTACK_RADIUS then
+					if not isWalking then
+						isWalking = true
+						if walkTrack and not walkTrack.IsPlaying then
+							walkTrack:Play(0.2)
+						end
+					end
+
+					local step = math.min(moveSpeed * 0.22, dist - BOSS_ATTACK_RADIUS + 0.8)
+					local dir = (flatTarget - myPos).Unit
+					local rawNextPos = myPos + dir * step
+
+					-- Keep boss strictly inside colosseum arena boundaries and resting flush on the floor
+					local targetFloorY = getGroundY(rawNextPos)
+					local nextPos = Vector3.new(
+						math.clamp(rawNextPos.X, -50, 50),
+						targetFloorY + footOffset,
+						math.clamp(rawNextPos.Z, -20, 95)
+					)
+
+					local targetLookAt = Vector3.new(flatTarget.X, targetFloorY + footOffset, flatTarget.Z)
+					local targetCFrame = CFrame.lookAt(nextPos, targetLookAt) * CFrame.Angles(0, math.pi, 0)
+					if currentTween then
+						currentTween:Cancel()
+					end
+					currentTween = TweenService:Create(
+						model.PrimaryPart,
+						TweenInfo.new(0.22, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
+						{ CFrame = targetCFrame }
+					)
+					currentTween:Play()
+				else
+					-- Within attack range: stop walking, face player
+					if isWalking then
+						isWalking = false
+						if walkTrack and walkTrack.IsPlaying then
+							walkTrack:Stop(0.2)
+						end
+					end
+					if currentTween then
+						currentTween:Cancel()
+					end
+					local currentFloorY = getGroundY(myPos)
+					local standingY = currentFloorY + footOffset
+					local lookTarget = Vector3.new(flatTarget.X, standingY, flatTarget.Z)
+					model.PrimaryPart.CFrame = CFrame.lookAt(Vector3.new(myPos.X, standingY, myPos.Z), lookTarget) * CFrame.Angles(0, math.pi, 0)
+				end
+			end
+
+			-- 4. Execute Attacks according to Phase Attack Interval
+			local now = os.clock()
+			local nextInterval = phase.attackIntervalRange[1]
 				+ math.random() * (phase.attackIntervalRange[2] - phase.attackIntervalRange[1])
-			task.wait(waitTime)
 
-			if not alive then
-				break
-			end
+			if (now - lastAttackTime) >= nextInterval and not isAttacking then
+				lastAttackTime = now
+				isAttacking = true
+				isWalking = false
+				if walkTrack and walkTrack.IsPlaying then
+					walkTrack:Stop(0.15)
+				end
+				if currentTween then
+					currentTween:Cancel()
+				end
 
-			local attackId = phase.attackPool[math.random(1, #phase.attackPool)]
-			local attack = BossAttacks[attackId]
-			local multiplier = phase.telegraphTimeMultiplier or 1.0
+				-- Face player before initiating attack
+				local currentFloorY = getGroundY(myPos)
+				local standingY = currentFloorY + footOffset
+				local lookTarget = Vector3.new(flatTarget.X, standingY, flatTarget.Z)
+				model.PrimaryPart.CFrame = CFrame.lookAt(Vector3.new(myPos.X, standingY, myPos.Z), lookTarget) * CFrame.Angles(0, math.pi, 0)
 
-			-- HUDController renders this as a flat ground-level disc. Firing
-			-- model.PrimaryPart.Position directly would center it at the boss's
-			-- torso height instead of its feet -- a thin, half-transparent disc
-			-- floating mid-air is very easy to miss standing at ground level,
-			-- defeating the whole point of a telegraph warning. Project down by
-			-- half the model's height to put it where a player is actually
-			-- looking.
-			local groundPosition = model.PrimaryPart.Position - Vector3.new(0, model.PrimaryPart.Size.Y / 2, 0)
-			Net.Get("TelegraphAttack"):FireAllClients(attackId, groundPosition, attack.telegraphTime * multiplier)
-			task.wait(attack.telegraphTime * multiplier)
+				-- Anti-repeat: avoid picking the same attack twice in a row
+				local pool = phase.attackPool
+				local attackId
+				if #pool > 1 and handle._lastAttackId then
+					repeat
+						attackId = pool[math.random(1, #pool)]
+					until attackId ~= handle._lastAttackId
+				else
+					attackId = pool[math.random(1, #pool)]
+				end
+				handle._lastAttackId = attackId
 
-			if not alive then
-				break
-			end
+				local attack = BossAttacks[attackId]
+				local multiplier = phase.telegraphTimeMultiplier or 1.0
+				local telegraphDur = attack.telegraphTime * multiplier
 
-			for _, player in CombatService.PlayersInRadius(model.PrimaryPart.Position, attack.radius) do
-				CombatService.ApplyDamageToPlayer(player, attack.damage)
+				-- Determine telegraph location based on attack type, snapped flush to arena floor
+				local facing = (flatTarget - myPos).Magnitude > 0.5 and (flatTarget - myPos).Unit or Vector3.zAxis
+				local myGroundY = getGroundY(myPos) + 0.12
+				local targetGroundY = getGroundY(targetPos) + 0.12
+				local floorY = myGroundY
+				local telegraphPos = Vector3.new(myPos.X, myGroundY, myPos.Z)
+
+				if attackId == "Rockhide_OverheadSlam" or attack.type == "TargetedAoe" then
+					floorY = targetGroundY
+					telegraphPos = Vector3.new(
+						math.clamp(targetPos.X, -46, 46),
+						floorY,
+						math.clamp(targetPos.Z, -18, 90)
+					)
+				elseif attackId == "Rockhide_SweepingBackhand" or attack.type == "Cleave" or attack.type == "Sweep" then
+					local cleavePos = myPos + facing * 7
+					floorY = getGroundY(cleavePos) + 0.12
+					telegraphPos = Vector3.new(cleavePos.X, floorY, cleavePos.Z)
+				elseif attack.type == "Charge" then
+					local chargeDist = attack.chargeDistance or 20
+					local rawChargeEnd = myPos + facing * chargeDist
+					local chargeFloorY = getGroundY(rawChargeEnd)
+					local chargeEnd = Vector3.new(
+						math.clamp(rawChargeEnd.X, -50, 50),
+						chargeFloorY + footOffset,
+						math.clamp(rawChargeEnd.Z, -20, 95)
+					)
+					floorY = chargeFloorY + 0.12
+					telegraphPos = Vector3.new(chargeEnd.X, floorY, chargeEnd.Z)
+				elseif attack.type == "Pound" then
+					floorY = myGroundY
+					telegraphPos = Vector3.new(myPos.X, floorY, myPos.Z)
+				else
+					local slamCenter = myPos + facing * 4
+					floorY = getGroundY(slamCenter) + 0.12
+					telegraphPos = Vector3.new(slamCenter.X, floorY, slamCenter.Z)
+				end
+
+				Net.Get("TelegraphAttack"):FireAllClients(attackId, telegraphPos, telegraphDur, attack.radius)
+
+				-- ── BESPOKE ATTACK EXECUTION PIPELINE ─────────────────────────
+				if attackId == "Rockhide_OverheadSlam" then
+					-- ── 1. OVERHEAD SLAM (Earthbreaker Leap Smash) ────────────
+					local windupDur = math.max(0.25, telegraphDur - 0.45)
+
+					-- Windup: crouch down low into a jump prep stance
+					poseTorso(joints, CFrame.Angles(math.rad(-18), 0, 0), 0.35)
+					poseNeck(joints, CFrame.Angles(math.rad(-30), 0, 0), 0.35)
+					poseArms(joints, CFrame.Angles(math.rad(-90), 0, math.rad(12)), CFrame.Angles(math.rad(-90), 0, math.rad(-12)), 0.35)
+					poseLegs(joints, CFrame.Angles(math.rad(28), 0, 0), CFrame.Angles(math.rad(28), 0, 0), 0.35)
+					spawnFootstepDust(myPos)
+					task.wait(windupDur)
+
+					if not alive then break end
+
+					-- Leap: boss leaps through the sky directly toward telegraphPos
+					local landingPos = Vector3.new(telegraphPos.X, getGroundY(telegraphPos) + footOffset, telegraphPos.Z)
+					local leapApex = math.max(9, (landingPos - myPos).Magnitude * 0.32)
+					local leapStartTime = os.clock()
+					local leapDur = 0.42
+					playSound("BossLeap", "rbxasset://sounds/action_jump.mp3", model.PrimaryPart, 1.8, 0.65)
+
+					-- Fists raised high in apex sledgehammer pose
+					poseArms(joints, CFrame.Angles(math.rad(-105), 0, math.rad(8)), CFrame.Angles(math.rad(-105), 0, math.rad(-8)), 0.15)
+					poseNeck(joints, CFrame.Angles(math.rad(-15), 0, 0), 0.15)
+
+					while (os.clock() - leapStartTime) < leapDur do
+						if not alive then break end
+						local alpha = math.clamp((os.clock() - leapStartTime) / leapDur, 0, 1)
+						local arcY = 4 * leapApex * alpha * (1 - alpha)
+						local currentP = myPos:Lerp(landingPos, alpha) + Vector3.new(0, arcY, 0)
+						local lookTarget = Vector3.new(landingPos.X, currentP.Y, landingPos.Z)
+						model.PrimaryPart.CFrame = CFrame.lookAt(currentP, lookTarget) * CFrame.Angles(0, math.pi, 0)
+						task.wait(0.02)
+					end
+
+					if not alive then break end
+
+					-- Ensure snapped to final landing CFrame
+					local finalLook = Vector3.new(targetPos.X, landingPos.Y, targetPos.Z)
+					model.PrimaryPart.CFrame = CFrame.lookAt(landingPos, finalLook) * CFrame.Angles(0, math.pi, 0)
+
+					-- Violent impact slam
+					poseArms(joints, CFrame.Angles(math.rad(62), 0, math.rad(-8)), CFrame.Angles(math.rad(62), 0, math.rad(8)), 0.08)
+					poseTorso(joints, CFrame.Angles(math.rad(30), 0, 0), 0.08)
+					poseNeck(joints, CFrame.Angles(math.rad(30), 0, 0), 0.08)
+					poseLegs(joints, CFrame.Angles(math.rad(36), 0, 0), CFrame.Angles(math.rad(36), 0, 0), 0.08)
+
+					local impactFloor = getGroundY(telegraphPos) + 0.12
+					spawnRockSpikes(telegraphPos, 8, attack.radius * 0.85, 2.5, 4.2)
+					spawnFlyingDebris(telegraphPos, 14, 20, 6, 12)
+					spawnShockwaveRing(Vector3.new(telegraphPos.X, impactFloor + 0.15, telegraphPos.Z), 2, attack.radius, Color3.fromRGB(255, 95, 20), 0.6, 0.4)
+					spawnGroundScorch(Vector3.new(telegraphPos.X, impactFloor + 0.10, telegraphPos.Z), attack.radius * 0.6, Color3.fromRGB(160, 50, 10), 3.5)
+					playSound("SlamBoom", "rbxasset://sounds/action_explode.mp3", model.PrimaryPart, 2.2, 0.7)
+					Net.Get("BossEffect"):FireAllClients("medShake", telegraphPos, { intensity = 0.85, duration = 0.55 })
+
+					for _, player in CombatService.PlayersInRadius(telegraphPos, attack.radius) do
+						CombatService.ApplyDamageToPlayer(player, attack.damage)
+						applyKnockback(player, telegraphPos, 34, 16)
+					end
+
+					task.wait(0.35)
+					resetAllJoints(joints, 0.30)
+					task.wait(0.20)
+
+				elseif attackId == "Rockhide_ArmSweep" or attack.type == "Sweep" then
+					-- ── NORMAL ARM SWEEP (Frontal Arm Swipe) ──────────────────
+					local windupDur = math.max(0.18, telegraphDur - 0.20)
+
+					-- Windup: cock left arm back high, twist torso left, lean in
+					poseTorso(joints, CFrame.Angles(0, math.rad(-35), 0), 0.25)
+					poseArms(joints, CFrame.Angles(math.rad(55), math.rad(-30), math.rad(-25)), CFrame.Angles(math.rad(15), 0, math.rad(10)), 0.25)
+					poseNeck(joints, CFrame.Angles(0, math.rad(25), 0), 0.25)
+					poseLegs(joints, CFrame.Angles(math.rad(12), 0, 0), CFrame.Angles(math.rad(-8), 0, 0), 0.25)
+					spawnFootstepDust(myPos)
+					task.wait(windupDur)
+
+					if not alive then break end
+
+					-- Release: ferocious horizontal arm sweep from left to right across front
+					poseTorso(joints, CFrame.Angles(0, math.rad(45), 0), 0.10)
+					poseArms(joints, CFrame.Angles(math.rad(40), math.rad(65), math.rad(15)), CFrame.Angles(math.rad(-15), 0, 0), 0.10)
+					poseNeck(joints, CFrame.Angles(0, math.rad(-20), 0), 0.10)
+
+					local impactFloor = getGroundY(telegraphPos) + 0.12
+					playSound("SweepSlash", "rbxasset://sounds/swordslash.wav", model.PrimaryPart, 2.0, 0.85)
+					spawnCleaveArc(model.PrimaryPart.Position, facing, attack.radius, 0.28)
+					spawnFlyingDebris(telegraphPos, 8, 14, 3, 6)
+					spawnFootstepDust(model.PrimaryPart.Position + facing * 5)
+					Net.Get("BossEffect"):FireAllClients("lightShake", telegraphPos, { intensity = 0.35, duration = 0.25 })
+
+					for _, player in CombatService.PlayersInRadius(telegraphPos, attack.radius) do
+						CombatService.ApplyDamageToPlayer(player, attack.damage)
+						applyKnockback(player, model.PrimaryPart.Position, 24, 10)
+					end
+
+					task.wait(0.25)
+					resetAllJoints(joints, 0.25)
+					task.wait(0.15)
+
+				elseif attackId == "Rockhide_SweepingBackhand" or attack.type == "Cleave" then
+					-- ── 2. SWEEPING BACKHAND (160° Frontal Cleave) ────────────
+					local windupDur = math.max(0.25, telegraphDur - 0.22)
+
+					-- Cock right arm back to the right side and twist torso forward-right
+					poseTorso(joints, CFrame.Angles(0, math.rad(35), 0), 0.35)
+					poseArms(joints, CFrame.Angles(math.rad(15), 0, math.rad(10)), CFrame.Angles(math.rad(55), math.rad(-45), math.rad(25)), 0.35)
+					poseNeck(joints, CFrame.Angles(0, math.rad(-25), 0), 0.35)
+					poseLegs(joints, CFrame.Angles(math.rad(-10), 0, 0), CFrame.Angles(math.rad(15), 0, 0), 0.35)
+					spawnFootstepDust(myPos)
+					task.wait(windupDur)
+
+					if not alive then break end
+
+					-- Release: ferocious 160° horizontal whip across chest from right to left
+					poseTorso(joints, CFrame.Angles(0, math.rad(-50), 0), 0.12)
+					poseArms(joints, CFrame.Angles(math.rad(-15), 0, 0), CFrame.Angles(math.rad(45), math.rad(70), math.rad(-20)), 0.12)
+					poseNeck(joints, CFrame.Angles(0, math.rad(25), 0), 0.12)
+
+					local impactFloor = getGroundY(telegraphPos) + 0.12
+					playSound("CleaveSlash", "rbxasset://sounds/swordslash.wav", model.PrimaryPart, 2.2, 0.6)
+					spawnCleaveArc(model.PrimaryPart.Position, facing, attack.radius, 0.35)
+					spawnFlyingDebris(telegraphPos, 10, 16, 4, 8)
+					spawnShockwaveRing(Vector3.new(telegraphPos.X, impactFloor + 0.15, telegraphPos.Z), 2, attack.radius * 0.8, Color3.fromRGB(255, 120, 30), 0.45, 0.3)
+					spawnGroundScorch(Vector3.new(telegraphPos.X, impactFloor + 0.10, telegraphPos.Z), attack.radius * 0.5, Color3.fromRGB(160, 50, 10), 2.5)
+					Net.Get("BossEffect"):FireAllClients("lightShake", telegraphPos, { intensity = 0.5, duration = 0.35 })
+
+					for _, player in CombatService.PlayersInRadius(telegraphPos, attack.radius) do
+						CombatService.ApplyDamageToPlayer(player, attack.damage)
+						applyKnockback(player, model.PrimaryPart.Position, 30, 12)
+					end
+
+					task.wait(0.35)
+					resetAllJoints(joints, 0.30)
+					task.wait(0.20)
+
+				elseif attackId == "Rockhide_GroundPound" or (attack.type == "Pound" and not attack.isEnrage) then
+					-- ── 3. GROUND POUND (Tectonic Shockwave) ───────────────────
+					local windupDur = math.max(0.30, telegraphDur - 0.20)
+
+					-- Rearing roar
+					poseNeck(joints, CFrame.Angles(math.rad(-45), 0, 0), 0.45)
+					poseArms(joints, CFrame.Angles(math.rad(-95), 0, math.rad(28)), CFrame.Angles(math.rad(-95), 0, math.rad(-28)), 0.45)
+					poseTorso(joints, CFrame.Angles(math.rad(-18), 0, 0), 0.45)
+					poseLegs(joints, CFrame.Angles(math.rad(-10), 0, 0), CFrame.Angles(math.rad(-10), 0, 0), 0.45)
+
+					for _, entry in _flashParts do
+						if entry.part and entry.part.Parent then
+							entry.part.Color = Color3.fromRGB(255, 75, 20)
+						end
+					end
+					Net.Get("BossEffect"):FireAllClients("lightShake", telegraphPos, { intensity = 0.3, duration = windupDur })
+					task.wait(windupDur)
+
+					if not alive then break end
+
+					for _, entry in _flashParts do
+						if entry.part and entry.part.Parent then
+							entry.part.Color = entry.orig
+						end
+					end
+
+					-- Smashing impact
+					poseArms(joints, CFrame.Angles(math.rad(62), 0, 0), CFrame.Angles(math.rad(62), 0, 0), 0.10)
+					poseTorso(joints, CFrame.Angles(math.rad(30), 0, 0), 0.10)
+					poseNeck(joints, CFrame.Angles(math.rad(35), 0, 0), 0.10)
+					poseLegs(joints, CFrame.Angles(math.rad(40), 0, 0), CFrame.Angles(math.rad(40), 0, 0), 0.10)
+
+					local impactFloor = getGroundY(telegraphPos) + 0.12
+					spawnRockSpikes(telegraphPos, 10, attack.radius * 0.80, 3.2, 5.0)
+					spawnFlyingDebris(telegraphPos, 18, 28, 8, 16)
+					spawnShockwaveRing(Vector3.new(telegraphPos.X, impactFloor + 0.15, telegraphPos.Z), 3, attack.radius, Color3.fromRGB(255, 80, 20), 0.8, 0.5)
+					task.delay(0.12, function()
+						if alive then
+							spawnShockwaveRing(Vector3.new(telegraphPos.X, impactFloor + 0.20, telegraphPos.Z), 1.5, attack.radius * 0.65, Color3.fromRGB(255, 150, 35), 0.6, 0.3)
+						end
+					end)
+					spawnGroundScorch(Vector3.new(telegraphPos.X, impactFloor + 0.10, telegraphPos.Z), attack.radius * 0.65, Color3.fromRGB(160, 45, 10), 4.5)
+					playSound("PoundBoom", "rbxasset://sounds/action_explode.mp3", model.PrimaryPart, 2.3, 0.55)
+					Net.Get("BossEffect"):FireAllClients("medShake", telegraphPos, { intensity = 0.9, duration = 0.7 })
+
+					for _, player in CombatService.PlayersInRadius(telegraphPos, attack.radius) do
+						CombatService.ApplyDamageToPlayer(player, attack.damage)
+						applyKnockback(player, telegraphPos, 38, 20)
+					end
+
+					task.wait(0.40)
+					resetAllJoints(joints, 0.40)
+					task.wait(0.20)
+
+				elseif attack.type == "Charge" then
+					-- ── 4. STONE CHARGE (Bull Rush) ───────────────────────────
+					local windupDur = math.max(0.25, telegraphDur - 0.28)
+
+					-- Low bull stance
+					poseTorso(joints, CFrame.Angles(math.rad(28), 0, 0), 0.25)
+					poseNeck(joints, CFrame.Angles(math.rad(22), 0, 0), 0.25)
+					poseArms(joints, CFrame.Angles(math.rad(40), 0, math.rad(15)), CFrame.Angles(math.rad(40), 0, math.rad(-15)), 0.25)
+					spawnFootstepDust(myPos)
+					playSound("Scrape", "rbxasset://sounds/action_footsteps_plastic.mp3", model.PrimaryPart, 1.5, 0.6)
+					task.wait(windupDur)
+
+					if not alive then break end
+
+					-- Dash forward
+					local chargeDist = attack.chargeDistance or 20
+					local rawChargeEnd = myPos + facing * chargeDist
+					local chargeFloorY = getGroundY(rawChargeEnd)
+					local chargeEnd = Vector3.new(
+						math.clamp(rawChargeEnd.X, -50, 50),
+						chargeFloorY + footOffset,
+						math.clamp(rawChargeEnd.Z, -20, 95)
+					)
+					local chargeLookTarget = Vector3.new(chargeEnd.X + facing.X, chargeFloorY + footOffset, chargeEnd.Z + facing.Z)
+					local chargeCFrame = CFrame.lookAt(chargeEnd, chargeLookTarget) * CFrame.Angles(0, math.pi, 0)
+					playSound("ChargeRush", "rbxasset://sounds/action_jump.mp3", model.PrimaryPart, 1.8, 0.5)
+
+					currentTween = TweenService:Create(
+						model.PrimaryPart,
+						TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+						{ CFrame = chargeCFrame }
+					)
+					currentTween:Play()
+					task.wait(0.28)
+
+					if not alive then break end
+
+					-- Brake and thrust arms forward
+					poseArms(joints, CFrame.Angles(math.rad(-25), 0, 0), CFrame.Angles(math.rad(-25), 0, 0), 0.12)
+					local arrivedPos = model.PrimaryPart and model.PrimaryPart.Position or chargeEnd
+					local impactFloor = getGroundY(arrivedPos) + 0.12
+					spawnBurstOrb(Vector3.new(arrivedPos.X, impactFloor + 1.5, arrivedPos.Z), 4, Color3.fromRGB(255, 100, 30), 0.45)
+					spawnFlyingDebris(arrivedPos, 12, 18, 5, 10)
+					spawnShockwaveRing(Vector3.new(arrivedPos.X, impactFloor + 0.15, arrivedPos.Z), 2, attack.radius + 4, Color3.fromRGB(255, 140, 50), 0.55, 0.4)
+					spawnGroundScorch(Vector3.new(arrivedPos.X, impactFloor + 0.10, arrivedPos.Z), attack.radius * 0.7, Color3.fromRGB(200, 75, 20), 3.5)
+					playSound("ChargeCrash", "rbxasset://sounds/action_explode.mp3", model.PrimaryPart, 2.0, 0.8)
+					Net.Get("BossEffect"):FireAllClients("medShake", arrivedPos, { intensity = 0.7, duration = 0.45 })
+
+					for _, player in CombatService.PlayersInRadius(arrivedPos, attack.radius + 2) do
+						CombatService.ApplyDamageToPlayer(player, attack.damage)
+						applyKnockback(player, arrivedPos, 32, 14)
+					end
+
+					task.wait(0.25)
+					resetAllJoints(joints, 0.30)
+					task.wait(0.20)
+
+				elseif attackId == "Rockhide_BoulderBarrage" or (attack.type == "TargetedAoe" and attack.hitCount and attack.hitCount > 1) then
+					-- ── 5. BOULDER BARRAGE (Earthen Hurling) ──────────────────
+					local hitCount = attack.hitCount or 3
+					local allPlayers = Players:GetPlayers()
+
+					for i = 1, hitCount do
+						if not alive then break end
+						local targetP = allPlayers[math.random(1, #allPlayers)]
+						local targetR = targetP and targetP.Character and targetP.Character:FindFirstChild("HumanoidRootPart")
+						local rawPos = targetR and targetR.Position or telegraphPos
+						local waveFloor = getGroundY(rawPos) + 0.12
+						local wavePos = Vector3.new(
+							math.clamp(rawPos.X, -46, 46),
+							waveFloor,
+							math.clamp(rawPos.Z, -18, 90)
+						)
+
+						-- Face target wave position
+						local curPos = model.PrimaryPart.Position
+						local lookTarget = Vector3.new(wavePos.X, curPos.Y, wavePos.Z)
+						model.PrimaryPart.CFrame = CFrame.lookAt(curPos, lookTarget) * CFrame.Angles(0, math.pi, 0)
+
+						-- Windup & rip boulder out of ground
+						poseArms(joints, CFrame.Angles(math.rad(-75), 0, math.rad(15)), CFrame.Angles(math.rad(-75), 0, math.rad(-15)), 0.20)
+						poseTorso(joints, CFrame.Angles(math.rad(-15), 0, 0), 0.20)
+						local handPos = model.PrimaryPart.Position + model.PrimaryPart.CFrame.LookVector * 4 + Vector3.new(0, 4, 0)
+						spawnFootstepDust(curPos)
+						spawnFlyingDebris(handPos - Vector3.new(0, 3.5, 0), 6, 8, 3, 6)
+						task.wait(0.24)
+
+						if not alive then break end
+
+						-- Throw motion
+						poseArms(joints, CFrame.Angles(math.rad(45), 0, 0), CFrame.Angles(math.rad(45), 0, 0), 0.10)
+						poseTorso(joints, CFrame.Angles(math.rad(20), 0, 0), 0.10)
+						playSound("Throw", "rbxasset://sounds/action_jump.mp3", model.PrimaryPart, 1.4, 0.7)
+
+						Net.Get("TelegraphAttack"):FireAllClients(attackId .. "_wave" .. i, wavePos, 0.42, attack.radius)
+						hurlBoulder(handPos, wavePos, 0.42, function()
+							if not alive then return end
+							local floorHit = getGroundY(wavePos) + 0.12
+							spawnBurstOrb(Vector3.new(wavePos.X, floorHit + 1.2, wavePos.Z), 3, Color3.fromRGB(255, 120, 30), 0.4)
+							spawnGroundScorch(Vector3.new(wavePos.X, floorHit + 0.10, wavePos.Z), attack.radius * 0.6, Color3.fromRGB(180, 60, 10), 2.5)
+							playSound("Detonation", "rbxasset://sounds/action_explode.mp3", workspace, 1.6, 1.05)
+							Net.Get("BossEffect"):FireAllClients("lightShake", wavePos, { intensity = 0.4, duration = 0.3 })
+							for _, player in CombatService.PlayersInRadius(wavePos, attack.radius) do
+								CombatService.ApplyDamageToPlayer(player, attack.damage)
+								applyKnockback(player, wavePos, 28, 14)
+							end
+						end)
+
+						task.wait(0.48)
+					end
+
+					resetAllJoints(joints, 0.30)
+					task.wait(0.20)
+
+				elseif attack.isEnrage then
+					-- ── 6. SEISMIC SLAM (Phase 3 Enrage Ultimate) ─────────────
+					local windupDur = math.max(0.35, telegraphDur - 0.30)
+
+					-- Full-body molten incandescent glow
+					for _, entry in _flashParts do
+						if entry.part and entry.part.Parent then
+							entry.part.Color = Color3.fromRGB(255, 60, 20)
+						end
+					end
+
+					-- Roar and rear back
+					poseNeck(joints, CFrame.Angles(math.rad(-50), 0, 0), 0.45)
+					poseArms(joints, CFrame.Angles(math.rad(-95), 0, math.rad(30)), CFrame.Angles(math.rad(-95), 0, math.rad(-30)), 0.45)
+					poseTorso(joints, CFrame.Angles(math.rad(-22), 0, 0), 0.45)
+					playSound("EnrageRoar", "rbxasset://sounds/action_explode.mp3", model.PrimaryPart, 2.2, 0.45)
+					Net.Get("BossEffect"):FireAllClients("heavyShake", telegraphPos, { intensity = 0.8, duration = windupDur })
+					task.wait(windupDur)
+
+					if not alive then break end
+
+					for _, entry in _flashParts do
+						if entry.part and entry.part.Parent then
+							entry.part.Color = entry.orig
+						end
+					end
+
+					-- Cataclysmic smash
+					poseArms(joints, CFrame.Angles(math.rad(65), 0, 0), CFrame.Angles(math.rad(65), 0, 0), 0.08)
+					poseTorso(joints, CFrame.Angles(math.rad(32), 0, 0), 0.08)
+					poseNeck(joints, CFrame.Angles(math.rad(35), 0, 0), 0.08)
+
+					local impactFloor = getGroundY(telegraphPos) + 0.12
+					spawnRockSpikes(telegraphPos, 14, attack.radius * 0.85, 4.0, 6.0)
+					spawnFlyingDebris(telegraphPos, 26, 36, 10, 20)
+
+					for i = 1, 4 do
+						local r = i * (attack.radius / 4)
+						local angle = (i * math.pi / 2) + math.random() * 0.8
+						local pPos = Vector3.new(
+							telegraphPos.X + math.cos(angle) * r,
+							impactFloor,
+							telegraphPos.Z + math.sin(angle) * r
+						)
+						task.delay((i - 1) * 0.1, function()
+							if alive then spawnFirePillar(pPos, 24, Color3.fromRGB(255, 50, 10), 1.2) end
+						end)
+					end
+
+					spawnShockwaveRing(Vector3.new(telegraphPos.X, impactFloor + 0.15, telegraphPos.Z), 3, attack.radius, Color3.fromRGB(255, 80, 20), 0.9, 0.7)
+					task.delay(0.18, function()
+						if alive then
+							spawnShockwaveRing(Vector3.new(telegraphPos.X, impactFloor + 0.20, telegraphPos.Z), 1.5, attack.radius * 0.65, Color3.fromRGB(255, 160, 40), 0.7, 0.35)
+						end
+					end)
+					spawnGroundScorch(Vector3.new(telegraphPos.X, impactFloor + 0.10, telegraphPos.Z), attack.radius * 0.8, Color3.fromRGB(180, 30, 10), 5.0)
+					playSound("MegaBoom", "rbxasset://sounds/action_explode.mp3", model.PrimaryPart, 2.8, 0.5)
+					Net.Get("BossEffect"):FireAllClients("heavyShake", telegraphPos, { intensity = 1.2, duration = 1.0 })
+
+					for _, player in CombatService.PlayersInRadius(telegraphPos, attack.radius) do
+						CombatService.ApplyDamageToPlayer(player, attack.damage)
+						applyKnockback(player, telegraphPos, 45, 22)
+					end
+
+					task.wait(0.50)
+					resetAllJoints(joints, 0.50)
+					task.wait(0.25)
+				end
+
+				isAttacking = false
 			end
 		end
 
@@ -160,13 +1842,8 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 	return handle
 end
 
--- Force-kills the active boss (e.g. on a party wipe, so the boss's attack
--- coroutine doesn't keep telegraphing/attacking an emptying server). Reuses
--- onDamaged so the existing alive=false transition, BossStateChanged fire,
--- and the coroutine's own "if not alive then break end" checks handle
--- cleanup (UnregisterEnemy/model:Destroy/onDeath) the same way a normal kill does.
+-- Force-kills the active boss on wipe/cleanup
 function BossAIService.ForceKill(handle)
-	-- No attacking player -- this is a system-initiated kill (party wipe), not a combat hit.
 	handle.onDamaged(handle.currentHealth, nil)
 end
 

@@ -9,8 +9,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local DungeonMapService = {}
 
-local Assets = ReplicatedStorage:WaitForChild("Assets")
-
 local arenaFolder: Model? = nil
 local bossGate: Model? = nil
 local gateBarrierPart: Part? = nil
@@ -54,34 +52,88 @@ local function makePart(parent: Instance, name: string, size: Vector3, cframe: C
 	return part
 end
 
--- Clones a pre-generated door-leaf mesh template from ReplicatedStorage.Assets, forces
--- it to the given size, and positions it at the given CFrame. Returns nil (with a
--- warning) if the template is missing so a bad asset name never throws during dungeon
--- construction. Matches the CanCollide/Anchored defaults the old makePart(...) slab
--- doors used, so OpenBossGate's existing CanCollide-toggle-then-CFrame-tween logic
--- keeps working unmodified.
---
--- The explicit `size` override matters here: generate_mesh does not reliably hit its
--- requested bounding box (confirmed during this asset's own generation -- the two
--- door-leaf meshes came back at noticeably different, undersized dimensions from each
--- other and from the requested 12.5 x 18 x 2.5). Without forcing both to the same
--- Size, the two leaves of a door meant to meet edge-to-edge in the middle would be
--- visibly mismatched.
-local function cloneDoorAsset(parent: Instance, assetName: string, doorName: string, size: Vector3, cframe: CFrame): BasePart?
-	local template = Assets:FindFirstChild(assetName)
-	if not template or not template:IsA("BasePart") then
-		warn("DungeonMapService: missing or invalid door asset ReplicatedStorage.Assets." .. assetName)
-		return nil
+-- Constructs a massive, authentic monolithic carved stone vault door leaf.
+-- Built from weathered rock slabs, dark slate beveled frames, cobblestone relief panels,
+-- horizontal stone reinforcement bands, carved stone studs, and heavy stone handles.
+-- All detail elements are welded via WeldConstraint to the primary stone BasePart so
+-- TweenService's door-swing animation moves the entire assembly seamlessly as one piece.
+local function createStoneDoorLeaf(parent: Instance, doorName: string, isLeft: boolean, size: Vector3, cframe: CFrame): BasePart
+	local doorBase = Instance.new("Part")
+	doorBase.Name = doorName
+	doorBase.Size = size
+	doorBase.CFrame = cframe
+	doorBase.Color = Color3.fromRGB(72, 75, 82)
+	doorBase.Material = Enum.Material.Rock
+	doorBase.Anchored = true
+	doorBase.CanCollide = true
+	doorBase.TopSurface = Enum.SurfaceType.Smooth
+	doorBase.BottomSurface = Enum.SurfaceType.Smooth
+	doorBase.Parent = parent
+
+	local function addStoneDetail(name: string, pSize: Vector3, pCFrame: CFrame, color: Color3, material: Enum.Material): Part
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = pSize
+		p.CFrame = pCFrame
+		p.Color = color
+		p.Material = material
+		p.Anchored = false
+		p.CanCollide = false
+		p.CanTouch = false
+		p.CanQuery = false
+		p.Massless = true
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.Parent = doorBase
+
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = doorBase
+		weld.Part1 = p
+		weld.Parent = doorBase
+		return p
 	end
 
-	local clone = template:Clone()
-	clone.Name = doorName
-	clone.Size = size
-	clone.CFrame = cframe
-	clone.Anchored = true
-	clone.CanCollide = true
-	clone.Parent = parent
-	return clone
+	local darkBasalt = Color3.fromRGB(48, 51, 56)
+	local midSlate = Color3.fromRGB(60, 63, 70)
+	local carvedCobble = Color3.fromRGB(68, 71, 78)
+	local keystoneColor = Color3.fromRGB(86, 82, 75)
+
+	-- 1. Outer Chiseled Stone Frame Borders
+	local outerX = isLeft and -5.6 or 5.6
+	local innerX = isLeft and 5.75 or -5.75
+	addStoneDetail("StoneFrame_Hinge", Vector3.new(1.4, size.Y - 0.2, 2.75), cframe * CFrame.new(outerX, 0, 0), darkBasalt, Enum.Material.Slate)
+	addStoneDetail("StoneFrame_Meeting", Vector3.new(1.0, size.Y - 0.2, 2.65), cframe * CFrame.new(innerX, 0, 0), darkBasalt, Enum.Material.Rock)
+	addStoneDetail("StoneFrame_Top", Vector3.new(size.X - 0.2, 1.4, 2.75), cframe * CFrame.new(0, (size.Y / 2) - 0.7, 0), darkBasalt, Enum.Material.Slate)
+	addStoneDetail("StoneFrame_Bottom", Vector3.new(size.X - 0.2, 1.4, 2.75), cframe * CFrame.new(0, -(size.Y / 2) + 0.7, 0), darkBasalt, Enum.Material.Slate)
+
+	-- 2. Heavy Carved Stone Crossbars (Horizontal Reinforcement Bands)
+	addStoneDetail("StoneBand_Top", Vector3.new(size.X - 0.4, 2.0, 2.85), cframe * CFrame.new(0, 5.8, 0), darkBasalt, Enum.Material.Rock)
+	addStoneDetail("StoneBand_Mid", Vector3.new(size.X - 0.4, 1.8, 2.75), cframe * CFrame.new(0, 0, 0), darkBasalt, Enum.Material.Rock)
+	addStoneDetail("StoneBand_Bottom", Vector3.new(size.X - 0.4, 2.0, 2.85), cframe * CFrame.new(0, -5.8, 0), darkBasalt, Enum.Material.Rock)
+
+	-- 3. Inset Carved Cobblestone Relief Panels
+	addStoneDetail("StonePanel_Upper", Vector3.new(size.X - 3.2, 3.4, 2.62), cframe * CFrame.new(isLeft and 0.2 or -0.2, 2.9, 0), carvedCobble, Enum.Material.Cobblestone)
+	addStoneDetail("StonePanel_Lower", Vector3.new(size.X - 3.2, 3.4, 2.62), cframe * CFrame.new(isLeft and 0.2 or -0.2, -2.9, 0), carvedCobble, Enum.Material.Cobblestone)
+
+	-- 4. Central Diamond Earth Keystone Medallion
+	local centerOffset = isLeft and 0.2 or -0.2
+	addStoneDetail("StoneKeystone_Diamond", Vector3.new(2.8, 2.8, 2.95), cframe * CFrame.new(centerOffset, 0, 0) * CFrame.Angles(0, 0, math.rad(45)), keystoneColor, Enum.Material.Rock)
+	addStoneDetail("StoneKeystone_Core", Vector3.new(1.3, 1.3, 3.05), cframe * CFrame.new(centerOffset, 0, 0), darkBasalt, Enum.Material.Slate)
+
+	-- 5. Carved Stone Bosses (Heavy stone studs along top and bottom bands)
+	for _, xOff in ipairs({ -3.8, 0, 3.8 }) do
+		addStoneDetail("StoneBoss_Top_" .. xOff, Vector3.new(0.85, 0.85, 3.1), cframe * CFrame.new(xOff, 5.8, 0), midSlate, Enum.Material.Rock)
+		addStoneDetail("StoneBoss_Bottom_" .. xOff, Vector3.new(0.85, 0.85, 3.1), cframe * CFrame.new(xOff, -5.8, 0), midSlate, Enum.Material.Rock)
+	end
+
+	-- 6. Massive Carved Stone Pull Handle on Meeting Edge (Front & Back)
+	local handleX = isLeft and 4.4 or -4.4
+	addStoneDetail("StoneHandleMount_F", Vector3.new(1.2, 2.2, 0.8), cframe * CFrame.new(handleX, 0, -1.6), darkBasalt, Enum.Material.Slate)
+	addStoneDetail("StoneHandleGrip_F", Vector3.new(0.6, 2.8, 0.6), cframe * CFrame.new(handleX, 0, -2.1), midSlate, Enum.Material.Rock)
+	addStoneDetail("StoneHandleMount_B", Vector3.new(1.2, 2.2, 0.8), cframe * CFrame.new(handleX, 0, 1.6), darkBasalt, Enum.Material.Slate)
+	addStoneDetail("StoneHandleGrip_B", Vector3.new(0.6, 2.8, 0.6), cframe * CFrame.new(handleX, 0, 2.1), midSlate, Enum.Material.Rock)
+
+	return doorBase
 end
 
 local function makeFloor(parent: Instance, name: string, minX: number, maxX: number, minZ: number, maxZ: number): Part
@@ -423,24 +475,23 @@ function DungeonMapService.BuildDungeon(): Model
 	makePart(gateModel, "GateArch_Trim", Vector3.new(33, 1.2, 6),
 		CFrame.new(0, FLOOR_Y + WALL_HEIGHT + 0.5, gateZ), GOLD_COLOR, Enum.Material.Metal)
 
-	-- Left and Right sculpted stone vault doors
-	doorLeft = cloneDoorAsset(gateModel, "BossVaultDoor_Left", "Door_Left",
+	-- Left and Right sculpted monolithic stone vault doors
+	doorLeft = createStoneDoorLeaf(gateModel, "Door_Left", true,
 		Vector3.new(12.5, WALL_HEIGHT - 4, 2.5), CFrame.new(-6.25, FLOOR_Y + (WALL_HEIGHT - 4) / 2, gateZ))
 
-	doorRight = cloneDoorAsset(gateModel, "BossVaultDoor_Right", "Door_Right",
+	doorRight = createStoneDoorLeaf(gateModel, "Door_Right", false,
 		Vector3.new(12.5, WALL_HEIGHT - 4, 2.5), CFrame.new(6.25, FLOOR_Y + (WALL_HEIGHT - 4) / 2, gateZ))
 
-
-	-- Glowing Runic Barrier Part (blocks passage until guardians are defeated).
-	-- Transparency is high enough, and pulses further, so the sculpted vault
-	-- doors behind it stay visible as a shimmering ward rather than a flat wall.
+	-- Glowing Runic Barrier Part (translucent magical ward in front of the stone doors).
+	-- Positioned slightly in front at gateZ - 1.5 with high transparency so the
+	-- magnificent carved stone doors remain the prominent visual feature.
 	local barrier = Instance.new("Part")
 	barrier.Name = "RunicBarrier"
-	barrier.Size = Vector3.new(25, WALL_HEIGHT - 4, 3.5)
-	barrier.CFrame = CFrame.new(0, FLOOR_Y + (WALL_HEIGHT - 4) / 2, gateZ)
+	barrier.Size = Vector3.new(24.8, WALL_HEIGHT - 4.2, 0.3)
+	barrier.CFrame = CFrame.new(0, FLOOR_Y + (WALL_HEIGHT - 4) / 2, gateZ - 1.5)
 	barrier.Color = BARRIER_COLOR
 	barrier.Material = Enum.Material.Neon
-	barrier.Transparency = 0.65
+	barrier.Transparency = 0.82
 	barrier.CanCollide = true
 	barrier.Anchored = true
 	barrier.Parent = gateModel
@@ -453,7 +504,7 @@ function DungeonMapService.BuildDungeon(): Model
 	local barrierPulse = TweenService:Create(
 		barrier,
 		TweenInfo.new(1.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-		{ Transparency = 0.78 }
+		{ Transparency = 0.90 }
 	)
 	barrierPulse:Play()
 
@@ -510,7 +561,7 @@ function DungeonMapService.BuildDungeon(): Model
 	status.TextColor3 = Color3.fromRGB(255, 140, 40)
 	status.Font = Enum.Font.GothamBold
 	status.TextSize = 18
-	status.Text = "🔒 [SEALED: 10 Guardians Remain]"
+	status.Text = "🔒 [SEALED: Gate Locked]"
 	status.Parent = bb
 	gateStatusLabel = status
 

@@ -53,10 +53,10 @@ return {
 		prerequisite = "ProvokingStrike",
 		icon = "rbxasset://textures/Soulforge/shield_bash_icon.png",
 		cooldown = 8,
-		range = 14,
+		range = 24,
 		damage = 16,
 		effectType = "damage",
-		description = "Drive your shield into the enemy with crushing force, dealing 16 damage and staggering them.",
+		description = "Charge forward and drive your shield into the enemy with crushing force, dealing 16 damage and staggering them.",
 	},
 
 	Earthshaker = {

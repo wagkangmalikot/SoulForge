@@ -204,10 +204,9 @@ function CharacterCreationController.Start()
 
 	local screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "CharacterCreation"
-	screenGui.ResetOnSpawn = false
 	screenGui.IgnoreGuiInset = true
 	screenGui.DisplayOrder = 100
-	screenGui.Enabled = true
+	screenGui.Enabled = (player.Character == nil)
 	screenGui.Parent = playerGui
 
 	-- Atmospheric Background with Radial Vignette
@@ -742,7 +741,7 @@ function CharacterCreationController.Start()
 	end
 
 	createTraitItem("⚔️", "Standard Attack: Heavy Sword Cleave")
-	createTraitItem("📢", "Starter Skill: Taunt (Forces Target Aggro)")
+	createTraitItem("🛡️", "Starter Skill: Taunt (Forces Target Aggro)")
 	createTraitItem("🌳", "Ascension: Unlock Juggernaut & Bulwark Trees")
 
 	-- Playing As Indicator
@@ -989,11 +988,21 @@ function CharacterCreationController.Start()
 	end)
 
 	Net.Get("ShowCharacterCreation").OnClientEvent:Connect(function()
+		if player.Character and player.Character.Parent then
+			screenGui.Enabled = false
+			return
+		end
+		screenGui.Enabled = true
 		pendingScreen = "creation"
 		showPendingScreen()
 	end)
 
 	Net.Get("ShowCharacterChoice").OnClientEvent:Connect(function(level: number)
+		if player.Character and player.Character.Parent then
+			screenGui.Enabled = false
+			return
+		end
+		screenGui.Enabled = true
 		pendingScreen = "choice"
 		pendingLevel = level
 		showPendingScreen()
@@ -1004,8 +1013,12 @@ function CharacterCreationController.Start()
 		screenGui.Enabled = false
 	end)
 
-	-- Request initial character state in case event arrived before script initialized
-	Net.Get("RequestCharacterState"):FireServer()
+	if player.Character and player.Character.Parent then
+		screenGui.Enabled = false
+	else
+		-- Request initial character state in case event arrived before script initialized
+		Net.Get("RequestCharacterState"):FireServer()
+	end
 end
 
 

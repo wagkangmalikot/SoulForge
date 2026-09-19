@@ -25,6 +25,20 @@ function RespawnService.SetEntrancePosition(position: Vector3)
 	entrancePosition = position
 end
 
+function RespawnService.IsAnyoneDowned(): boolean
+	for _, state in downedState do
+		if not state.bled then
+			return true
+		end
+	end
+	return false
+end
+
+function RespawnService.IsPlayerDowned(userId: number): boolean
+	local state = downedState[userId]
+	return state ~= nil and not state.bled
+end
+
 local function respawnAtEntrance(player: Player)
 	local state = downedState[player.UserId]
 	if state and state.revivePrompt then
@@ -34,10 +48,13 @@ local function respawnAtEntrance(player: Player)
 	player:LoadCharacter()
 	task.defer(function()
 		local character = player.Character or player.CharacterAdded:Wait()
-		local rootPart = character:WaitForChild("HumanoidRootPart")
-		rootPart.CFrame = CFrame.new(entrancePosition)
+		local rootPart = character:WaitForChild("HumanoidRootPart", 5)
+		if rootPart then
+			rootPart.CFrame = CFrame.new(entrancePosition)
+		end
 	end)
 end
+
 
 function RespawnService.OnPlayerDowned(player: Player)
 	if downedState[player.UserId] then

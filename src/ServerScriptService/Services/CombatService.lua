@@ -50,7 +50,7 @@ local function getDamageMultiplier(player: Player): number
 	if humanoid and charData and charData.EquippedEquipment then
 		if EquipmentData.IsSetBonusActive("Rockhide", charData.EquippedEquipment) then
 			if humanoid.Health / math.max(humanoid.MaxHealth, 1) <= 0.5 then
-				return 1.15 -- +15% damage from Seismic Fury set bonus!
+				return 1.20 -- +20% damage from Seismic Fury set bonus!
 			end
 		end
 	end

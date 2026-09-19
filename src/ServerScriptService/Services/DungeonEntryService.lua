@@ -29,6 +29,23 @@ local function enterDungeon(player: Player, dungeonId: string)
 		end
 	end
 
+	local RunService = game:GetService("RunService")
+	if RunService:IsStudio() then
+		-- In Studio Play Solo, TeleportService:ReserveServer is blocked.
+		-- Directly transition the server into the dungeon session for seamless testing:
+		ReplicatedStorage:SetAttribute("IsDungeon", true)
+		local DungeonSessionService = require(script.Parent.DungeonSessionService)
+		local HUB_ONLY_SCENERY = {"RockhidePortal", "LevelUpShrine", "SpawnLocation", "SoulforgeHub"}
+		for _, name in HUB_ONLY_SCENERY do
+			local instance = workspace:FindFirstChild(name)
+			if instance then
+				instance:Destroy()
+			end
+		end
+		DungeonSessionService.Start(dungeonId, memberUserIds)
+		return
+	end
+
 	local ok, reservedCode = pcall(function()
 		return TeleportService:ReserveServer(game.PlaceId)
 	end)

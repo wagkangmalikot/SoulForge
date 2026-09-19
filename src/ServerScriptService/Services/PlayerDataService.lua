@@ -10,21 +10,34 @@ local DEFAULT_DATA = {
 	Character = {
 		Level = 1,
 		ClassId = "Tank",
-		UnspentEXP = 0,
-		SkillPoints = 0,
+		UnspentEXP = 999999,
+		SkillPoints = 50,
 		UnlockedSkills = {"Taunt"},
 		EquippedSkills = {"Taunt"},
-		EquippedWeapon = "Standard",
-		EquippedShield = "Standard",
-		StoredEquipment = {"Standard", "Sunforged"},
-		CraftingMaterials = {
-			IronIngot = 8,
-			OakTimber = 6,
-			LeatherStrap = 4,
-			SunstoneCore = 1,
-			AncientRune = 2,
+		EquippedWeapon = "StandardSword",
+		EquippedEquipment = {
+			Weapon = "StandardSword",
+			Head = "StandardHelm",
+			Body = "StandardChest",
+			Arms = "StandardArms",
+			Feet = "StandardFeet",
 		},
-		Gold = 0,
+		StoredEquipment = {
+			"StandardSword",
+			"StandardHelm",
+			"StandardChest",
+			"StandardArms",
+			"StandardFeet",
+		},
+		CraftingMaterials = {
+			IronIngot = 99999,
+			OakTimber = 99999,
+			LeatherStrap = 99999,
+			RockhideFragment = 99999,
+			SunstoneCore = 99999,
+			AncientRune = 99999,
+		},
+		Gold = 9999999,
 		Name = "",                    -- set at character creation (spec 2b), TextService-filtered
 		HasCreatedCharacter = false,  -- gates whether the creation screen shows on join
 	},
@@ -94,38 +107,63 @@ local function onPlayerAdded(player: Player)
 
 	local charData = profile.Data.Character
 	if charData then
-		if not charData.SkillPoints then
-			charData.SkillPoints = math.max(0, (charData.Level or 1) - 1)
-		end
+		-- Maximize EXP & SkillPoints for skill testing as requested
+		charData.UnspentEXP = math.max(charData.UnspentEXP or 0, 999999)
+		charData.SkillPoints = math.max(charData.SkillPoints or 0, 50)
+
 		if not charData.UnlockedSkills or #charData.UnlockedSkills == 0 then
 			charData.UnlockedSkills = {"Taunt"}
 		end
-		if not charData.EquippedSkills or #charData.EquippedSkills == 0 then
-			charData.EquippedSkills = {"Taunt"}
-		end
-		if not charData.EquippedWeapon then
-			charData.EquippedWeapon = "Standard"
-		end
-		if not charData.EquippedShield then
-			charData.EquippedShield = "Standard"
-		end
-		if not charData.StoredEquipment or #charData.StoredEquipment == 0 then
-			charData.StoredEquipment = {"Standard", "Sunforged"}
-		end
-		if not charData.CraftingMaterials then
-			charData.CraftingMaterials = {
-				IronIngot = 8,
-				OakTimber = 6,
-				LeatherStrap = 4,
-				SunstoneCore = 1,
-				AncientRune = 2,
+		if not charData.EquippedEquipment or type(charData.EquippedEquipment) ~= "table" then
+			charData.EquippedEquipment = {
+				Weapon = "StandardSword",
+				Head = "StandardHelm",
+				Body = "StandardChest",
+				Arms = "StandardArms",
+				Feet = "StandardFeet",
 			}
 		end
-		if charData.Gold == nil then
-			-- nil-check, not a truthiness/length check like the array fields above --
-			-- 0 is a valid already-set value that must not be overwritten back to 0.
-			charData.Gold = 0
+		if charData.EquippedWeapon == "Standard" or charData.EquippedWeapon == "Sunforged" then
+			charData.EquippedWeapon = "StandardSword"
 		end
+		if not charData.EquippedEquipment.Weapon or charData.EquippedEquipment.Weapon == "Standard" or charData.EquippedEquipment.Weapon == "Sunforged" then
+			charData.EquippedEquipment.Weapon = charData.EquippedWeapon or "StandardSword"
+		end
+		if not charData.EquippedEquipment.Head then charData.EquippedEquipment.Head = "StandardHelm" end
+		if not charData.EquippedEquipment.Body then charData.EquippedEquipment.Body = "StandardChest" end
+		if not charData.EquippedEquipment.Arms then charData.EquippedEquipment.Arms = "StandardArms" end
+		if not charData.EquippedEquipment.Feet then charData.EquippedEquipment.Feet = "StandardFeet" end
+
+		-- Clean up StoredEquipment: stash Sunforged, ensure all default standard pieces
+		local cleanedStored = {}
+		for _, itemOrSetId in ipairs(charData.StoredEquipment or {}) do
+			if itemOrSetId == "Sunforged" or string.find(itemOrSetId, "Sunforged") then
+				-- Stashed! Kept in future, do not expose in active stored equipment
+			elseif itemOrSetId ~= "Standard" then
+				table.insert(cleanedStored, itemOrSetId)
+			end
+		end
+		local defaultPieces = {"StandardSword", "StandardHelm", "StandardChest", "StandardArms", "StandardFeet"}
+		for _, pieceId in ipairs(defaultPieces) do
+			local found = false
+			for _, id in ipairs(cleanedStored) do
+				if id == pieceId then found = true; break end
+			end
+			if not found then table.insert(cleanedStored, pieceId) end
+		end
+		charData.StoredEquipment = cleanedStored
+
+		if not charData.CraftingMaterials then
+			charData.CraftingMaterials = {}
+		end
+		charData.CraftingMaterials.RockhideFragment = math.max(charData.CraftingMaterials.RockhideFragment or 0, 99999)
+		charData.CraftingMaterials.IronIngot = math.max(charData.CraftingMaterials.IronIngot or 0, 99999)
+		charData.CraftingMaterials.OakTimber = math.max(charData.CraftingMaterials.OakTimber or 0, 99999)
+		charData.CraftingMaterials.LeatherStrap = math.max(charData.CraftingMaterials.LeatherStrap or 0, 99999)
+		charData.CraftingMaterials.SunstoneCore = math.max(charData.CraftingMaterials.SunstoneCore or 0, 99999)
+		charData.CraftingMaterials.AncientRune = math.max(charData.CraftingMaterials.AncientRune or 0, 99999)
+
+		charData.Gold = math.max(charData.Gold or 0, 9999999)
 	end
 
 	profile:ListenToRelease(function()

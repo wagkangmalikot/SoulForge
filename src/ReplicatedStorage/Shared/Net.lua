@@ -40,6 +40,9 @@ local REMOTE_NAMES = {
 	"BossEffect",             -- server -> client: {effectType, position, data} -- screen shake, flash, aura pulses
 	"EquipmentDataChanged",   -- server -> client: {equippedWeapon, equippedShield, storedEquipment, craftingMaterials}
 	"RequestEquipEquipment",  -- client -> server: {equipmentId} -- switches active weapon/shield set
+	"RequestCraftItem",       -- client -> server: {setId} -- request to craft a gear set
+	"CraftingResult",         -- server -> client: {success, message, storedEquipment, craftingMaterials}
+	"OpenCraftingUI",         -- server -> client: triggers crafting panel (fired from ProximityPrompt)
 }
 
 

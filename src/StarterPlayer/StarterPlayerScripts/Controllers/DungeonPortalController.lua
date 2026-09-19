@@ -19,6 +19,9 @@ function DungeonPortalController.Start()
 	-- Player:GetJoinData().TeleportData -- the latter's TeleportData can be
 	-- withheld client-side for security reasons, which silently broke this
 	-- exact check elsewhere in this project.
+	if ReplicatedStorage:GetAttribute("IsDungeon") == true then
+		return
+	end
 	local teleportData = TeleportService:GetLocalPlayerTeleportData()
 	if teleportData and teleportData.isDungeon then
 		return

@@ -3,6 +3,10 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
+-- Critical: Disable CharacterAutoLoads immediately before any player can trigger
+-- premature native spawning before the Hub map and services are initialized.
+Players.CharacterAutoLoads = false
+
 local Net = require(ReplicatedStorage.Shared.Net)
 local PlayerDataService = require(ServerScriptService.Services.PlayerDataService)
 local CombatService = require(ServerScriptService.Services.CombatService)
@@ -11,9 +15,15 @@ local DungeonEntryService = require(ServerScriptService.Services.DungeonEntrySer
 local DungeonSessionService = require(ServerScriptService.Services.DungeonSessionService)
 local CharacterCreationService = require(ServerScriptService.Services.CharacterCreationService)
 local LevelUpService = require(ServerScriptService.Services.LevelUpService)
+local WeaponService = require(ServerScriptService.Services.WeaponService)
+local HubMapService = require(ServerScriptService.Services.HubMapService)
+local SkillTreeService = require(ServerScriptService.Services.SkillTreeService)
+local CraftingService = require(ServerScriptService.Services.CraftingService)
 
 PlayerDataService.Start()
 CombatService.Start()
+WeaponService.Start()
+SkillTreeService.Start()
 
 -- Hub and dungeon servers are the same published place sharing one
 -- Workspace -- there's no separate scene per server type, only this runtime
@@ -24,14 +34,16 @@ CombatService.Start()
 -- own services. This is the single place that decision gets made -- don't
 -- duplicate this cleanup inside DungeonSessionService or the hub services
 -- themselves.
-local HUB_ONLY_SCENERY = {"RockhidePortal", "LevelUpShrine", "SpawnLocation"}
+local HUB_ONLY_SCENERY = {"RockhidePortal", "LevelUpShrine", "SpawnLocation", "SoulforgeHub"}
 local DUNGEON_ONLY_SCENERY = {"RockhideArena"}
 
 local function destroyScenery(names: {string})
-	for _, name in names do
-		local instance = workspace:FindFirstChild(name)
-		if instance then
-			instance:Destroy()
+	for _, desc in workspace:GetDescendants() do
+		for _, name in names do
+			if desc.Name == name then
+				desc:Destroy()
+				break
+			end
 		end
 	end
 end
@@ -42,18 +54,42 @@ end
 -- reached via TeleportService:ReserveServer (only for purchased VIP/Private
 -- Servers), a bug the sibling DBD-Roblox project already hit and documented
 -- in its own Main.server.lua.
+local RunService = game:GetService("RunService")
+
+-- In Studio Play Solo, boot into the Hub on load so you can test Hub features
+-- (character creation/spawning, dungeon portal, ascension shrine, training grounds).
+-- Set to true if you want to bypass the Hub and jump straight into Rockhide's dungeon.
+local STUDIO_DIRECT_DUNGEON = false
+
 local function determineServerTypeAndStart(player: Player)
 	local teleportData = player:GetJoinData().TeleportData
+	local isDungeonServer = (teleportData and teleportData.isDungeon)
+		or (RunService:IsStudio() and STUDIO_DIRECT_DUNGEON)
 
-	if teleportData and teleportData.isDungeon then
+	if isDungeonServer then
+		ReplicatedStorage:SetAttribute("IsDungeon", true)
 		destroyScenery(HUB_ONLY_SCENERY)
-		DungeonSessionService.Start(teleportData.dungeonId)
+		local dungeonId = (teleportData and teleportData.dungeonId) or "Rockhide"
+		local partyUserIds = teleportData and teleportData.partyMemberUserIds
+		DungeonSessionService.Start(dungeonId, partyUserIds)
 	else
 		destroyScenery(DUNGEON_ONLY_SCENERY)
+		for _, desc in workspace:GetDescendants() do
+			if desc:IsA("SpawnLocation") then
+				desc:Destroy()
+			end
+		end
+		local ok, err = pcall(function()
+			HubMapService.BuildHub()
+		end)
+		if not ok then
+			warn("[Main] Error building Hub map:", err)
+		end
 		PartyService.Start()
 		DungeonEntryService.Start()
 		CharacterCreationService.Start()
 		LevelUpService.Start()
+		CraftingService.Start()
 	end
 end
 
@@ -64,3 +100,25 @@ else
 end
 
 print("Soulforge server started. Net remotes ready:", Net.Get("CastSkill").Name)
+
+-- Diagnostic dump of Assets and TrashMobTemplate
+task.defer(function()
+	local assets = ReplicatedStorage:FindFirstChild("Assets")
+	if not assets then
+		print("DIAG: No ReplicatedStorage.Assets folder found!")
+		return
+	end
+	print("DIAG: ReplicatedStorage.Assets found:")
+	for _, item in assets:GetChildren() do
+		print(("DIAG: Asset: %s (%s)"):format(item.Name, item.ClassName))
+		if item:IsA("Model") then
+			print(("DIAG:   PrimaryPart = %s"):format(tostring(item.PrimaryPart and item.PrimaryPart.Name)))
+			for _, child in item:GetChildren() do
+				print(("DIAG:   - %s (%s)"):format(child.Name, child.ClassName))
+				for _, sub in child:GetChildren() do
+					print(("DIAG:       -- %s (%s)"):format(sub.Name, sub.ClassName))
+				end
+			end
+		end
+	end
+end)

@@ -5,9 +5,11 @@
 -- instead of silently skipping straight to spawn.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Net = require(ReplicatedStorage.Shared.Net)
 local PlayerDataService = require(script.Parent.PlayerDataService)
+local HubMapService = require(script.Parent.HubMapService)
 
 local CharacterCreationService = {}
 
@@ -19,6 +21,27 @@ local function fireCharacterDataChanged(player: Player, profile)
 	)
 end
 
+-- Teleports character cleanly into the Hub's central sanctuary fountain plaza
+local function moveCharacterToHubSpawn(character: Model)
+	if ReplicatedStorage:GetAttribute("IsDungeon") then
+		return
+	end
+	task.defer(function()
+		local rootPart = character:WaitForChild("HumanoidRootPart", 5)
+		if rootPart and not ReplicatedStorage:GetAttribute("IsDungeon") then
+			character:PivotTo(HubMapService.GetSpawnCFrame())
+		end
+	end)
+	task.delay(0.12, function()
+		if character and character.Parent and not ReplicatedStorage:GetAttribute("IsDungeon") then
+			local rootPart = character:FindFirstChild("HumanoidRootPart")
+			if rootPart then
+				character:PivotTo(HubMapService.GetSpawnCFrame())
+			end
+		end
+	end)
+end
+
 -- Guards against processing the same player twice. This matters for the same
 -- reason DungeonSessionService's `hookedPlayers` guard does: PlayerAdded is
 -- connected BEFORE looping over the initial GetPlayers() snapshot (so a
@@ -26,6 +49,29 @@ end
 -- still in flight, is never missed) -- which creates a narrow window where a
 -- player could be picked up by both the connection and the loop's snapshot.
 local processedPlayers = {}
+local actionInFlight = {}
+
+-- Shared tail end of all three character-entry actions: spawn the character,
+-- notify the client of the (possibly just-reset) profile data, and release
+-- the in-flight guard. Pulled out because all three handlers otherwise repeat
+-- this verbatim aside from the warn's context phrase.
+local function loadCharacterAndNotify(player: Player, profile, context: string)
+	-- LoadCharacter() can throw (rare); pcall so a disconnect or engine error
+	-- here doesn't take down this whole handler.
+	local loadOk, loadErr = pcall(function()
+		player:LoadCharacter()
+		fireCharacterDataChanged(player, profile)
+	end)
+	if not loadOk then
+		warn(("CharacterCreationService: LoadCharacter failed for %s %s: %s"):format(player.Name, context, tostring(loadErr)))
+	end
+
+	if player.Character then
+		moveCharacterToHubSpawn(player.Character)
+	end
+
+	actionInFlight[player.UserId] = nil
+end
 
 local function handlePlayer(player: Player)
 	if processedPlayers[player.UserId] then
@@ -44,6 +90,19 @@ local function handlePlayer(player: Player)
 			return -- load failed; PlayerDataService has already kicked them
 		end
 
+		-- In Studio Play Solo, auto-load directly into the Hub on load so you can
+		-- immediately play and test in the Hub (unless TestCharacterCreation is set).
+		local autoLoadInStudio = RunService:IsStudio() and not ReplicatedStorage:GetAttribute("TestCharacterCreation")
+		if autoLoadInStudio then
+			if not profile.Data.Character.HasCreatedCharacter then
+				profile.Data.Character.Name = player.DisplayName
+				profile.Data.Character.ClassId = "Tank"
+				profile.Data.Character.HasCreatedCharacter = true
+			end
+			loadCharacterAndNotify(player, profile, "studio auto-load")
+			return
+		end
+
 		if profile.Data.Character.HasCreatedCharacter then
 			Net.Get("ShowCharacterChoice"):FireClient(player, profile.Data.Character.Level)
 		else
@@ -53,37 +112,6 @@ local function handlePlayer(player: Player)
 	if not ok then
 		warn(("CharacterCreationService: handlePlayer failed for %s: %s"):format(player.Name, tostring(err)))
 	end
-end
-
--- Guards against a double-click/double-fire spamming any of the three
--- character-entry actions (submit creation, load, create-new) in quick
--- succession: OnServerEvent runs each fire on its own thread, so without this
--- a player could race two concurrent LoadCharacter() calls. It's safe to
--- share one flag across all three actions not merely because they're
--- mutually-exclusive UI screens, but because each handler checks and sets
--- this flag entirely before its own first yield (the LoadCharacter() pcall)
--- -- so there's never a window where two handlers are both past their guard
--- at once. If a future edit ever inserted a yielding call ahead of the
--- guard-set in any one handler, that guarantee -- and the double-fire
--- protection it provides -- would break.
-local actionInFlight = {}
-
--- Shared tail end of all three character-entry actions: spawn the character,
--- notify the client of the (possibly just-reset) profile data, and release
--- the in-flight guard. Pulled out because all three handlers otherwise repeat
--- this verbatim aside from the warn's context phrase.
-local function loadCharacterAndNotify(player: Player, profile, context: string)
-	-- LoadCharacter() can throw (rare); pcall so a disconnect or engine error
-	-- here doesn't take down this whole handler.
-	local loadOk, loadErr = pcall(function()
-		player:LoadCharacter()
-		fireCharacterDataChanged(player, profile)
-	end)
-	if not loadOk then
-		warn(("CharacterCreationService: LoadCharacter failed for %s %s: %s"):format(player.Name, context, tostring(loadErr)))
-	end
-
-	actionInFlight[player.UserId] = nil
 end
 
 local function onSubmitCharacterCreation(player: Player)
@@ -137,7 +165,8 @@ local function onRequestCreateNewCharacter(player: Player)
 	-- HasCreatedCharacter is not part of this reset, so that risk doesn't
 	-- apply here.
 	profile.Data.Character.Level = 1
-	profile.Data.Character.UnspentEXP = 0
+	profile.Data.Character.UnspentEXP = 999999
+	profile.Data.Character.SkillPoints = 50
 	profile.Data.Character.ClassId = "Tank"
 	profile.Data.Character.Name = player.DisplayName
 
@@ -150,9 +179,33 @@ function CharacterCreationService.Start()
 	-- for every player instead of relying on the engine's own auto-spawn timing.
 	Players.CharacterAutoLoads = false
 
-	Players.PlayerAdded:Connect(handlePlayer)
-	for _, player in Players:GetPlayers() do
+	local function hookPlayer(player: Player)
+		player.CharacterAdded:Connect(function(character)
+			moveCharacterToHubSpawn(character)
+			local humanoid = character:WaitForChild("Humanoid", 5)
+			if humanoid then
+				humanoid.Died:Connect(function()
+					task.wait(Players.RespawnTime or 3)
+					if player and player.Parent and not ReplicatedStorage:GetAttribute("IsDungeon") then
+						local profile = PlayerDataService.GetProfile(player)
+						if profile and profile.Data.Character.HasCreatedCharacter then
+							loadCharacterAndNotify(player, profile, "respawn after death")
+						end
+					end
+				end)
+			end
+		end)
+
+		if player.Character then
+			moveCharacterToHubSpawn(player.Character)
+		end
+
 		handlePlayer(player)
+	end
+
+	Players.PlayerAdded:Connect(hookPlayer)
+	for _, player in Players:GetPlayers() do
+		hookPlayer(player)
 	end
 
 	-- Hub servers stay alive across many players joining and leaving, so
@@ -170,6 +223,18 @@ function CharacterCreationService.Start()
 	Net.Get("SubmitCharacterCreation").OnServerEvent:Connect(onSubmitCharacterCreation)
 	Net.Get("RequestLoadCharacter").OnServerEvent:Connect(onRequestLoadCharacter)
 	Net.Get("RequestCreateNewCharacter").OnServerEvent:Connect(onRequestCreateNewCharacter)
+
+	Net.Get("RequestCharacterState").OnServerEvent:Connect(function(player: Player)
+		local profile = PlayerDataService.GetProfile(player)
+		if profile then
+			if profile.Data.Character.HasCreatedCharacter then
+				Net.Get("ShowCharacterChoice"):FireClient(player, profile.Data.Character.Level)
+			else
+				Net.Get("ShowCharacterCreation"):FireClient(player)
+			end
+		end
+	end)
 end
+
 
 return CharacterCreationService

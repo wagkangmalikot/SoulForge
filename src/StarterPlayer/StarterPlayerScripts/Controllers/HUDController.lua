@@ -16,6 +16,8 @@ local Classes = require(ReplicatedStorage.Shared.Data.Classes)
 local BossAttacks = require(ReplicatedStorage.Shared.Data.BossAttacks)
 local WeaponController = require(script.Parent.WeaponController)
 local SkillTreeUIController = require(script.Parent.SkillTreeUIController)
+local CraftingUIController = require(script.Parent.CraftingUIController)
+local InventoryUIController = require(script.Parent.InventoryUIController)
 
 local HUDController = {}
 
@@ -149,32 +151,39 @@ local function createSkillImageIcon(parent: Instance, imageId: string): ImageLab
 	local existing = parent:FindFirstChild("SkillImageIcon")
 	if existing and existing:IsA("ImageLabel") then
 		existing.Image = imageId
+		existing.Size = UDim2.new(1, 0, 1, 0)
+		existing.Position = UDim2.new(0.5, 0, 0.5, 0)
+		existing.AnchorPoint = Vector2.new(0.5, 0.5)
+		existing.ScaleType = Enum.ScaleType.Crop
+		existing.BackgroundTransparency = 1
 		existing.Visible = true
+		local corner = existing:FindFirstChildOfClass("UICorner")
+		if corner then
+			corner.CornerRadius = UDim.new(0, 8)
+		end
+		local stroke = existing:FindFirstChildOfClass("UIStroke")
+		if stroke then
+			stroke:Destroy()
+		end
 		return existing
 	end
 
 	local iconImg = Instance.new("ImageLabel")
 	iconImg.Name = "SkillImageIcon"
-	iconImg.Size = UDim2.new(0, 32, 0, 32)
-	iconImg.Position = UDim2.new(0.5, 0, 0.36, 0)
+	iconImg.Size = UDim2.new(1, 0, 1, 0)
+	iconImg.Position = UDim2.new(0.5, 0, 0.5, 0)
 	iconImg.AnchorPoint = Vector2.new(0.5, 0.5)
 	iconImg.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
-	iconImg.BackgroundTransparency = 0.1
+	iconImg.BackgroundTransparency = 1
 	iconImg.BorderSizePixel = 0
-	iconImg.ScaleType = Enum.ScaleType.Fit
+	iconImg.ScaleType = Enum.ScaleType.Crop
 	iconImg.Image = imageId
 	iconImg.ZIndex = 2
 	iconImg.Parent = parent
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 6)
+	corner.CornerRadius = UDim.new(0, 8)
 	corner.Parent = iconImg
-
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = Color3.fromRGB(240, 190, 75)
-	stroke.Thickness = 1.2
-	stroke.Transparency = 0.2
-	stroke.Parent = iconImg
 
 	return iconImg
 end
@@ -227,7 +236,7 @@ local function updateSkillButtons()
 			nameLabel.Text = "EQUIP"
 			nameLabel.TextColor3 = Color3.fromRGB(130, 140, 160)
 			iconLabel.Visible = true
-			iconLabel.Text = "➕"
+			iconLabel.Text = "+"
 		end
 	end
 end
@@ -235,6 +244,12 @@ end
 local function fireSkill(skillId: string)
 	local skill = Skills[skillId]
 	if not skill then
+		return
+	end
+
+	local now = os.clock()
+	local expires = cooldownEnds[skillId]
+	if expires and now < expires then
 		return
 	end
 
@@ -252,14 +267,14 @@ local function fireSkill(skillId: string)
 		end
 	end
 
+	cooldownEnds[skillId] = now + (skill.cooldown or 0)
+
 	Net.Get("CastSkill"):FireServer(skillId, selectedTargetId)
 
 	local char = Players.LocalPlayer.Character
 	if char then
 		WeaponController.PlaySwing(char, skillId)
 	end
-
-	cooldownEnds[skillId] = os.clock() + (skill.cooldown or 0)
 end
 
 local function fireNormalAttack()
@@ -302,6 +317,90 @@ function HUDController.Start()
 	screenGui.ResetOnSpawn = false
 	screenGui.Parent = playerGui
 
+	-- ── Responsive HUD Scale Containers (Scales up cleanly on Laptop & Desktop) ─
+	local hudScales: {UIScale} = {}
+
+	local topLeftContainer = Instance.new("Frame")
+	topLeftContainer.Name = "TopLeftContainer"
+	topLeftContainer.AnchorPoint = Vector2.new(0, 0)
+	topLeftContainer.Position = UDim2.new(0, 0, 0, 0)
+	topLeftContainer.Size = UDim2.new(0, 0, 0, 0)
+	topLeftContainer.BackgroundTransparency = 1
+	topLeftContainer.Parent = screenGui
+
+	local scaleTL = Instance.new("UIScale")
+	scaleTL.Name = "ScaleTL"
+	scaleTL.Parent = topLeftContainer
+	table.insert(hudScales, scaleTL)
+
+	local topCenterContainer = Instance.new("Frame")
+	topCenterContainer.Name = "TopCenterContainer"
+	topCenterContainer.AnchorPoint = Vector2.new(0.5, 0)
+	topCenterContainer.Position = UDim2.new(0.5, 0, 0, 0)
+	topCenterContainer.Size = UDim2.new(0, 0, 0, 0)
+	topCenterContainer.BackgroundTransparency = 1
+	topCenterContainer.Parent = screenGui
+
+	local scaleTC = Instance.new("UIScale")
+	scaleTC.Name = "ScaleTC"
+	scaleTC.Parent = topCenterContainer
+	table.insert(hudScales, scaleTC)
+
+	local topRightContainer = Instance.new("Frame")
+	topRightContainer.Name = "TopRightContainer"
+	topRightContainer.AnchorPoint = Vector2.new(1, 0)
+	topRightContainer.Position = UDim2.new(1, 0, 0, 0)
+	topRightContainer.Size = UDim2.new(0, 0, 0, 0)
+	topRightContainer.BackgroundTransparency = 1
+	topRightContainer.Parent = screenGui
+
+	local scaleTR = Instance.new("UIScale")
+	scaleTR.Name = "ScaleTR"
+	scaleTR.Parent = topRightContainer
+	table.insert(hudScales, scaleTR)
+
+	local bottomRightContainer = Instance.new("Frame")
+	bottomRightContainer.Name = "BottomRightContainer"
+	bottomRightContainer.AnchorPoint = Vector2.new(1, 1)
+	bottomRightContainer.Position = UDim2.new(1, 0, 1, 0)
+	bottomRightContainer.Size = UDim2.new(0, 0, 0, 0)
+	bottomRightContainer.BackgroundTransparency = 1
+	bottomRightContainer.Parent = screenGui
+
+	local scaleBR = Instance.new("UIScale")
+	scaleBR.Name = "ScaleBR"
+	scaleBR.Parent = bottomRightContainer
+	table.insert(hudScales, scaleBR)
+
+	local function updateHudScale()
+		local camera = workspace.CurrentCamera
+		if not camera then return end
+		local vp = camera.ViewportSize
+		if vp.X <= 0 or vp.Y <= 0 then return end
+
+		-- Reference mobile height is ~420px. On larger screens (laptops, desktop monitors), scale smoothly up.
+		local scaleY = vp.Y / 420
+		local targetScale = 1.0 + math.pow(math.max(0, scaleY - 1.0), 0.8) * 0.55
+		local clampedScale = math.clamp(targetScale, 1.0, 1.95)
+
+		for _, s in ipairs(hudScales) do
+			s.Scale = clampedScale
+		end
+	end
+
+	local cam = workspace.CurrentCamera
+	if cam then
+		cam:GetPropertyChangedSignal("ViewportSize"):Connect(updateHudScale)
+	end
+	workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+		local newCam = workspace.CurrentCamera
+		if newCam then
+			newCam:GetPropertyChangedSignal("ViewportSize"):Connect(updateHudScale)
+			updateHudScale()
+		end
+	end)
+	updateHudScale()
+
 	-- ── Player Unit Frame (Top-Left: leaves bottom-left 100% free for mobile joystick) ─
 	local playerFrame = Instance.new("Frame")
 	playerFrame.Name = "PlayerUnitFrame"
@@ -310,7 +409,7 @@ function HUDController.Start()
 	playerFrame.BackgroundColor3 = Color3.fromRGB(16, 18, 26)
 	playerFrame.BackgroundTransparency = 0.15
 	playerFrame.BorderSizePixel = 0
-	playerFrame.Parent = screenGui
+	playerFrame.Parent = topLeftContainer
 
 	local playerFrameCorner = Instance.new("UICorner")
 	playerFrameCorner.CornerRadius = UDim.new(0, 8)
@@ -461,67 +560,55 @@ function HUDController.Start()
 	playerHealthText.ZIndex = 4
 	playerHealthText.Parent = playerHealthBg
 
-	-- ── Boss Health Bar (Top-Center, hidden until fighting the boss starts) ───
+	-- ── Boss Health Bar (Top-Center, compact & responsive) ───────────────────
 	local bossHealthContainer = Instance.new("Frame")
 	bossHealthContainer.Name = "BossHealthContainer"
-	bossHealthContainer.Size = UDim2.new(0, 480, 0, 58)
-	bossHealthContainer.Position = UDim2.new(0.5, -240, 0, 28)
+	bossHealthContainer.AnchorPoint = Vector2.new(0.5, 0)
+	bossHealthContainer.Size = UDim2.new(0, 280, 0, 32)
+	bossHealthContainer.Position = UDim2.new(0, 0, 0, 8)
 	bossHealthContainer.BackgroundTransparency = 1
 	bossHealthContainer.Visible = false
-	bossHealthContainer.Parent = screenGui
+	bossHealthContainer.Parent = topCenterContainer
 
 	-- Boss Title Header Card
 	local bossHeader = Instance.new("Frame")
 	bossHeader.Name = "BossHeader"
-	bossHeader.Size = UDim2.new(1, 0, 0, 26)
+	bossHeader.Size = UDim2.new(1, 0, 0, 15)
 	bossHeader.Position = UDim2.new(0, 0, 0, 0)
 	bossHeader.BackgroundTransparency = 1
 	bossHeader.Parent = bossHealthContainer
 
 	local bossNameLabel = Instance.new("TextLabel")
 	bossNameLabel.Name = "BossName"
-	bossNameLabel.Size = UDim2.new(1, 0, 0, 15)
+	bossNameLabel.Size = UDim2.new(1, 0, 1, 0)
 	bossNameLabel.Position = UDim2.new(0, 0, 0, 0)
 	bossNameLabel.BackgroundTransparency = 1
 	bossNameLabel.Font = Enum.Font.GothamBold
-	bossNameLabel.TextSize = 13
+	bossNameLabel.TextSize = 11
 	bossNameLabel.TextColor3 = Color3.fromRGB(255, 220, 110)
 	bossNameLabel.TextStrokeColor3 = Color3.fromRGB(15, 15, 22)
 	bossNameLabel.TextStrokeTransparency = 0.2
 	bossNameLabel.Text = "💀 ROCKHIDE THE EARTHBREAKER"
 	bossNameLabel.Parent = bossHeader
 
-	local bossSubtitleLabel = Instance.new("TextLabel")
-	bossSubtitleLabel.Name = "BossSubtitle"
-	bossSubtitleLabel.Size = UDim2.new(1, 0, 0, 11)
-	bossSubtitleLabel.Position = UDim2.new(0, 0, 0, 15)
-	bossSubtitleLabel.BackgroundTransparency = 1
-	bossSubtitleLabel.Font = Enum.Font.Gotham
-	bossSubtitleLabel.TextSize = 9
-	bossSubtitleLabel.TextColor3 = Color3.fromRGB(195, 175, 135)
-	bossSubtitleLabel.TextStrokeColor3 = Color3.fromRGB(15, 15, 22)
-	bossSubtitleLabel.TextStrokeTransparency = 0.3
-	bossSubtitleLabel.Text = "DUNGEON GUARDIAN • TANK ENCOUNTER"
-	bossSubtitleLabel.Parent = bossHeader
-
 	-- Boss Bar Background Plate
 	local bossHealthBg = Instance.new("Frame")
 	bossHealthBg.Name = "BarBg"
-	bossHealthBg.Size = UDim2.new(1, 0, 0, 24)
-	bossHealthBg.Position = UDim2.new(0, 0, 0, 28)
+	bossHealthBg.Size = UDim2.new(1, 0, 0, 14)
+	bossHealthBg.Position = UDim2.new(0, 0, 0, 16)
 	bossHealthBg.BackgroundColor3 = Color3.fromRGB(16, 18, 24)
 	bossHealthBg.BorderSizePixel = 0
 	bossHealthBg.ClipsDescendants = true
 	bossHealthBg.Parent = bossHealthContainer
 
 	local bossBgCorner = Instance.new("UICorner")
-	bossBgCorner.CornerRadius = UDim.new(0, 6)
+	bossBgCorner.CornerRadius = UDim.new(0, 4)
 	bossBgCorner.Parent = bossHealthBg
 
 	local bossBgStroke = Instance.new("UIStroke")
 	bossBgStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	bossBgStroke.Color = Color3.fromRGB(215, 175, 75)
-	bossBgStroke.Thickness = 2
+	bossBgStroke.Thickness = 1.2
 	bossBgStroke.Parent = bossHealthBg
 
 	-- Boss Ghost Buffer Bar (Amber/White trailing damage)
@@ -535,7 +622,7 @@ function HUDController.Start()
 	bossGhostFill.Parent = bossHealthBg
 
 	local bossGhostCorner = Instance.new("UICorner")
-	bossGhostCorner.CornerRadius = UDim.new(0, 6)
+	bossGhostCorner.CornerRadius = UDim.new(0, 4)
 	bossGhostCorner.Parent = bossGhostFill
 
 	-- Main Boss Crimson Health Fill
@@ -549,7 +636,7 @@ function HUDController.Start()
 	bossHealthFill.Parent = bossHealthBg
 
 	local bossFillCorner = Instance.new("UICorner")
-	bossFillCorner.CornerRadius = UDim.new(0, 6)
+	bossFillCorner.CornerRadius = UDim.new(0, 4)
 	bossFillCorner.Parent = bossHealthFill
 
 	local bossFillGrad = Instance.new("UIGradient")
@@ -560,7 +647,7 @@ function HUDController.Start()
 	for _, notchPct in {0.25, 0.50, 0.75} do
 		local notch = Instance.new("Frame")
 		notch.Name = "Notch_" .. tostring(notchPct * 100)
-		notch.Size = UDim2.new(0, 2, 1, 0)
+		notch.Size = UDim2.new(0, 1.5, 1, 0)
 		notch.Position = UDim2.new(notchPct, -1, 0, 0)
 		notch.BackgroundColor3 = Color3.fromRGB(35, 40, 50)
 		notch.BackgroundTransparency = 0.3
@@ -576,7 +663,7 @@ function HUDController.Start()
 	bossHealthText.Position = UDim2.new(0, 0, 0, 0)
 	bossHealthText.BackgroundTransparency = 1
 	bossHealthText.Font = Enum.Font.GothamBold
-	bossHealthText.TextSize = 12
+	bossHealthText.TextSize = 10
 	bossHealthText.TextColor3 = Color3.fromRGB(255, 255, 255)
 	bossHealthText.TextStrokeColor3 = Color3.fromRGB(20, 10, 10)
 	bossHealthText.TextStrokeTransparency = 0.2
@@ -666,7 +753,7 @@ function HUDController.Start()
 	objectiveCard.BackgroundTransparency = 0.15
 	objectiveCard.BorderSizePixel = 0
 	objectiveCard.Visible = false
-	objectiveCard.Parent = screenGui
+	objectiveCard.Parent = topLeftContainer
 
 	local objCorner = Instance.new("UICorner")
 	objCorner.CornerRadius = UDim.new(0, 8)
@@ -758,11 +845,18 @@ function HUDController.Start()
 
 	local function updateObjectivePosition()
 		local partyGui = playerGui:FindFirstChild("PartyUI")
-		local statusLabel = partyGui and partyGui:FindFirstChild("StatusLabel")
-		if statusLabel and statusLabel.Visible and statusLabel.Text ~= "" and statusLabel.Text ~= "No party" then
-			objectiveCard.Position = UDim2.new(0, 16, 0, 148)
+		local partyCard = (topLeftContainer and topLeftContainer:FindFirstChild("PartyCard"))
+			or (partyGui and partyGui:FindFirstChild("PartyCard"))
+		local statusLabel = (topLeftContainer and topLeftContainer:FindFirstChild("StatusLabel", true))
+			or (partyGui and partyGui:FindFirstChild("StatusLabel", true))
+
+		local partyActive = (partyCard and partyCard.Visible)
+			or (statusLabel and statusLabel.Visible and statusLabel.Text ~= "" and statusLabel.Text ~= "No party")
+
+		if partyActive then
+			objectiveCard.Position = UDim2.new(0, 16, 0, 150)
 		else
-			objectiveCard.Position = UDim2.new(0, 16, 0, 100)
+			objectiveCard.Position = UDim2.new(0, 16, 0, 102)
 		end
 	end
 
@@ -850,70 +944,45 @@ function HUDController.Start()
 		rootPart.Parent = arrowModel
 		arrowModel.PrimaryPart = rootPart
 
-		-- Aerodynamic Diamond Spearhead (outer gold)
-		local diamondHead = Instance.new("Part")
-		diamondHead.Name = "DiamondHead"
-		diamondHead.Size = Vector3.new(1.6, 0.32, 1.6)
-		diamondHead.Material = Enum.Material.Neon
-		diamondHead.Color = Color3.fromRGB(250, 190, 30)
-		diamondHead.CanCollide = false
-		diamondHead.CanTouch = false
-		diamondHead.CanQuery = false
-		diamondHead.CastShadow = false
-		diamondHead.Anchored = true
-		diamondHead.Parent = arrowModel
+		-- Simple Big Fat 3D Arrow (Classic arcade / RPG direction indicator)
+		-- Left half of triangular arrowhead (WedgePart)
+		local headL = Instance.new("WedgePart")
+		headL.Name = "HeadL"
+		headL.Size = Vector3.new(0.48, 1.3, 1.9)
+		headL.Material = Enum.Material.Neon
+		headL.Color = Color3.fromRGB(255, 215, 25)
+		headL.CanCollide = false
+		headL.CanTouch = false
+		headL.CanQuery = false
+		headL.CastShadow = false
+		headL.Anchored = true
+		headL.Parent = arrowModel
 
-		-- Glowing Inner Gem (nested crystal in spearhead)
-		local coreGem = Instance.new("Part")
-		coreGem.Name = "CoreGem"
-		coreGem.Size = Vector3.new(0.85, 0.38, 0.85)
-		coreGem.Material = Enum.Material.Neon
-		coreGem.Color = Color3.fromRGB(255, 255, 220)
-		coreGem.CanCollide = false
-		coreGem.CanTouch = false
-		coreGem.CanQuery = false
-		coreGem.CastShadow = false
-		coreGem.Anchored = true
-		coreGem.Parent = arrowModel
+		-- Right half of triangular arrowhead (WedgePart)
+		local headR = Instance.new("WedgePart")
+		headR.Name = "HeadR"
+		headR.Size = Vector3.new(0.48, 1.3, 1.9)
+		headR.Material = Enum.Material.Neon
+		headR.Color = Color3.fromRGB(255, 215, 25)
+		headR.CanCollide = false
+		headR.CanTouch = false
+		headR.CanQuery = false
+		headR.CastShadow = false
+		headR.Anchored = true
+		headR.Parent = arrowModel
 
-		-- Arrow Shaft / Spine
+		-- Chunky Arrow Stem / Shaft (Part)
 		local shaft = Instance.new("Part")
 		shaft.Name = "ArrowShaft"
-		shaft.Size = Vector3.new(0.48, 0.26, 1.8)
+		shaft.Size = Vector3.new(1.3, 0.48, 1.7)
 		shaft.Material = Enum.Material.Neon
-		shaft.Color = Color3.fromRGB(255, 195, 40)
+		shaft.Color = Color3.fromRGB(255, 185, 20)
 		shaft.CanCollide = false
 		shaft.CanTouch = false
 		shaft.CanQuery = false
 		shaft.CastShadow = false
 		shaft.Anchored = true
 		shaft.Parent = arrowModel
-
-		-- Left Fletching Fin
-		local tailL = Instance.new("Part")
-		tailL.Name = "TailL"
-		tailL.Size = Vector3.new(0.24, 0.28, 0.85)
-		tailL.Material = Enum.Material.Neon
-		tailL.Color = Color3.fromRGB(255, 215, 60)
-		tailL.CanCollide = false
-		tailL.CanTouch = false
-		tailL.CanQuery = false
-		tailL.CastShadow = false
-		tailL.Anchored = true
-		tailL.Parent = arrowModel
-
-		-- Right Fletching Fin
-		local tailR = Instance.new("Part")
-		tailR.Name = "TailR"
-		tailR.Size = Vector3.new(0.24, 0.28, 0.85)
-		tailR.Material = Enum.Material.Neon
-		tailR.Color = Color3.fromRGB(255, 215, 60)
-		tailR.CanCollide = false
-		tailR.CanTouch = false
-		tailR.CanQuery = false
-		tailR.CastShadow = false
-		tailR.Anchored = true
-		tailR.Parent = arrowModel
 
 		-- Ground Navigation Chevron (projected onto floor ahead of player)
 		local groundChevron = Instance.new("Part")
@@ -1143,11 +1212,9 @@ function HUDController.Start()
 
 			-- Update root and all arrow parts relative to tiltCF
 			rootPart.CFrame = tiltCF
-			diamondHead.CFrame = tiltCF * CFrame.new(0, 0, -0.6) * CFrame.Angles(0, math.rad(45), 0)
-			coreGem.CFrame = tiltCF * CFrame.new(0, 0, -0.6) * CFrame.Angles(0, math.rad(45), 0)
-			shaft.CFrame = tiltCF * CFrame.new(0, 0, 0.75)
-			tailL.CFrame = tiltCF * CFrame.new(-0.38, 0, 1.5) * CFrame.Angles(0, math.rad(28), 0)
-			tailR.CFrame = tiltCF * CFrame.new(0.38, 0, 1.5) * CFrame.Angles(0, math.rad(-28), 0)
+			headR.CFrame = tiltCF * CFrame.fromMatrix(Vector3.new(0.65, 0, -0.85), Vector3.new(0, -1, 0), Vector3.new(1, 0, 0), Vector3.new(0, 0, 1))
+			headL.CFrame = tiltCF * CFrame.fromMatrix(Vector3.new(-0.65, 0, -0.85), Vector3.new(0, 1, 0), Vector3.new(-1, 0, 0), Vector3.new(0, 0, 1))
+			shaft.CFrame = tiltCF * CFrame.new(0, 0, 0.95)
 
 			-- Update ground chevron ahead of player
 			rayParams.FilterDescendantsInstances = {character, arrowModel, beaconModel}
@@ -1205,60 +1272,10 @@ function HUDController.Start()
 	end)
 
 	-- ── Telegraph Ground Indicators ────────────────────────────────────────────
+	-- Hidden as requested: no visible ground damage circle or ring indicator is shown to players.
+	-- Players rely on the boss's physical windup poses, roaring audio, leaps, and kinetic cues.
 	Net.Get("TelegraphAttack").OnClientEvent:Connect(function(attackId, position, telegraphTime, radius)
-		local attackRadius = radius or (BossAttacks[attackId] and BossAttacks[attackId].radius) or 10
-		local diameter = attackRadius * 2
-
-		-- Snap directly to ground floor geometry via downward raycast
-		local rayParams = RaycastParams.new()
-		rayParams.FilterType = Enum.RaycastFilterType.Exclude
-		local char = Players.LocalPlayer and Players.LocalPlayer.Character
-		if char then
-			rayParams.FilterDescendantsInstances = {char}
-		end
-		local hit = workspace:Raycast(Vector3.new(position.X, 25, position.Z), Vector3.new(0, -60, 0), rayParams)
-		local groundY = hit and (hit.Position.Y + 0.10) or (position.Y > 5 and 1.10 or position.Y)
-		local groundPos = Vector3.new(position.X, groundY, position.Z)
-
-		-- Main telegraph zone disc
-		local indicator = Instance.new("Part")
-		indicator.Name = "TelegraphIndicator_" .. attackId
-		indicator.Shape = Enum.PartType.Cylinder
-		indicator.Size = Vector3.new(0.12, diameter, diameter)
-		indicator.Orientation = Vector3.new(0, 0, 90)
-		indicator.Position = groundPos
-		indicator.Anchored = true
-		indicator.CanCollide = false
-		indicator.Color = Color3.fromRGB(255, 90, 25)
-		indicator.Material = Enum.Material.Neon
-		indicator.Transparency = 0.72
-		indicator.Parent = workspace
-
-		-- Perimeter warning ring
-		local outerRing = Instance.new("Part")
-		outerRing.Name = "TelegraphRing_" .. attackId
-		outerRing.Shape = Enum.PartType.Cylinder
-		outerRing.Size = Vector3.new(0.18, diameter + 0.6, diameter + 0.6)
-		outerRing.Orientation = Vector3.new(0, 0, 90)
-		outerRing.Position = groundPos + Vector3.new(0, 0.02, 0)
-		outerRing.Anchored = true
-		outerRing.CanCollide = false
-		outerRing.Color = Color3.fromRGB(255, 185, 45)
-		outerRing.Material = Enum.Material.Neon
-		outerRing.Transparency = 0.65
-		outerRing.Parent = workspace
-
-		-- Pulsing border during telegraph
-		local pulseTween = TweenService:Create(outerRing, TweenInfo.new(0.35, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-			Transparency = 0.88,
-		})
-		pulseTween:Play()
-
-		task.delay(telegraphTime, function()
-			pulseTween:Cancel()
-			if indicator and indicator.Parent then indicator:Destroy() end
-			if outerRing and outerRing.Parent then outerRing:Destroy() end
-		end)
+		-- Visual circle damage area is intentionally hidden.
 	end)
 
 	-- ── Boss Special Effects (Screen Shake + Flash) ──────────────────────────
@@ -1345,10 +1362,10 @@ function HUDController.Start()
 	attackFrame.Name = "AttackButton"
 	attackFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 	attackFrame.Size = UDim2.new(0, ATTACK_BUTTON_SIZE, 0, ATTACK_BUTTON_SIZE)
-	attackFrame.Position = UDim2.new(1, ATTACK_POS_X, 1, ATTACK_POS_Y)
+	attackFrame.Position = UDim2.new(0, ATTACK_POS_X, 0, ATTACK_POS_Y)
 	attackFrame.BackgroundColor3 = Color3.fromRGB(215, 45, 38)
 	attackFrame.BorderSizePixel = 0
-	attackFrame.Parent = screenGui
+	attackFrame.Parent = bottomRightContainer
 
 	local attackCorner = Instance.new("UICorner")
 	attackCorner.CornerRadius = UDim.new(0.5, 0) -- circular
@@ -1474,15 +1491,16 @@ function HUDController.Start()
 	-- ── Dedicated Skills Menu Button (Top-Right: keeps screen center completely clear) ─
 	local skillsMenuBtn = Instance.new("TextButton")
 	skillsMenuBtn.Name = "SkillsMenuButton"
+	skillsMenuBtn.AnchorPoint = Vector2.new(1, 0)
 	skillsMenuBtn.Size = UDim2.new(0, 96, 0, 32)
-	skillsMenuBtn.Position = UDim2.new(1, -112, 0, 48)
+	skillsMenuBtn.Position = UDim2.new(0, -16, 0, 48)
 	skillsMenuBtn.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
 	skillsMenuBtn.BorderSizePixel = 0
 	skillsMenuBtn.Font = Enum.Font.GothamBold
 	skillsMenuBtn.TextSize = 12
 	skillsMenuBtn.TextColor3 = Color3.fromRGB(255, 225, 90)
-	skillsMenuBtn.Text = "📜 SKILLS"
-	skillsMenuBtn.Parent = screenGui
+	skillsMenuBtn.Text = "SKILLS"
+	skillsMenuBtn.Parent = topRightContainer
 
 	local menuCorner = Instance.new("UICorner")
 	menuCorner.CornerRadius = UDim.new(0, 8)
@@ -1498,6 +1516,34 @@ function HUDController.Start()
 		SkillTreeUIController.Toggle()
 	end)
 
+	-- ── Dedicated Inventory / Armory Menu Button ──────────────────────────────
+	local inventoryBtn = Instance.new("TextButton")
+	inventoryBtn.Name = "InventoryMenuButton"
+	inventoryBtn.AnchorPoint = Vector2.new(1, 0)
+	inventoryBtn.Size = UDim2.new(0, 114, 0, 32)
+	inventoryBtn.Position = UDim2.new(0, -120, 0, 48)
+	inventoryBtn.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
+	inventoryBtn.BorderSizePixel = 0
+	inventoryBtn.Font = Enum.Font.GothamBold
+	inventoryBtn.TextSize = 12
+	inventoryBtn.TextColor3 = Color3.fromRGB(255, 185, 65)
+	inventoryBtn.Text = "INVENTORY"
+	inventoryBtn.Parent = topRightContainer
+
+	local invCorner = Instance.new("UICorner")
+	invCorner.CornerRadius = UDim.new(0, 8)
+	invCorner.Parent = inventoryBtn
+
+	local invStroke = Instance.new("UIStroke")
+	invStroke.Color = Color3.fromRGB(220, 145, 40)
+	invStroke.Thickness = 1.6
+	invStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	invStroke.Parent = inventoryBtn
+
+	inventoryBtn.Activated:Connect(function()
+		InventoryUIController.Toggle()
+	end)
+
 	for i = 1, TOTAL_SLOTS do
 		local offset = SKILL_SLOT_OFFSETS[i] or Vector2.new(-66 * i, 0)
 
@@ -1505,10 +1551,11 @@ function HUDController.Start()
 		frame.Name = "SkillSlot_" .. i
 		frame.AnchorPoint = Vector2.new(0.5, 0.5)
 		frame.Size = UDim2.new(0, SKILL_BUTTON_SIZE, 0, SKILL_BUTTON_SIZE)
-		frame.Position = UDim2.new(1, ATTACK_POS_X + offset.X, 1, ATTACK_POS_Y + offset.Y)
+		frame.Position = UDim2.new(0, ATTACK_POS_X + offset.X, 0, ATTACK_POS_Y + offset.Y)
 		frame.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
 		frame.BorderSizePixel = 0
-		frame.Parent = screenGui
+		frame.ClipsDescendants = true
+		frame.Parent = bottomRightContainer
 		slotFrames[i] = frame
 
 		local corner = Instance.new("UICorner")
@@ -1572,7 +1619,7 @@ function HUDController.Start()
 		namePlate.Size = UDim2.new(1, 0, 0.28, 0)
 		namePlate.Position = UDim2.new(0, 0, 0.72, 0)
 		namePlate.BackgroundColor3 = Color3.fromRGB(10, 12, 16)
-		namePlate.BackgroundTransparency = 0.2
+		namePlate.BackgroundTransparency = 0.35
 		namePlate.BorderSizePixel = 0
 		namePlate.ZIndex = 3
 		namePlate.Parent = frame
@@ -1586,6 +1633,8 @@ function HUDController.Start()
 		nameLabel.Position = UDim2.new(0, 1, 0, 0)
 		nameLabel.BackgroundTransparency = 1
 		nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+		nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+		nameLabel.TextStrokeTransparency = 0.2
 		nameLabel.Font = Enum.Font.GothamBold
 		nameLabel.TextSize = 9
 		nameLabel.TextScaled = false
@@ -1606,7 +1655,7 @@ function HUDController.Start()
 		cdLabel.Font = Enum.Font.GothamBlack
 		cdLabel.TextScaled = true
 		cdLabel.Text = ""
-		cdLabel.ZIndex = 5
+		cdLabel.ZIndex = 6
 		cdLabel.Parent = frame
 		slotCdLabels[i] = cdLabel
 
@@ -1616,7 +1665,7 @@ function HUDController.Start()
 		dimOverlay.Size = UDim2.new(1, 0, 1, 0)
 		dimOverlay.BackgroundColor3 = Color3.fromRGB(10, 12, 16)
 		dimOverlay.BackgroundTransparency = 1
-		dimOverlay.ZIndex = 4
+		dimOverlay.ZIndex = 5
 		dimOverlay.Parent = frame
 		slotDimOverlays[i] = dimOverlay
 
@@ -1629,25 +1678,30 @@ function HUDController.Start()
 		button.Size = UDim2.new(1, 0, 1, 0)
 		button.BackgroundTransparency = 1
 		button.Text = ""
-		button.ZIndex = 6
+		button.ZIndex = 7
 		button.Parent = frame
 
 		local capturedSlot = i
 		button.Activated:Connect(function()
-			-- Tactile bounce animation on slot press
-			TweenService:Create(frame, TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				Size = UDim2.new(0, SKILL_BUTTON_SIZE - 6, 0, SKILL_BUTTON_SIZE - 6)
-			}):Play()
-			task.delay(0.08, function()
-				if frame and frame.Parent then
-					TweenService:Create(frame, TweenInfo.new(0.12, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-						Size = UDim2.new(0, SKILL_BUTTON_SIZE, 0, SKILL_BUTTON_SIZE)
-					}):Play()
-				end
-			end)
-
 			local skillId = equippedSkills[capturedSlot]
 			if skillId then
+				local expires = cooldownEnds[skillId]
+				if expires and os.clock() < expires then
+					return -- On cooldown: ignore click completely
+				end
+
+				-- Tactile bounce animation on slot press
+				TweenService:Create(frame, TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+					Size = UDim2.new(0, SKILL_BUTTON_SIZE - 6, 0, SKILL_BUTTON_SIZE - 6)
+				}):Play()
+				task.delay(0.08, function()
+					if frame and frame.Parent then
+						TweenService:Create(frame, TweenInfo.new(0.12, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+							Size = UDim2.new(0, SKILL_BUTTON_SIZE, 0, SKILL_BUTTON_SIZE)
+						}):Play()
+					end
+				end)
+
 				fireSkill(skillId)
 			else
 				SkillTreeUIController.Toggle()
@@ -1691,6 +1745,9 @@ function HUDController.Start()
 				return
 			elseif input.KeyCode == Enum.KeyCode.K or input.KeyCode == Enum.KeyCode.T then
 				SkillTreeUIController.Toggle()
+				return
+			elseif input.KeyCode == Enum.KeyCode.I or input.KeyCode == Enum.KeyCode.B then
+				InventoryUIController.Toggle()
 				return
 			end
 		end

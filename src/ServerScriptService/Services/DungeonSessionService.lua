@@ -36,11 +36,105 @@ local BOSS_SPAWN_CFRAME = CFrame.new(0, 1, 45) * CFrame.Angles(0, math.pi, 0)
 -- Staging Antechamber safe entrance platform (Z = -285)
 local ENTRANCE_POSITION = Vector3.new(0, 5, -285)
 
--- Trash mob placements: 1 minion for fast testing of gate opening and boss entry
-local MOB_POSITIONS = {
-	-- Central Colonnade - Test Sentinel
-	Vector3.new(0, 3, -100),
+-- Trash mob placement definitions: 10 strategic zones across the dungeon
+-- Scales dynamically to (20 * partyMemberCount) monsters total.
+-- For a party of N members, each zone spawns (2 * N) monsters:
+-- 1 player = 20 monsters | 2 players = 40 monsters | 3 players = 60 monsters | 4 players = 80 monsters.
+local ZONE_MOB_COORDINATES = {
+	-- Zone 1: Colonnade - Entry Corridor Sentinels
+	{
+		Vector3.new(-3, 3, -242), Vector3.new(3, 3, -242),
+		Vector3.new(-4, 3, -248), Vector3.new(4, 3, -248),
+		Vector3.new(-2.5, 3, -236), Vector3.new(2.5, 3, -236),
+		Vector3.new(-5, 3, -252), Vector3.new(5, 3, -252),
+	},
+	-- Zone 2: Colonnade - Upper Avenue Vanguard
+	{
+		Vector3.new(-4, 3, -202), Vector3.new(4, 3, -202),
+		Vector3.new(-5, 3, -208), Vector3.new(5, 3, -208),
+		Vector3.new(-3, 3, -196), Vector3.new(3, 3, -196),
+		Vector3.new(-5.5, 3, -200), Vector3.new(5.5, 3, -200),
+	},
+	-- Zone 3: Colonnade - Mid Avenue Watchers
+	{
+		Vector3.new(-4, 3, -102), Vector3.new(4, 3, -102),
+		Vector3.new(-5, 3, -108), Vector3.new(5, 3, -108),
+		Vector3.new(-3, 3, -96), Vector3.new(3, 3, -96),
+		Vector3.new(-5.5, 3, -100), Vector3.new(5.5, 3, -100),
+	},
+	-- Zone 4: Colonnade - Boss Gate Praetorians
+	{
+		Vector3.new(-5, 3, -38), Vector3.new(5, 3, -38),
+		Vector3.new(-3, 3, -42), Vector3.new(3, 3, -42),
+		Vector3.new(-5, 3, -34), Vector3.new(5, 3, -34),
+		Vector3.new(-2, 3, -36), Vector3.new(2, 3, -36),
+	},
+	-- Zone 5: West Wing (Crypt of Whispers) - Chamber of Whispers
+	{
+		Vector3.new(-60, 3, -172), Vector3.new(-50, 3, -172),
+		Vector3.new(-66, 3, -170), Vector3.new(-44, 3, -170),
+		Vector3.new(-58, 3, -166), Vector3.new(-52, 3, -166),
+		Vector3.new(-64, 3, -176), Vector3.new(-46, 3, -176),
+	},
+	-- Zone 6: West Wing (Crypt of Whispers) - Hall of Shadows
+	{
+		Vector3.new(-57, 3, -152), Vector3.new(-51, 3, -152),
+		Vector3.new(-59, 3, -155), Vector3.new(-49, 3, -155),
+		Vector3.new(-57, 3, -149), Vector3.new(-51, 3, -149),
+		Vector3.new(-61, 3, -152), Vector3.new(-47, 3, -152),
+	},
+	-- Zone 7: West Wing (Crypt of Whispers) - Alcove of the Undying
+	{
+		Vector3.new(-56, 3, -126), Vector3.new(-44, 3, -126),
+		Vector3.new(-62, 3, -124), Vector3.new(-38, 3, -124),
+		Vector3.new(-54, 3, -120), Vector3.new(-46, 3, -120),
+		Vector3.new(-60, 3, -135), Vector3.new(-40, 3, -135),
+	},
+	-- Zone 8: East Wing (Sunken Catacombs) - Vault of Torment
+	{
+		Vector3.new(50, 3, -172), Vector3.new(60, 3, -172),
+		Vector3.new(44, 3, -170), Vector3.new(66, 3, -170),
+		Vector3.new(52, 3, -166), Vector3.new(58, 3, -166),
+		Vector3.new(46, 3, -176), Vector3.new(64, 3, -176),
+	},
+	-- Zone 9: East Wing (Sunken Catacombs) - Catacomb Pass
+	{
+		Vector3.new(51, 3, -152), Vector3.new(57, 3, -152),
+		Vector3.new(49, 3, -155), Vector3.new(59, 3, -155),
+		Vector3.new(51, 3, -149), Vector3.new(57, 3, -149),
+		Vector3.new(47, 3, -152), Vector3.new(61, 3, -152),
+	},
+	-- Zone 10: East Wing (Sunken Catacombs) - Bone Sanctuary
+	{
+		Vector3.new(44, 3, -126), Vector3.new(56, 3, -126),
+		Vector3.new(38, 3, -124), Vector3.new(62, 3, -124),
+		Vector3.new(46, 3, -120), Vector3.new(54, 3, -120),
+		Vector3.new(40, 3, -135), Vector3.new(60, 3, -135),
+	},
 }
+
+local function buildScaledMobList(partySize: number)
+	local validSize = math.clamp(math.floor(partySize), 1, 4)
+	local mobsPerZone = 2 * validSize
+	local list = {}
+
+	for zoneIndex, coords in ipairs(ZONE_MOB_COORDINATES) do
+		for i = 1, mobsPerZone do
+			local pos = coords[i]
+			if not pos then
+				local base = coords[1] or Vector3.new(0, 3, 0)
+				local angle = (i / mobsPerZone) * 2 * math.pi
+				pos = base + Vector3.new(math.cos(angle) * 3.5, 0, math.sin(angle) * 3.5)
+			end
+			table.insert(list, {
+				position = pos,
+				packIndex = zoneIndex,
+			})
+		end
+	end
+
+	return list
+end
 
 -- Hub and dungeon servers are the same published place with one shared
 -- Workspace, so the only SpawnLocation Part in it is the hub's -- Roblox's
@@ -100,7 +194,7 @@ local function bankRewardsAndReturnToHub(result: "victory" | "wipe")
 		Net.Get("DungeonResult"):FireClient(player, result, totalEXP, totalFragments, totalGold)
 	end
 
-	task.wait(2) -- let the client show the result briefly before the teleport cuts the screen
+	task.wait(5.0) -- Give players 5 seconds to enjoy the cinematic victory celebration and view rewards before teleport
 
 	local teleportOk, teleportErr = pcall(function()
 		TeleportService:TeleportAsync(game.PlaceId, Players:GetPlayers())
@@ -157,7 +251,7 @@ local function hookPlayerDeath(player: Player, character: Model)
 	WeaponService.EquipWeapons(character)
 end
 
-function DungeonSessionService.Start(dungeonId: string)
+function DungeonSessionService.Start(dungeonId: string, partyUserIds: {number}?)
 	if dungeonId ~= "Rockhide" then
 		return
 	end
@@ -171,7 +265,22 @@ function DungeonSessionService.Start(dungeonId: string)
 	local bossHandle
 	local stopMobs: (() -> ())? = nil
 
-	local totalMobs = #MOB_POSITIONS
+	-- Dynamically scale monster count: 20 monsters * party member count
+	local partySize = 1
+	if partyUserIds and #partyUserIds > 0 then
+		partySize = #partyUserIds
+	else
+		local testSize = ReplicatedStorage:GetAttribute("TestPartySize")
+		if type(testSize) == "number" and testSize >= 1 then
+			partySize = testSize
+		else
+			partySize = math.max(1, #Players:GetPlayers())
+		end
+	end
+	partySize = math.clamp(math.floor(partySize), 1, 4)
+
+	local mobSpawns = buildScaledMobList(partySize)
+	local totalMobs = #mobSpawns
 	local mobsRemaining = totalMobs
 	local isGateUnlocked = false
 	local isGateOpen = false
@@ -240,7 +349,7 @@ function DungeonSessionService.Start(dungeonId: string)
 	RespawnService.SetEntrancePosition(ENTRANCE_POSITION)
 	RespawnService.Start()
 
-	stopMobs = MonsterAIService.SpawnMobs(MOB_POSITIONS, awardMobKillRewards, function(remaining, total)
+	stopMobs = MonsterAIService.SpawnMobs(mobSpawns, awardMobKillRewards, function(remaining, total)
 		mobsRemaining = remaining
 		DungeonMapService.UpdateGateStatus(mobsRemaining, totalMobs)
 		if mobsRemaining == 0 and not isGateUnlocked then

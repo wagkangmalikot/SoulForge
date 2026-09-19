@@ -1,119 +1,291 @@
 -- src/ReplicatedStorage/Shared/Data/Equipment.lua
--- Equipment and Crafting Item Registry for Soulforge.
--- Stores item definitions, tiers, base stats, and crafting recipes for future crafting systems.
+-- Equipment Item Registry for Soulforge.
+-- Items are individual gear pieces (Weapon / Head / Body / Arms / Feet).
+-- Sets group pieces together and grant a Set Bonus when all pieces are equipped.
+-- STASHED sets are kept for future use but hidden from crafting UI.
 
 local Equipment = {
-	-- -- EQUIPMENT SETS & ITEMS ------------------------------------------------
+
+	-- ── GEAR SLOT KEYS ─────────────────────────────────────────────────────
+	-- Slot = "Weapon" | "Head" | "Body" | "Arms" | "Feet"
+
+	-- ── ITEMS ──────────────────────────────────────────────────────────────
 	Items = {
-		-- -- Standard Tier 1 (Regular / Standard Adventurer Gear) --------------
+
+		-- ── Standard (Tier 1 — Starter, not craftable) ─────────────────────
 		StandardSword = {
 			id = "StandardSword",
 			setId = "Standard",
-			displayName = "Adventurer's Iron Sword",
+			displayName = "Iron Sword",
 			slot = "Weapon",
 			tier = 1,
 			rarity = "Common",
-			description = "A standard-issue forged iron arming sword. Balanced, durable, and reliable for fledgling warriors venturing into dungeons.",
+			icon = "rbxasset://textures/Soulforge/standard_sword_icon.png",
+			description = "A standard-issue forged iron arming sword. Balanced, durable, reliable.",
 			stats = {
 				physicalDamage = 12,
-				attackSpeed = 1.0,
+				attackSpeed    = 1.0,
 				criticalChance = 0.05,
 			},
-			crafting = {
-				levelRequired = 1,
-				craftTime = 2.0,
-				materials = {
-					IronIngot = 3,
-					LeatherStrap = 1,
-				},
-			},
 		},
-
-		StandardShield = {
-			id = "StandardShield",
+		StandardHelm = {
+			id = "StandardHelm",
 			setId = "Standard",
-			displayName = "Oak & Iron Round Shield",
-			slot = "Shield",
+			displayName = "Iron Helm",
+			slot = "Head",
 			tier = 1,
 			rarity = "Common",
-			description = "A sturdy oak wood round shield reinforced with a riveted iron perimeter rim and central boss dome.",
+			icon = "rbxasset://textures/Soulforge/standard_helm_icon.png",
+			description = "A basic iron combat helmet offering minimal protection.",
+			stats = { armor = 4, magicResist = 2 },
+		},
+		StandardChest = {
+			id = "StandardChest",
+			setId = "Standard",
+			displayName = "Iron Chestplate",
+			slot = "Body",
+			tier = 1,
+			rarity = "Common",
+			icon = "rbxasset://textures/Soulforge/standard_chest_icon.png",
+			description = "A riveted iron chestplate — the backbone of any adventurer's kit.",
+			stats = { armor = 8, maxHPBonus = 10 },
+		},
+		StandardArms = {
+			id = "StandardArms",
+			setId = "Standard",
+			displayName = "Iron Vambraces",
+			slot = "Arms",
+			tier = 1,
+			rarity = "Common",
+			icon = "rbxasset://textures/Soulforge/standard_arms_icon.png",
+			description = "Solid iron forearm guards reinforced at the elbow joint.",
+			stats = { armor = 3, blockChance = 0.05 },
+		},
+		StandardFeet = {
+			id = "StandardFeet",
+			setId = "Standard",
+			displayName = "Iron Sabatons",
+			slot = "Feet",
+			tier = 1,
+			rarity = "Common",
+			icon = "rbxasset://textures/Soulforge/standard_feet_icon.png",
+			description = "Heavy iron foot guards providing stable footing on dungeon floors.",
+			stats = { armor = 3, movementSpeed = 0 },
+		},
+
+		-- ── Rockhide (Tier 2 — Boss Fragment Gear, craftable) ──────────────
+		RockhideFang = {
+			id = "RockhideFang",
+			setId = "Rockhide",
+			displayName = "Rockhide Warlord's Fang",
+			slot = "Weapon",
+			tier = 2,
+			rarity = "Rare",
+			icon = "rbxasset://textures/Soulforge/rockhide_fang_icon.png",
+			description = "A brutal greatsword hewn from Rockhide's volcanic stone hide. The jagged basalt blade pulses with seismic energy.",
 			stats = {
-				armor = 10,
-				blockChance = 0.15,
-				parryWindow = 0.35,
+				physicalDamage        = 26,
+				attackSpeed           = 0.95,
+				criticalChance        = 0.10,
+				bonusDamageUnder50Pct = 0.20,
 			},
 			crafting = {
-				levelRequired = 1,
-				craftTime = 2.0,
-				materials = {
-					OakTimber = 4,
-					IronIngot = 2,
+				levelRequired = 2,
+				craftTime     = 5.0,
+				materials     = {
+					RockhideFragment = 8,
+					IronIngot        = 4,
+					LeatherStrap     = 2,
 				},
 			},
 		},
 
-		-- -- Sunforged Tier 3 (Legendary Holy Relic Gear) -----------------------
-		SunforgedSword = {
+		RockhideHelm = {
+			id = "RockhideHelm",
+			setId = "Rockhide",
+			displayName = "Rockhide Warlord's Helm",
+			slot = "Head",
+			tier = 2,
+			rarity = "Rare",
+			icon = "rbxasset://textures/Soulforge/rockhide_helm_icon.png",
+			description = "A stone-hewn war helm carved from Rockhide's carapace with sweeping wyvern horns and a molten magma visor.",
+			stats = {
+				armor       = 14,
+				magicResist = 8,
+				maxHPBonus  = 20,
+			},
+			crafting = {
+				levelRequired = 2,
+				craftTime     = 4.0,
+				materials     = {
+					RockhideFragment = 4,
+					IronIngot        = 3,
+					LeatherStrap     = 1,
+				},
+			},
+		},
+
+		RockhideChest = {
+			id = "RockhideChest",
+			setId = "Rockhide",
+			displayName = "Rockhide Warlord's Chest",
+			slot = "Body",
+			tier = 2,
+			rarity = "Rare",
+			icon = "rbxasset://textures/Soulforge/rockhide_chest_icon.png",
+			description = "A 3-tiered scalloped stone cuirass forged from Rockhide's dorsal hide, anchored with a glowing volcanic heart core.",
+			stats = {
+				armor           = 26,
+				maxHPBonus      = 40,
+				damageReduction = 0.10,
+			},
+			crafting = {
+				levelRequired = 2,
+				craftTime     = 6.0,
+				materials     = {
+					RockhideFragment = 7,
+					IronIngot        = 5,
+					LeatherStrap     = 3,
+					OakTimber        = 2,
+				},
+			},
+		},
+
+		RockhideArms = {
+			id = "RockhideArms",
+			setId = "Rockhide",
+			displayName = "Rockhide Warlord's Vambraces",
+			slot = "Arms",
+			tier = 2,
+			rarity = "Rare",
+			icon = "rbxasset://textures/Soulforge/rockhide_arms_icon.png",
+			description = "Spiked behemoth pauldrons paired with heavy basalt forearm vambraces and parrying talons.",
+			stats = {
+				armor           = 12,
+				blockChance     = 0.15,
+				maxHPBonus      = 15,
+				damageReduction = 0.05,
+			},
+			crafting = {
+				levelRequired = 2,
+				craftTime     = 4.0,
+				materials     = {
+					RockhideFragment = 4,
+					IronIngot        = 3,
+					LeatherStrap     = 2,
+				},
+			},
+		},
+
+		RockhideFeet = {
+			id = "RockhideFeet",
+			setId = "Rockhide",
+			displayName = "Rockhide Warlord's Sabatons",
+			slot = "Feet",
+			tier = 2,
+			rarity = "Rare",
+			icon = "rbxasset://textures/Soulforge/rockhide_feet_icon.png",
+			description = "Articulated basalt greaves armed with three-claw wyvern talons and subterranean tremor soles.",
+			stats = {
+				armor         = 10,
+				movementSpeed = 0,
+				maxHPBonus    = 15,
+				tenacity      = 0.15,
+			},
+			crafting = {
+				levelRequired = 2,
+				craftTime     = 4.0,
+				materials     = {
+					RockhideFragment = 3,
+					IronIngot        = 3,
+					OakTimber        = 1,
+				},
+			},
+		},
+
+		-- ── STASHED: Sunforged (Tier 3 — Legendary, future content) ────────
+		-- These items are kept for future implementation.
+		-- Do NOT expose in crafting UI until released.
+		_SunforgedSword = {
 			id = "SunforgedSword",
 			setId = "Sunforged",
 			displayName = "Sunforged Runic Greatsword",
 			slot = "Weapon",
 			tier = 3,
 			rarity = "Legendary",
-			description = "A masterwork greatsword forged in celestial solar flame, inscribed with ancient luminous runes that channel searing holy power.",
+			stashed = true, -- hidden from crafting UI
+			description = "A masterwork greatsword forged in celestial solar flame, inscribed with ancient luminous runes.",
 			stats = {
 				physicalDamage = 32,
-				holyDamage = 12,
-				attackSpeed = 1.15,
+				holyDamage     = 12,
+				attackSpeed    = 1.15,
 				criticalChance = 0.12,
 			},
 			crafting = {
 				levelRequired = 3,
-				craftTime = 8.0,
-				baseEquipment = "StandardSword",
-				materials = {
-					IronIngot = 12,
-					SunstoneCore = 1,
-					AncientRune = 3,
-				},
+				craftTime     = 8.0,
+				materials     = { IronIngot = 12, SunstoneCore = 1, AncientRune = 3 },
 			},
 		},
-
-		SunforgedShield = {
-			id = "SunforgedShield",
+		_SunforgedHelm = {
+			id = "SunforgedHelm",
 			setId = "Sunforged",
-			displayName = "Lionheart Aegis Bulwark",
-			slot = "Shield",
+			displayName = "Sunforged Crown",
+			slot = "Head",
 			tier = 3,
 			rarity = "Legendary",
-			description = "A fortress-grade kite shield adorned with golden heraldry, corner studs, and an inner glowing Aegis Soul Core that deflects lethal blows.",
-			stats = {
-				armor = 28,
-				blockChance = 0.35,
-				damageReduction = 0.20,
-				parryWindow = 0.50,
-			},
-			crafting = {
-				levelRequired = 3,
-				craftTime = 8.0,
-				baseEquipment = "StandardShield",
-				materials = {
-					IronIngot = 10,
-					SunstoneCore = 1,
-					AncientRune = 2,
-				},
-			},
+			stashed = true,
+			description = "A radiant golden crown that channels celestial energy.",
+			stats = { armor = 24, magicResist = 18, maxHPBonus = 40 },
+			crafting = { levelRequired = 3, craftTime = 8.0, materials = { IronIngot = 10, SunstoneCore = 1, AncientRune = 2 } },
+		},
+		_SunforgedChest = {
+			id = "SunforgedChest",
+			setId = "Sunforged",
+			displayName = "Sunforged Aegis Plate",
+			slot = "Body",
+			tier = 3,
+			rarity = "Legendary",
+			stashed = true,
+			description = "A brilliant golden chestplate inscribed with solar seals.",
+			stats = { armor = 45, maxHPBonus = 80, damageReduction = 0.20 },
+			crafting = { levelRequired = 3, craftTime = 10.0, materials = { IronIngot = 15, SunstoneCore = 2, AncientRune = 3 } },
+		},
+		_SunforgedArms = {
+			id = "SunforgedArms",
+			setId = "Sunforged",
+			displayName = "Sunforged Gauntlets",
+			slot = "Arms",
+			tier = 3,
+			rarity = "Legendary",
+			stashed = true,
+			description = "Radiant golden gauntlets that pulse with holy light.",
+			stats = { armor = 18, blockChance = 0.25, damageReduction = 0.10 },
+			crafting = { levelRequired = 3, craftTime = 8.0, materials = { IronIngot = 10, SunstoneCore = 1, AncientRune = 2 } },
+		},
+		_SunforgedFeet = {
+			id = "SunforgedFeet",
+			setId = "Sunforged",
+			displayName = "Sunforged Sabatons",
+			slot = "Feet",
+			tier = 3,
+			rarity = "Legendary",
+			stashed = true,
+			description = "Golden armored boots that leave radiant footprints.",
+			stats = { armor = 16, movementSpeed = 0.10, maxHPBonus = 25 },
+			crafting = { levelRequired = 3, craftTime = 8.0, materials = { IronIngot = 8, SunstoneCore = 1, AncientRune = 2 } },
 		},
 	},
 
-	-- -- CRAFTING REAGENTS & INGREDIENTS --------------------------------------
+	-- ── CRAFTING MATERIALS ─────────────────────────────────────────────────
 	Materials = {
 		IronIngot = {
 			id = "IronIngot",
 			displayName = "Iron Ingot",
 			tier = 1,
 			rarity = "Common",
-			description = "Refined iron smelted from dungeon ore veins. Fundamental metal for forging weapons and armor rims.",
+			icon = "rbxasset://textures/Soulforge/iron_ingot_icon.png",
+			description = "Refined iron smelted from dungeon ore veins. Core metal for forging.",
 			maxStack = 99,
 		},
 		OakTimber = {
@@ -121,7 +293,8 @@ local Equipment = {
 			displayName = "Oak Timber",
 			tier = 1,
 			rarity = "Common",
-			description = "Dense weathered hardwood seasoned for making durable round shields, bowstaves, and tool hafts.",
+			icon = "rbxasset://textures/Soulforge/oak_timber_icon.png",
+			description = "Dense weathered hardwood for crafting shield cores and hafts.",
 			maxStack = 99,
 		},
 		LeatherStrap = {
@@ -129,7 +302,8 @@ local Equipment = {
 			displayName = "Leather Strap",
 			tier = 1,
 			rarity = "Common",
-			description = "Treated leather band used for weapon handle wrapping, forearm braces, and armor clasps.",
+			icon = "rbxasset://textures/Soulforge/leather_strap_icon.png",
+			description = "Treated leather band for grip wrapping and armor lining.",
 			maxStack = 99,
 		},
 		SunstoneCore = {
@@ -137,7 +311,8 @@ local Equipment = {
 			displayName = "Sunstone Core",
 			tier = 3,
 			rarity = "Rare",
-			description = "A concentrated celestial crystal found deep within the boss arena ruins. Radiates warm solar embers.",
+			icon = "rbxasset://textures/Soulforge/rockhide_fragment_icon.png",
+			description = "A celestial crystal radiating warm solar embers. (Future crafting material)",
 			maxStack = 20,
 		},
 		AncientRune = {
@@ -145,36 +320,91 @@ local Equipment = {
 			displayName = "Ancient Rune",
 			tier = 3,
 			rarity = "Epic",
-			description = "A carved stone fragment humming with forgotten runic magic. Infuses weapons with holy luminous fuller channels.",
+			icon = "rbxasset://textures/Soulforge/rockhide_fragment_icon.png",
+			description = "A carved stone fragment humming with forgotten runic magic. (Future crafting material)",
 			maxStack = 20,
 		},
 		RockhideFragment = {
 			id = "RockhideFragment",
 			displayName = "Rockhide Fragment",
-			tier = 3,
+			tier = 2,
 			rarity = "Rare",
-			description = "A jagged shard of Rockhide's stone hide, still warm with residual seismic energy. Earned only by braving the boss chamber.",
+			icon = "rbxasset://textures/Soulforge/rockhide_fragment_icon.png",
+			description = "A jagged shard of Rockhide's stone hide, warm with seismic energy. Earned from the boss chamber.",
 			maxStack = 99,
 		},
 	},
 
-	-- -- SET PRESETS ---------------------------------------------------------
+	-- ── SETS ───────────────────────────────────────────────────────────────
+	-- Sets group pieces together. Set Bonus activates when ALL pieces are equipped.
 	Sets = {
 		Standard = {
-			id = "Standard",
+			id          = "Standard",
 			displayName = "Adventurer's Standard Set",
-			tier = 1,
-			weaponId = "StandardSword",
-			shieldId = "StandardShield",
+			tier        = 1,
+			bossOrigin  = nil,
+			stashed     = false,
+			pieces      = { "StandardSword", "StandardHelm", "StandardChest", "StandardArms", "StandardFeet" },
+			setBonus    = nil, -- no set bonus for starter gear
 		},
+		Rockhide = {
+			id          = "Rockhide",
+			displayName = "Rockhide Warlord Set",
+			tier        = 2,
+			rarity      = "Rare",
+			bossOrigin  = "Rockhide",
+			stashed     = false,
+			pieces      = { "RockhideFang", "RockhideHelm", "RockhideChest", "RockhideArms", "RockhideFeet" },
+			setBonus    = "Seismic Fury",
+			setBonusDesc = "+20% damage dealt when HP is below 50%.",
+		},
+		-- STASHED: Sunforged kept for future release
 		Sunforged = {
-			id = "Sunforged",
+			id          = "Sunforged",
 			displayName = "Sunforged Relic Set",
-			tier = 3,
-			weaponId = "SunforgedSword",
-			shieldId = "SunforgedShield",
+			tier        = 3,
+			rarity      = "Legendary",
+			bossOrigin  = "Sunforged",
+			stashed     = true, -- hidden from crafting UI
+			pieces      = { "SunforgedSword", "SunforgedHelm", "SunforgedChest", "SunforgedArms", "SunforgedFeet" },
+			setBonus    = "Solar Ascension",
+			setBonusDesc = "+20% holy damage and regenerate 1% HP per second.",
 		},
 	},
 }
+
+-- ── HELPERS ────────────────────────────────────────────────────────────────
+
+--- Returns the set that an itemId belongs to, or nil.
+function Equipment.GetSetForItem(itemId: string)
+	local item = Equipment.Items[itemId]
+	if not item then return nil end
+	return Equipment.Sets[item.setId]
+end
+
+--- Returns how many of a set's pieces the player has equipped, given their loadout.
+--- loadout = { Weapon=itemId, Head=itemId, Body=itemId, Arms=itemId, Feet=itemId }
+function Equipment.CountEquippedSetPieces(setId: string, loadout: {[string]: string}): (number, number)
+	local setData = Equipment.Sets[setId]
+	if not setData or not setData.pieces then return 0, 0 end
+	local total = #setData.pieces
+	local equipped = 0
+	for _, pieceId in ipairs(setData.pieces) do
+		local pieceItem = Equipment.Items[pieceId]
+		if pieceItem then
+			local slotEquipped = loadout[pieceItem.slot]
+			if slotEquipped == pieceId then
+				equipped += 1
+			end
+		end
+	end
+	return equipped, total
+end
+
+--- Returns true if all pieces of a set are equipped (set bonus active).
+function Equipment.IsSetBonusActive(setId: string, loadout: {[string]: string}): boolean
+	local e, t = Equipment.CountEquippedSetPieces(setId, loadout)
+	return e == t and t > 0
+end
 
 return Equipment
