@@ -301,6 +301,10 @@ end
 function CharacterCreationController.Start()
 	local player = Players.LocalPlayer
 
+	-- Which remote the class-picker's EMBARK button should fire: "create" for a
+	-- first-timer, "reforge" when reached via the "REFORGE HERO?" confirmation.
+	local creationFlowMode: "create" | "reforge" = "create"
+
 	-- Hub-only check
 	if ReplicatedStorage:GetAttribute("IsDungeon") == true then
 		return
@@ -841,7 +845,11 @@ function CharacterCreationController.Start()
 		onClick = function()
 			beginBtn.Active = false
 			beginBtn.Text = "FORGING HERO..."
-			Net.Get("SubmitCharacterCreation"):FireServer(selectedClassId)
+			if creationFlowMode == "reforge" then
+				Net.Get("RequestCreateNewCharacter"):FireServer(selectedClassId)
+			else
+				Net.Get("SubmitCharacterCreation"):FireServer(selectedClassId)
+			end
 		end,
 	})
 
@@ -947,10 +955,9 @@ function CharacterCreationController.Start()
 		textSize = 13,
 		font = Enum.Font.GothamBlack,
 		onClick = function()
-			cancelBtn.Active = false
-			deleteBtn.Active = false
-			deleteBtn.Text = "DELETING..."
-			Net.Get("RequestCreateNewCharacter"):FireServer()
+			creationFlowMode = "reforge"
+			confirmFrame.Visible = false
+			createFrame.Visible = true
 		end,
 	})
 
