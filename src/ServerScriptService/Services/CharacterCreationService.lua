@@ -10,6 +10,7 @@ local RunService = game:GetService("RunService")
 local Net = require(ReplicatedStorage.Shared.Net)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 local HubMapService = require(script.Parent.HubMapService)
+local Classes = require(ReplicatedStorage.Shared.Data.Classes)
 
 local CharacterCreationService = {}
 
@@ -17,8 +18,18 @@ local function fireCharacterDataChanged(player: Player, profile)
 	Net.Get("CharacterDataChanged"):FireClient(
 		player,
 		profile.Data.Character.Level,
-		profile.Data.Character.UnspentEXP
+		profile.Data.Character.UnspentEXP,
+		profile.Data.Character.ClassId
 	)
+end
+
+-- Rejects an unrecognized/tampered classId from the client rather than trusting it
+-- outright -- "Tank" is always a safe fallback since it's the original, always-valid class.
+local function validateClassId(classId: any): string
+	if type(classId) == "string" and Classes[classId] then
+		return classId
+	end
+	return "Tank"
 end
 
 -- Teleports character cleanly into the Hub's central sanctuary fountain plaza
@@ -114,7 +125,7 @@ local function handlePlayer(player: Player)
 	end
 end
 
-local function onSubmitCharacterCreation(player: Player)
+local function onSubmitCharacterCreation(player: Player, classId: any)
 	local profile = PlayerDataService.GetProfile(player)
 	if not profile or profile.Data.Character.HasCreatedCharacter then
 		return -- no profile, or already created: reject a resubmission
@@ -126,7 +137,7 @@ local function onSubmitCharacterCreation(player: Player)
 	actionInFlight[player.UserId] = true
 
 	profile.Data.Character.Name = player.DisplayName
-	profile.Data.Character.ClassId = "Tank" -- the only implemented class (spec section 2a)
+	profile.Data.Character.ClassId = validateClassId(classId)
 	profile.Data.Character.HasCreatedCharacter = true
 
 	loadCharacterAndNotify(player, profile, "after submission")
@@ -146,7 +157,7 @@ local function onRequestLoadCharacter(player: Player)
 	loadCharacterAndNotify(player, profile, "on load")
 end
 
-local function onRequestCreateNewCharacter(player: Player)
+local function onRequestCreateNewCharacter(player: Player, classId: any)
 	local profile = PlayerDataService.GetProfile(player)
 	if not profile or not profile.Data.Character.HasCreatedCharacter then
 		return -- no profile, or nothing to overwrite
@@ -167,7 +178,7 @@ local function onRequestCreateNewCharacter(player: Player)
 	profile.Data.Character.Level = 1
 	profile.Data.Character.UnspentEXP = 999999
 	profile.Data.Character.SkillPoints = 50
-	profile.Data.Character.ClassId = "Tank"
+	profile.Data.Character.ClassId = validateClassId(classId)
 	profile.Data.Character.Name = player.DisplayName
 
 	loadCharacterAndNotify(player, profile, "after create-new")

@@ -18,10 +18,6 @@ return {
 		},
 	},
 
-	-- Not yet reachable through character creation or the skill tree UI (both still
-	-- hardcode Tank) -- see docs/superpowers/specs/2026-09-18-mage-class-design.md's
-	-- "sub-project 2" for that follow-up work. Playable today only via a manual
-	-- ClassId/UnlockedSkills override on a test profile.
 	Mage = {
 		name = "Mage",
 		baseHealth = 80,
