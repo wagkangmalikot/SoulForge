@@ -206,7 +206,7 @@ local function createPillBadge(parent: Instance, text: string, bgColor: Color3, 
 	label.Font = Enum.Font.GothamBold
 	label.Text = text
 	label.TextColor3 = textColor
-	label.TextSize = 13.5
+	label.TextSize = 12
 	label.Parent = pill
 
 	return pill
@@ -369,7 +369,7 @@ function CharacterCreationController.Start()
 	emblemLabel.Font = Enum.Font.GothamBold
 	emblemLabel.Text = "❖   A C T I O N   R P G   D U N G E O N   C R A W L E R   ❖"
 	emblemLabel.TextColor3 = COLORS.goldLight
-	emblemLabel.TextSize = 14
+	emblemLabel.TextSize = 12
 	emblemLabel.TextTransparency = 0.3
 	emblemLabel.Parent = titleCenter
 
@@ -518,7 +518,7 @@ function CharacterCreationController.Start()
 	choiceTopHeader.Font = Enum.Font.GothamBold
 	choiceTopHeader.Text = "❖   H E R O   S E L E C T I O N   ❖"
 	choiceTopHeader.TextColor3 = COLORS.goldPrimary
-	choiceTopHeader.TextSize = 13
+	choiceTopHeader.TextSize = 11
 	choiceTopHeader.Parent = choiceCard
 
 	-- Main Title Banner
@@ -529,7 +529,7 @@ function CharacterCreationController.Start()
 	welcomeTitle.Font = Enum.Font.GothamBlack
 	welcomeTitle.Text = "Welcome Back, Champion"
 	welcomeTitle.TextColor3 = COLORS.textWhite
-	welcomeTitle.TextSize = 24
+	welcomeTitle.TextSize = 22
 	welcomeTitle.Parent = choiceCard
 
 	-- Hero Showcase Inner Panel
@@ -584,13 +584,13 @@ function CharacterCreationController.Start()
 	heroNameLabel.Parent = heroPanel
 
 	local heroHandleLabel = Instance.new("TextLabel")
-	heroHandleLabel.Size = UDim2.new(1, -124, 0, 18)
+	heroHandleLabel.Size = UDim2.new(1, -124, 0, 16)
 	heroHandleLabel.Position = UDim2.new(0, 114, 0, 44)
 	heroHandleLabel.BackgroundTransparency = 1
 	heroHandleLabel.Font = Enum.Font.GothamMedium
 	heroHandleLabel.Text = "@" .. player.Name
 	heroHandleLabel.TextColor3 = COLORS.textMuted
-	heroHandleLabel.TextSize = 13.5
+	heroHandleLabel.TextSize = 12
 	heroHandleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	heroHandleLabel.Parent = heroPanel
 
@@ -656,22 +656,22 @@ function CharacterCreationController.Start()
 
 		local cTitle = Instance.new("TextLabel")
 		cTitle.Size = UDim2.new(1, 0, 0, 18)
-		cTitle.Position = UDim2.new(0, 0, 0, 8)
+		cTitle.Position = UDim2.new(0, 0, 0, 10)
 		cTitle.BackgroundTransparency = 1
 		cTitle.Font = Enum.Font.GothamBold
 		cTitle.Text = icon .. " " .. title
 		cTitle.TextColor3 = COLORS.textWhite
-		cTitle.TextSize = 13
+		cTitle.TextSize = 11
 		cTitle.Parent = chip
 
 		local cSub = Instance.new("TextLabel")
-		cSub.Size = UDim2.new(1, 0, 0, 16)
-		cSub.Position = UDim2.new(0, 0, 0, 26)
+		cSub.Size = UDim2.new(1, 0, 0, 14)
+		cSub.Position = UDim2.new(0, 0, 0, 28)
 		cSub.BackgroundTransparency = 1
 		cSub.Font = Enum.Font.Gotham
 		cSub.Text = subtitle
 		cSub.TextColor3 = COLORS.textMuted
-		cSub.TextSize = 11.5
+		cSub.TextSize = 10
 		cSub.Parent = chip
 	end
 
@@ -772,7 +772,7 @@ function CharacterCreationController.Start()
 	createTopHeader.Font = Enum.Font.GothamBold
 	createTopHeader.Text = "❖   C H O O S E   Y O U R   P A T H   ❖"
 	createTopHeader.TextColor3 = COLORS.goldPrimary
-	createTopHeader.TextSize = 13
+	createTopHeader.TextSize = 11
 	createTopHeader.Parent = createCard
 
 	local createTitle = Instance.new("TextLabel")
@@ -782,7 +782,7 @@ function CharacterCreationController.Start()
 	createTitle.Font = Enum.Font.GothamBlack
 	createTitle.Text = "Forge Your Destiny"
 	createTitle.TextColor3 = COLORS.textWhite
-	createTitle.TextSize = 24
+	createTitle.TextSize = 22
 	createTitle.Parent = createCard
 
 	-- Class Picker: two selectable cards
@@ -822,7 +822,7 @@ function CharacterCreationController.Start()
 	playingAsText.Font = Enum.Font.GothamMedium
 	playingAsText.Text = ("Champion: %s (@%s)"):format(player.DisplayName, player.Name)
 	playingAsText.TextColor3 = COLORS.textMuted
-	playingAsText.TextSize = 13.5
+	playingAsText.TextSize = 12
 	playingAsText.Parent = createCard
 
 	local beginBtn: TextButton
