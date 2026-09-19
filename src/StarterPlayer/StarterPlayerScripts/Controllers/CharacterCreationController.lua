@@ -30,6 +30,31 @@ local COLORS = {
 	textMuted = Color3.fromRGB(130, 142, 162),
 }
 
+-- Per-class content for the character-creation picker cards. Keys must match
+-- ReplicatedStorage.Shared.Data.Classes's own keys ("Tank", "Mage").
+local CLASS_CARD_INFO = {
+	Tank = {
+		icon = "🛡️",
+		title = "TANK ARCHETYPE",
+		description = "Steadfast frontline juggernaut armed with sword and heavy shield. Masters crowd control and holds boss aggro with Taunt.",
+		traits = {
+			{ "⚔️", "Attack: Heavy Sword Cleave" },
+			{ "🛡️", "Starter Skill: Taunt" },
+			{ "🌳", "Trees: Juggernaut & Bulwark" },
+		},
+	},
+	Mage = {
+		icon = "🔮",
+		title = "MAGE ARCHETYPE",
+		description = "Fragile spellcaster who strikes from range with arcane bolts, then specializes into explosive fire or lingering frost damage.",
+		traits = {
+			{ "🔥", "Attack: Arcane Bolt (Ranged)" },
+			{ "❤️", "Base Health: 80 (Fragile)" },
+			{ "🌳", "Trees: Pyromancy & Frostweave" },
+		},
+	},
+}
+
 local function applyCorner(parent: Instance, radius: number): UICorner
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, radius)
@@ -45,6 +70,91 @@ local function applyStroke(parent: Instance, color: Color3, thickness: number, t
 	stroke.Transparency = transparency or 0
 	stroke.Parent = parent
 	return stroke
+end
+
+-- Builds one selectable class-picker card. Returns the card frame, its border
+-- UIStroke (for the caller to re-color on selection), and a transparent
+-- full-card hitbox button (for the caller to wire click handling on).
+local function createClassCard(parent: Instance, classId: string, xScale: number, widthScale: number): (Frame, UIStroke, TextButton)
+	local info = CLASS_CARD_INFO[classId]
+
+	local card = Instance.new("Frame")
+	card.Name = "ClassCard_" .. classId
+	card.Size = UDim2.new(widthScale, 0, 1, 0)
+	card.Position = UDim2.new(xScale, 0, 0, 0)
+	card.BackgroundColor3 = COLORS.bgCardInner
+	card.BorderSizePixel = 0
+	card.Parent = parent
+
+	applyCorner(card, 12)
+	local cardStroke = applyStroke(card, COLORS.slateBorder, 1.6)
+
+	local banner = Instance.new("Frame")
+	banner.Size = UDim2.new(1, 0, 0, 40)
+	banner.BackgroundColor3 = Color3.fromRGB(24, 30, 44)
+	banner.BorderSizePixel = 0
+	banner.Parent = card
+	applyCorner(banner, 12)
+
+	local classTitle = Instance.new("TextLabel")
+	classTitle.Size = UDim2.new(1, -16, 1, 0)
+	classTitle.Position = UDim2.new(0, 10, 0, 0)
+	classTitle.BackgroundTransparency = 1
+	classTitle.Font = Enum.Font.GothamBlack
+	classTitle.Text = info.icon .. " " .. info.title
+	classTitle.TextColor3 = COLORS.goldLight
+	classTitle.TextSize = 12
+	classTitle.TextXAlignment = Enum.TextXAlignment.Left
+	classTitle.Parent = banner
+
+	local desc = Instance.new("TextLabel")
+	desc.Size = UDim2.new(1, -20, 0, 54)
+	desc.Position = UDim2.new(0, 10, 0, 46)
+	desc.BackgroundTransparency = 1
+	desc.Font = Enum.Font.GothamMedium
+	desc.Text = info.description
+	desc.TextColor3 = COLORS.slateLight
+	desc.TextSize = 9.5
+	desc.TextWrapped = true
+	desc.TextXAlignment = Enum.TextXAlignment.Left
+	desc.TextYAlignment = Enum.TextYAlignment.Top
+	desc.Parent = card
+
+	local traitsFrame = Instance.new("Frame")
+	traitsFrame.Size = UDim2.new(1, -20, 0, 96)
+	traitsFrame.Position = UDim2.new(0, 10, 0, 104)
+	traitsFrame.BackgroundTransparency = 1
+	traitsFrame.Parent = card
+
+	local traitsLayout = Instance.new("UIListLayout")
+	traitsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	traitsLayout.Padding = UDim.new(0, 6)
+	traitsLayout.Parent = traitsFrame
+
+	for _, trait in info.traits do
+		local tLabel = Instance.new("TextLabel")
+		tLabel.Size = UDim2.new(1, 0, 0, 28)
+		tLabel.BackgroundTransparency = 1
+		tLabel.Font = Enum.Font.GothamBold
+		tLabel.Text = trait[1] .. "  " .. trait[2]
+		tLabel.TextColor3 = COLORS.textWhite
+		tLabel.TextSize = 10
+		tLabel.TextWrapped = true
+		tLabel.TextXAlignment = Enum.TextXAlignment.Left
+		tLabel.TextYAlignment = Enum.TextYAlignment.Top
+		tLabel.Parent = traitsFrame
+	end
+
+	local hitbox = Instance.new("TextButton")
+	hitbox.Name = "SelectHitbox"
+	hitbox.Size = UDim2.new(1, 0, 1, 0)
+	hitbox.BackgroundTransparency = 1
+	hitbox.Text = ""
+	hitbox.AutoButtonColor = false
+	hitbox.ZIndex = 5
+	hitbox.Parent = card
+
+	return card, cardStroke, hitbox
 end
 
 local function loadAvatarThumbnail(imageLabel: ImageLabel, fallbackLabel: TextLabel?, userId: number)
@@ -96,7 +206,7 @@ local function createPillBadge(parent: Instance, text: string, bgColor: Color3, 
 	label.Font = Enum.Font.GothamBold
 	label.Text = text
 	label.TextColor3 = textColor
-	label.TextSize = 12
+	label.TextSize = 13.5
 	label.Parent = pill
 
 	return pill
@@ -259,7 +369,7 @@ function CharacterCreationController.Start()
 	emblemLabel.Font = Enum.Font.GothamBold
 	emblemLabel.Text = "❖   A C T I O N   R P G   D U N G E O N   C R A W L E R   ❖"
 	emblemLabel.TextColor3 = COLORS.goldLight
-	emblemLabel.TextSize = 12
+	emblemLabel.TextSize = 14
 	emblemLabel.TextTransparency = 0.3
 	emblemLabel.Parent = titleCenter
 
@@ -408,7 +518,7 @@ function CharacterCreationController.Start()
 	choiceTopHeader.Font = Enum.Font.GothamBold
 	choiceTopHeader.Text = "❖   H E R O   S E L E C T I O N   ❖"
 	choiceTopHeader.TextColor3 = COLORS.goldPrimary
-	choiceTopHeader.TextSize = 11
+	choiceTopHeader.TextSize = 13
 	choiceTopHeader.Parent = choiceCard
 
 	-- Main Title Banner
@@ -419,7 +529,7 @@ function CharacterCreationController.Start()
 	welcomeTitle.Font = Enum.Font.GothamBlack
 	welcomeTitle.Text = "Welcome Back, Champion"
 	welcomeTitle.TextColor3 = COLORS.textWhite
-	welcomeTitle.TextSize = 22
+	welcomeTitle.TextSize = 24
 	welcomeTitle.Parent = choiceCard
 
 	-- Hero Showcase Inner Panel
@@ -474,13 +584,13 @@ function CharacterCreationController.Start()
 	heroNameLabel.Parent = heroPanel
 
 	local heroHandleLabel = Instance.new("TextLabel")
-	heroHandleLabel.Size = UDim2.new(1, -124, 0, 16)
+	heroHandleLabel.Size = UDim2.new(1, -124, 0, 18)
 	heroHandleLabel.Position = UDim2.new(0, 114, 0, 44)
 	heroHandleLabel.BackgroundTransparency = 1
 	heroHandleLabel.Font = Enum.Font.GothamMedium
 	heroHandleLabel.Text = "@" .. player.Name
 	heroHandleLabel.TextColor3 = COLORS.textMuted
-	heroHandleLabel.TextSize = 12
+	heroHandleLabel.TextSize = 13.5
 	heroHandleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	heroHandleLabel.Parent = heroPanel
 
@@ -546,22 +656,22 @@ function CharacterCreationController.Start()
 
 		local cTitle = Instance.new("TextLabel")
 		cTitle.Size = UDim2.new(1, 0, 0, 18)
-		cTitle.Position = UDim2.new(0, 0, 0, 10)
+		cTitle.Position = UDim2.new(0, 0, 0, 8)
 		cTitle.BackgroundTransparency = 1
 		cTitle.Font = Enum.Font.GothamBold
 		cTitle.Text = icon .. " " .. title
 		cTitle.TextColor3 = COLORS.textWhite
-		cTitle.TextSize = 11
+		cTitle.TextSize = 13
 		cTitle.Parent = chip
 
 		local cSub = Instance.new("TextLabel")
-		cSub.Size = UDim2.new(1, 0, 0, 14)
-		cSub.Position = UDim2.new(0, 0, 0, 28)
+		cSub.Size = UDim2.new(1, 0, 0, 16)
+		cSub.Position = UDim2.new(0, 0, 0, 26)
 		cSub.BackgroundTransparency = 1
 		cSub.Font = Enum.Font.Gotham
 		cSub.Text = subtitle
 		cSub.TextColor3 = COLORS.textMuted
-		cSub.TextSize = 10
+		cSub.TextSize = 11.5
 		cSub.Parent = chip
 	end
 
@@ -662,7 +772,7 @@ function CharacterCreationController.Start()
 	createTopHeader.Font = Enum.Font.GothamBold
 	createTopHeader.Text = "❖   C H O O S E   Y O U R   P A T H   ❖"
 	createTopHeader.TextColor3 = COLORS.goldPrimary
-	createTopHeader.TextSize = 11
+	createTopHeader.TextSize = 13
 	createTopHeader.Parent = createCard
 
 	local createTitle = Instance.new("TextLabel")
@@ -672,77 +782,37 @@ function CharacterCreationController.Start()
 	createTitle.Font = Enum.Font.GothamBlack
 	createTitle.Text = "Forge Your Destiny"
 	createTitle.TextColor3 = COLORS.textWhite
-	createTitle.TextSize = 22
+	createTitle.TextSize = 24
 	createTitle.Parent = createCard
 
-	-- Tank Archetype Showcase Card
-	local tankShowcase = Instance.new("Frame")
-	tankShowcase.Size = UDim2.new(1, 0, 0, 210)
-	tankShowcase.Position = UDim2.new(0, 0, 0, 58)
-	tankShowcase.BackgroundColor3 = COLORS.bgCardInner
-	tankShowcase.BorderSizePixel = 0
-	tankShowcase.Parent = createCard
+	-- Class Picker: two selectable cards
+	local classCardsRow = Instance.new("Frame")
+	classCardsRow.Size = UDim2.new(1, 0, 0, 210)
+	classCardsRow.Position = UDim2.new(0, 0, 0, 58)
+	classCardsRow.BackgroundTransparency = 1
+	classCardsRow.Parent = createCard
 
-	applyCorner(tankShowcase, 12)
-	applyStroke(tankShowcase, COLORS.goldPrimary, 1.6)
+	local tankCard, tankCardStroke, tankCardHitbox = createClassCard(classCardsRow, "Tank", 0, 0.485)
+	local mageCard, mageCardStroke, mageCardHitbox = createClassCard(classCardsRow, "Mage", 0.515, 0.485)
 
-	local tankBanner = Instance.new("Frame")
-	tankBanner.Size = UDim2.new(1, 0, 0, 44)
-	tankBanner.BackgroundColor3 = Color3.fromRGB(24, 30, 44)
-	tankBanner.BorderSizePixel = 0
-	tankBanner.Parent = tankShowcase
-	applyCorner(tankBanner, 12)
+	local selectedClassId = "Tank"
 
-	local tankClassTitle = Instance.new("TextLabel")
-	tankClassTitle.Size = UDim2.new(1, -24, 1, 0)
-	tankClassTitle.Position = UDim2.new(0, 16, 0, 0)
-	tankClassTitle.BackgroundTransparency = 1
-	tankClassTitle.Font = Enum.Font.GothamBlack
-	tankClassTitle.Text = "🛡️ TANK ARCHETYPE"
-	tankClassTitle.TextColor3 = COLORS.goldLight
-	tankClassTitle.TextSize = 15
-	tankClassTitle.TextXAlignment = Enum.TextXAlignment.Left
-	tankClassTitle.Parent = tankBanner
-
-	local tankDesc = Instance.new("TextLabel")
-	tankDesc.Size = UDim2.new(1, -32, 0, 42)
-	tankDesc.Position = UDim2.new(0, 16, 0, 50)
-	tankDesc.BackgroundTransparency = 1
-	tankDesc.Font = Enum.Font.GothamMedium
-	tankDesc.Text = "Steadfast frontline juggernaut armed with sword and heavy shield. Masters crowd control and holds boss aggro with Taunt."
-	tankDesc.TextColor3 = COLORS.slateLight
-	tankDesc.TextSize = 11
-	tankDesc.TextWrapped = true
-	tankDesc.TextXAlignment = Enum.TextXAlignment.Left
-	tankDesc.Parent = tankShowcase
-
-	-- Traits Row
-	local traitsFrame = Instance.new("Frame")
-	traitsFrame.Size = UDim2.new(1, -32, 0, 96)
-	traitsFrame.Position = UDim2.new(0, 16, 0, 98)
-	traitsFrame.BackgroundTransparency = 1
-	traitsFrame.Parent = tankShowcase
-
-	local traitsLayout = Instance.new("UIListLayout")
-	traitsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	traitsLayout.Padding = UDim.new(0, 6)
-	traitsLayout.Parent = traitsFrame
-
-	local function createTraitItem(icon: string, text: string)
-		local tLabel = Instance.new("TextLabel")
-		tLabel.Size = UDim2.new(1, 0, 0, 22)
-		tLabel.BackgroundTransparency = 1
-		tLabel.Font = Enum.Font.GothamBold
-		tLabel.Text = icon .. "   " .. text
-		tLabel.TextColor3 = COLORS.textWhite
-		tLabel.TextSize = 11
-		tLabel.TextXAlignment = Enum.TextXAlignment.Left
-		tLabel.Parent = traitsFrame
+	local function refreshClassCardSelection()
+		tankCardStroke.Color = (selectedClassId == "Tank") and COLORS.goldPrimary or COLORS.slateBorder
+		tankCardStroke.Thickness = (selectedClassId == "Tank") and 2.4 or 1.6
+		mageCardStroke.Color = (selectedClassId == "Mage") and COLORS.goldPrimary or COLORS.slateBorder
+		mageCardStroke.Thickness = (selectedClassId == "Mage") and 2.4 or 1.6
 	end
+	refreshClassCardSelection()
 
-	createTraitItem("⚔️", "Standard Attack: Heavy Sword Cleave")
-	createTraitItem("🛡️", "Starter Skill: Taunt (Forces Target Aggro)")
-	createTraitItem("🌳", "Ascension: Unlock Juggernaut & Bulwark Trees")
+	tankCardHitbox.Activated:Connect(function()
+		selectedClassId = "Tank"
+		refreshClassCardSelection()
+	end)
+	mageCardHitbox.Activated:Connect(function()
+		selectedClassId = "Mage"
+		refreshClassCardSelection()
+	end)
 
 	-- Playing As Indicator
 	local playingAsText = Instance.new("TextLabel")
@@ -752,7 +822,7 @@ function CharacterCreationController.Start()
 	playingAsText.Font = Enum.Font.GothamMedium
 	playingAsText.Text = ("Champion: %s (@%s)"):format(player.DisplayName, player.Name)
 	playingAsText.TextColor3 = COLORS.textMuted
-	playingAsText.TextSize = 12
+	playingAsText.TextSize = 13.5
 	playingAsText.Parent = createCard
 
 	local beginBtn: TextButton
@@ -771,7 +841,7 @@ function CharacterCreationController.Start()
 		onClick = function()
 			beginBtn.Active = false
 			beginBtn.Text = "FORGING HERO..."
-			Net.Get("SubmitCharacterCreation"):FireServer()
+			Net.Get("SubmitCharacterCreation"):FireServer(selectedClassId)
 		end,
 	})
 
