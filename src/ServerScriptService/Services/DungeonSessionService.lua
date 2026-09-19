@@ -235,12 +235,12 @@ local function hookPlayerDeath(player: Player, character: Model)
 	-- moment Died fires, not read live from the revive path.
 	humanoid.BreakJointsOnDeath = false
 
-	-- This vertical slice has exactly one class (Tank; see
-	-- ReplicatedStorage/Shared/Data/Classes.lua), so hardcoding it here matches the
-	-- existing Tank-only scoping used elsewhere (e.g. PlayerDataService's
-	-- DEFAULT_DATA.Character.ClassId = "Tank"). Without this, spawned Humanoids sit
-	-- at Roblox's default 100 HP instead of the class's intended baseHealth.
-	local classData = Classes.Tank
+	-- Without this, spawned Humanoids sit at Roblox's default 100 HP instead of
+	-- the player's class's intended baseHealth. Falls back to Tank if the profile
+	-- somehow isn't available yet or carries an unrecognized ClassId.
+	local profile = PlayerDataService.GetProfile(player)
+	local classId = (profile and profile.Data.Character.ClassId) or "Tank"
+	local classData = Classes[classId] or Classes.Tank
 	humanoid.MaxHealth = classData.baseHealth
 	humanoid.Health = classData.baseHealth
 
