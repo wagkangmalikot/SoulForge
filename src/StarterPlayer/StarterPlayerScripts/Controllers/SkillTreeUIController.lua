@@ -39,9 +39,14 @@ local skillPoints = 0
 local unlockedSkills: {string} = {"Taunt"}
 local equippedSkills: {string} = {"Taunt"}
 local isSelectingSlotForSkill: string? = nil
-local activeMobileBranch: string = "Bulwark"
+local currentClassId: string = "Tank"
 
-local BRANCH_ORDER = {"Bulwark", "Juggernaut"}
+local BRANCH_ORDER_BY_CLASS = {
+	Tank = {"Bulwark", "Juggernaut"},
+	Mage = {"Pyromancy", "Frostweave"},
+}
+
+local activeMobileBranch: string = BRANCH_ORDER_BY_CLASS.Tank[1]
 
 local BRANCH_COLORS = {
 	Bulwark = {
@@ -51,6 +56,7 @@ local BRANCH_COLORS = {
 		cardBg = Color3.fromRGB(25, 34, 48),
 		border = Color3.fromRGB(45, 110, 190),
 		accent = Color3.fromRGB(110, 190, 255),
+		icon = "🛡️",
 		name = "BULWARK",
 		displayName = "BULWARK SPECIALIZATION",
 		tagline = "Damage mitigation, sustain & party barriers",
@@ -62,9 +68,34 @@ local BRANCH_COLORS = {
 		cardBg = Color3.fromRGB(44, 26, 26),
 		border = Color3.fromRGB(180, 50, 40),
 		accent = Color3.fromRGB(255, 120, 100),
+		icon = "⚔️",
 		name = "JUGGERNAUT",
 		displayName = "JUGGERNAUT SPECIALIZATION",
 		tagline = "Offense, heavy threat generation & stagger",
+	},
+	Pyromancy = {
+		primary = Color3.fromRGB(230, 90, 30),
+		secondary = Color3.fromRGB(150, 50, 15),
+		bg = Color3.fromRGB(34, 20, 16),
+		cardBg = Color3.fromRGB(46, 28, 20),
+		border = Color3.fromRGB(200, 80, 30),
+		accent = Color3.fromRGB(255, 150, 70),
+		icon = "🔥",
+		name = "PYROMANCY",
+		displayName = "PYROMANCY SPECIALIZATION",
+		tagline = "Explosive single-target and area fire damage",
+	},
+	Frostweave = {
+		primary = Color3.fromRGB(60, 170, 230),
+		secondary = Color3.fromRGB(25, 90, 130),
+		bg = Color3.fromRGB(16, 26, 34),
+		cardBg = Color3.fromRGB(22, 36, 46),
+		border = Color3.fromRGB(50, 150, 200),
+		accent = Color3.fromRGB(140, 220, 255),
+		icon = "❄️",
+		name = "FROSTWEAVE",
+		displayName = "FROSTWEAVE SPECIALIZATION",
+		tagline = "Sustained frost damage that lingers on enemies",
 	},
 }
 
@@ -731,11 +762,11 @@ refreshUI = function()
 			tabLayout.Padding = UDim.new(0, 8)
 			tabLayout.Parent = branchTabsContainer
 
-			local tankData = Classes.Tank
-			for _, branchName in ipairs(BRANCH_ORDER) do
+			local classData = Classes[currentClassId] or Classes.Tank
+			for _, branchName in ipairs(BRANCH_ORDER_BY_CLASS[currentClassId] or BRANCH_ORDER_BY_CLASS.Tank) do
 				local colStyle = BRANCH_COLORS[branchName]
 				local isSelected = (activeMobileBranch == branchName)
-				local branchInfo = tankData and tankData.branches and tankData.branches[branchName]
+				local branchInfo = classData and classData.branches and classData.branches[branchName]
 				local unlockedCount = 0
 				local totalCount = 3
 				if branchInfo then
@@ -755,8 +786,7 @@ refreshUI = function()
 				tabBtn.Font = Enum.Font.GothamBold
 				tabBtn.TextSize = 13
 				tabBtn.TextColor3 = isSelected and Color3.new(1, 1, 1) or Color3.fromRGB(160, 170, 185)
-				local iconPrefix = branchName == "Bulwark" and "🛡️ " or "⚔️ "
-				tabBtn.Text = ("%s%s (%d/%d)"):format(iconPrefix, colStyle.name, unlockedCount, totalCount)
+				tabBtn.Text = ("%s %s (%d/%d)"):format(colStyle.icon, colStyle.name, unlockedCount, totalCount)
 				tabBtn.Parent = branchTabsContainer
 
 				local tCorner = Instance.new("UICorner")
@@ -781,9 +811,9 @@ refreshUI = function()
 	if branchesContainer then
 		branchesContainer:ClearAllChildren()
 
-		local tankData = Classes.Tank
-		if tankData and tankData.branches then
-			local branchesToShow = isMobile and {activeMobileBranch} or BRANCH_ORDER
+		local classData = Classes[currentClassId] or Classes.Tank
+		if classData and classData.branches then
+			local branchesToShow = isMobile and {activeMobileBranch} or (BRANCH_ORDER_BY_CLASS[currentClassId] or BRANCH_ORDER_BY_CLASS.Tank)
 
 			local branchesLayout = Instance.new("UIListLayout")
 			branchesLayout.FillDirection = Enum.FillDirection.Horizontal
@@ -793,7 +823,7 @@ refreshUI = function()
 			branchesLayout.Parent = branchesContainer
 
 			for _, branchName in ipairs(branchesToShow) do
-				local branchInfo = tankData.branches[branchName]
+				local branchInfo = classData.branches[branchName]
 				if not branchInfo then
 					continue
 				end
@@ -1317,6 +1347,15 @@ function SkillTreeUIController.Start()
 	updateResponsiveScale()
 
 	-- Sync with Server
+	Net.Get("CharacterDataChanged").OnClientEvent:Connect(function(_level, _unspentEXP, classId)
+		if classId and Classes[classId] and classId ~= currentClassId then
+			currentClassId = classId
+			activeMobileBranch = (BRANCH_ORDER_BY_CLASS[currentClassId] or BRANCH_ORDER_BY_CLASS.Tank)[1]
+			if screenGui and screenGui.Enabled then
+				refreshUI()
+			end
+		end
+	end)
 	Net.Get("SkillDataChanged").OnClientEvent:Connect(function(points, unlocked, equipped)
 		skillPoints = points or 0
 		unlockedSkills = unlocked or {"Taunt"}
