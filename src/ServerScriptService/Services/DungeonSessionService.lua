@@ -236,9 +236,19 @@ local function hookPlayerDeath(player: Player, character: Model)
 	humanoid.BreakJointsOnDeath = false
 
 	-- Without this, spawned Humanoids sit at Roblox's default 100 HP instead of
-	-- the player's class's intended baseHealth. Falls back to Tank if the profile
-	-- somehow isn't available yet or carries an unrecognized ClassId.
-	local profile = PlayerDataService.GetProfile(player)
+	-- the player's class's intended baseHealth. Uses WaitForProfile (not
+	-- GetProfile) because this can run during a player's very first spawn on a
+	-- fresh dungeon server, while PlayerDataService's own async load (or a
+	-- session-lock handoff from the hub server) may still be in flight --
+	-- GetProfile would return nil in that window and silently fall back to
+	-- Tank's baseHealth, reintroducing the exact bug this function's caller was
+	-- fixed for. Yielding here is safe: hookPlayerDeath is only ever called
+	-- from within spawnAndHook below, which already yields on
+	-- player:LoadCharacter() and is explicitly designed (see its comments) to
+	-- tolerate a yield at this point in the flow. Falls back to Tank if the
+	-- profile load fails/the player disconnects while waiting, or the profile
+	-- carries an unrecognized ClassId.
+	local profile = PlayerDataService.WaitForProfile(player)
 	local classId = (profile and profile.Data.Character.ClassId) or "Tank"
 	local classData = Classes[classId] or Classes.Tank
 	humanoid.MaxHealth = classData.baseHealth
