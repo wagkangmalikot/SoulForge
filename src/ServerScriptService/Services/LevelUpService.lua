@@ -31,7 +31,7 @@ local function tryLevelUp(player: Player)
 	character.Level += 1
 	character.SkillPoints = (character.SkillPoints or 0) + 1
 
-	Net.Get("CharacterDataChanged"):FireClient(player, character.Level, character.UnspentEXP)
+	Net.Get("CharacterDataChanged"):FireClient(player, character.Level, character.UnspentEXP, character.ClassId)
 
 	local SkillTreeService = require(script.Parent.SkillTreeService)
 	SkillTreeService.SyncSkills(player)
@@ -62,7 +62,7 @@ function LevelUpService.Start()
 						SunstoneCore = 99999,
 						AncientRune = 99999,
 					}
-					Net.Get("CharacterDataChanged"):FireClient(player, char.Level, char.UnspentEXP)
+					Net.Get("CharacterDataChanged"):FireClient(player, char.Level, char.UnspentEXP, char.ClassId)
 					local SkillTreeService = require(script.Parent.SkillTreeService)
 					SkillTreeService.SyncSkills(player)
 					Net.Get("EquipmentDataChanged"):FireClient(
