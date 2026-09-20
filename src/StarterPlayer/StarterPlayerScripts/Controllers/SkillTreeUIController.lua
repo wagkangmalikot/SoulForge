@@ -539,6 +539,9 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	statsRow.Size = UDim2.new(1, 0, 0, isMobile and 18 or 26)
 	statsRow.Position = UDim2.new(0, 0, 0, isMobile and 22 or 30)
 	statsRow.BackgroundTransparency = 1
+	statsRow.ClipsDescendants = true -- safety net: pills auto-size to their text now (no more
+	-- guessed fixed widths overflowing into the action button), but this still stops any
+	-- remaining pill from visually bleeding past the row on an extremely narrow card.
 	statsRow.Parent = contentFrame
 
 	local sLayout = Instance.new("UIListLayout")
@@ -549,10 +552,16 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 
 	-- Tier Badge Pill (e.g. TIER I • NOVICE)
 	local tierPill = Instance.new("Frame")
-	tierPill.Size = UDim2.new(0, isMobile and 84 or 124, 0, isMobile and 18 or 24)
+	tierPill.Size = UDim2.new(0, 0, 0, isMobile and 18 or 24)
+	tierPill.AutomaticSize = Enum.AutomaticSize.X
 	tierPill.BackgroundColor3 = unlocked and branchStyle.secondary or Color3.fromRGB(32, 36, 46)
 	tierPill.BorderSizePixel = 0
 	tierPill.Parent = statsRow
+
+	local tPad = Instance.new("UIPadding")
+	tPad.PaddingLeft = UDim.new(0, 10)
+	tPad.PaddingRight = UDim.new(0, 10)
+	tPad.Parent = tierPill
 
 	local tCorner = Instance.new("UICorner")
 	tCorner.CornerRadius = UDim.new(0, 4)
@@ -564,7 +573,8 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	tStroke.Parent = tierPill
 
 	local tText = Instance.new("TextLabel")
-	tText.Size = UDim2.new(1, 0, 1, 0)
+	tText.Size = UDim2.new(0, 0, 1, 0)
+	tText.AutomaticSize = Enum.AutomaticSize.X
 	tText.BackgroundTransparency = 1
 	tText.TextColor3 = unlocked and Color3.fromRGB(255, 235, 170) or Color3.fromRGB(180, 188, 200)
 	tText.Font = Enum.Font.GothamBold
@@ -574,17 +584,24 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 
 	-- Cooldown Pill
 	local cdPill = Instance.new("Frame")
-	cdPill.Size = UDim2.new(0, isMobile and 54 or 82, 0, isMobile and 18 or 24)
+	cdPill.Size = UDim2.new(0, 0, 0, isMobile and 18 or 24)
+	cdPill.AutomaticSize = Enum.AutomaticSize.X
 	cdPill.BackgroundColor3 = Color3.fromRGB(30, 38, 52)
 	cdPill.BorderSizePixel = 0
 	cdPill.Parent = statsRow
+
+	local cdPad = Instance.new("UIPadding")
+	cdPad.PaddingLeft = UDim.new(0, 10)
+	cdPad.PaddingRight = UDim.new(0, 10)
+	cdPad.Parent = cdPill
 
 	local cdCorner = Instance.new("UICorner")
 	cdCorner.CornerRadius = UDim.new(0, 4)
 	cdCorner.Parent = cdPill
 
 	local cdText = Instance.new("TextLabel")
-	cdText.Size = UDim2.new(1, 0, 1, 0)
+	cdText.Size = UDim2.new(0, 0, 1, 0)
+	cdText.AutomaticSize = Enum.AutomaticSize.X
 	cdText.BackgroundTransparency = 1
 	cdText.TextColor3 = Color3.fromRGB(125, 205, 255)
 	cdText.Font = Enum.Font.GothamBold
@@ -595,17 +612,24 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	-- Damage Pill (if any)
 	if skill.damage and skill.damage > 0 then
 		local dmgPill = Instance.new("Frame")
-		dmgPill.Size = UDim2.new(0, isMobile and 58 or 88, 0, isMobile and 18 or 24)
+		dmgPill.Size = UDim2.new(0, 0, 0, isMobile and 18 or 24)
+		dmgPill.AutomaticSize = Enum.AutomaticSize.X
 		dmgPill.BackgroundColor3 = Color3.fromRGB(52, 28, 28)
 		dmgPill.BorderSizePixel = 0
 		dmgPill.Parent = statsRow
+
+		local dmgPad = Instance.new("UIPadding")
+		dmgPad.PaddingLeft = UDim.new(0, 10)
+		dmgPad.PaddingRight = UDim.new(0, 10)
+		dmgPad.Parent = dmgPill
 
 		local dmgCorner = Instance.new("UICorner")
 		dmgCorner.CornerRadius = UDim.new(0, 4)
 		dmgCorner.Parent = dmgPill
 
 		local dmgText = Instance.new("TextLabel")
-		dmgText.Size = UDim2.new(1, 0, 1, 0)
+		dmgText.Size = UDim2.new(0, 0, 1, 0)
+		dmgText.AutomaticSize = Enum.AutomaticSize.X
 		dmgText.BackgroundTransparency = 1
 		dmgText.TextColor3 = Color3.fromRGB(255, 135, 125)
 		dmgText.Font = Enum.Font.GothamBold
@@ -617,17 +641,24 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	-- Heal Pill (if any)
 	if skill.healAmount and skill.healAmount > 0 then
 		local healPill = Instance.new("Frame")
-		healPill.Size = UDim2.new(0, isMobile and 60 or 92, 0, isMobile and 18 or 24)
+		healPill.Size = UDim2.new(0, 0, 0, isMobile and 18 or 24)
+		healPill.AutomaticSize = Enum.AutomaticSize.X
 		healPill.BackgroundColor3 = Color3.fromRGB(25, 48, 34)
 		healPill.BorderSizePixel = 0
 		healPill.Parent = statsRow
+
+		local healPad = Instance.new("UIPadding")
+		healPad.PaddingLeft = UDim.new(0, 10)
+		healPad.PaddingRight = UDim.new(0, 10)
+		healPad.Parent = healPill
 
 		local healCorner = Instance.new("UICorner")
 		healCorner.CornerRadius = UDim.new(0, 4)
 		healCorner.Parent = healPill
 
 		local healText = Instance.new("TextLabel")
-		healText.Size = UDim2.new(1, 0, 1, 0)
+		healText.Size = UDim2.new(0, 0, 1, 0)
+		healText.AutomaticSize = Enum.AutomaticSize.X
 		healText.BackgroundTransparency = 1
 		healText.TextColor3 = Color3.fromRGB(135, 245, 165)
 		healText.Font = Enum.Font.GothamBold
@@ -639,17 +670,24 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	-- Duration Pill (if any)
 	if skill.duration and skill.duration > 0 then
 		local durPill = Instance.new("Frame")
-		durPill.Size = UDim2.new(0, isMobile and 52 or 80, 0, isMobile and 18 or 24)
+		durPill.Size = UDim2.new(0, 0, 0, isMobile and 18 or 24)
+		durPill.AutomaticSize = Enum.AutomaticSize.X
 		durPill.BackgroundColor3 = Color3.fromRGB(44, 40, 24)
 		durPill.BorderSizePixel = 0
 		durPill.Parent = statsRow
+
+		local durPad = Instance.new("UIPadding")
+		durPad.PaddingLeft = UDim.new(0, 10)
+		durPad.PaddingRight = UDim.new(0, 10)
+		durPad.Parent = durPill
 
 		local durCorner = Instance.new("UICorner")
 		durCorner.CornerRadius = UDim.new(0, 4)
 		durCorner.Parent = durPill
 
 		local durText = Instance.new("TextLabel")
-		durText.Size = UDim2.new(1, 0, 1, 0)
+		durText.Size = UDim2.new(0, 0, 1, 0)
+		durText.AutomaticSize = Enum.AutomaticSize.X
 		durText.BackgroundTransparency = 1
 		durText.TextColor3 = Color3.fromRGB(255, 220, 95)
 		durText.Font = Enum.Font.GothamBold
