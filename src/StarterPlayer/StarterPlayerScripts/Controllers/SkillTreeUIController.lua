@@ -1,5 +1,5 @@
 -- src/StarterPlayer/StarterPlayerScripts/Controllers/SkillTreeUIController.lua
--- Interactive MMO Skill Tree UI for Tank specializations (Juggernaut & Bulwark).
+-- Interactive MMO Skill Tree UI, class-driven (Tank: Juggernaut & Bulwark; Mage: Pyromancy & Frostweave).
 -- Features:
 -- 1. High-Resolution Painted Dark-Fantasy Icons for all skills (no emojis).
 -- 2. Fully Responsive Layout:
@@ -47,6 +47,20 @@ local BRANCH_ORDER_BY_CLASS = {
 }
 
 local activeMobileBranch: string = BRANCH_ORDER_BY_CLASS.Tank[1]
+
+-- Icon + display name shown in the modal's title bar, keyed by ReplicatedStorage.Shared.Data.Classes's own keys.
+local CLASS_TITLE_INFO = {
+	Tank = { icon = "🛡️", name = "TANK" },
+	Mage = { icon = "🔮", name = "MAGE" },
+}
+
+local function getClassTitleText(mobile: boolean): string
+	local info = CLASS_TITLE_INFO[currentClassId] or CLASS_TITLE_INFO.Tank
+	if mobile then
+		return info.icon .. " " .. info.name .. " SPECIALIZATION"
+	end
+	return info.icon .. " " .. info.name .. " SKILL SPECIALIZATION"
+end
 
 local BRANCH_COLORS = {
 	Bulwark = {
@@ -220,7 +234,7 @@ local function updateResponsiveScale()
 			titleLabel.Size = UDim2.new(0.5, 0, 1, 0)
 			titleLabel.Position = UDim2.new(0, 12, 0, 0)
 			titleLabel.TextSize = 14
-			titleLabel.Text = "🛡️ TANK SPECIALIZATION"
+			titleLabel.Text = getClassTitleText(true)
 		end
 		if pointsPill then
 			pointsPill.Size = UDim2.new(0, 126, 0, 28)
@@ -278,7 +292,7 @@ local function updateResponsiveScale()
 			titleLabel.Size = UDim2.new(0.55, 0, 1, 0)
 			titleLabel.Position = UDim2.new(0, 18, 0, 0)
 			titleLabel.TextSize = 24
-			titleLabel.Text = "🛡️ TANK SKILL SPECIALIZATION"
+			titleLabel.Text = getClassTitleText(false)
 		end
 		if pointsPill then
 			pointsPill.Size = UDim2.new(0, 205, 0, 38)
@@ -764,7 +778,7 @@ refreshUI = function()
 
 			local classData = Classes[currentClassId] or Classes.Tank
 			for _, branchName in ipairs(BRANCH_ORDER_BY_CLASS[currentClassId] or BRANCH_ORDER_BY_CLASS.Tank) do
-				local colStyle = BRANCH_COLORS[branchName]
+				local colStyle = BRANCH_COLORS[branchName] or BRANCH_COLORS.Juggernaut
 				local isSelected = (activeMobileBranch == branchName)
 				local branchInfo = classData and classData.branches and classData.branches[branchName]
 				local unlockedCount = 0
@@ -1207,7 +1221,7 @@ function SkillTreeUIController.Start()
 	titleLabel.Font = Enum.Font.GothamBold
 	titleLabel.TextSize = 24
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-	titleLabel.Text = "🛡️ TANK SKILL SPECIALIZATION"
+	titleLabel.Text = getClassTitleText(false)
 	titleLabel.Parent = headerBar
 
 	-- Skill Points Badge Pill
@@ -1346,16 +1360,20 @@ function SkillTreeUIController.Start()
 	end)
 	updateResponsiveScale()
 
-	-- Sync with Server
 	Net.Get("CharacterDataChanged").OnClientEvent:Connect(function(_level, _unspentEXP, classId)
 		if classId and Classes[classId] and classId ~= currentClassId then
 			currentClassId = classId
 			activeMobileBranch = (BRANCH_ORDER_BY_CLASS[currentClassId] or BRANCH_ORDER_BY_CLASS.Tank)[1]
+			-- Refreshes the title bar's class name/icon too, not just the branch
+			-- columns -- updateResponsiveScale() is what actually sets titleLabel.Text.
+			updateResponsiveScale()
 			if screenGui and screenGui.Enabled then
 				refreshUI()
 			end
 		end
 	end)
+
+	-- Sync with Server
 	Net.Get("SkillDataChanged").OnClientEvent:Connect(function(points, unlocked, equipped)
 		skillPoints = points or 0
 		unlockedSkills = unlocked or {"Taunt"}
