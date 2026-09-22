@@ -107,6 +107,27 @@ local function setupInitialEquipment(profile, classId: string)
 			"RockhideWraps",
 			"RockhideStriders",
 		}
+	elseif classId == "Healer" then
+		char.EquippedEquipment = {
+			Weapon = "BlessedScepter",
+			Head = "SanctumHood",
+			Body = "SanctumRobe",
+			Arms = "SanctumBracers",
+			Feet = "SanctumBoots",
+		}
+		char.EquippedWeapon = "BlessedScepter"
+		char.StoredEquipment = {
+			"BlessedScepter",
+			"SanctumHood",
+			"SanctumRobe",
+			"SanctumBracers",
+			"SanctumBoots",
+			"RockhideStaffOfMercy",
+			"RockhideSanctumCowl",
+			"RockhideSanctumVestments",
+			"RockhideMercyWraps",
+			"RockhideSanctumTreads",
+		}
 	else
 		char.EquippedEquipment = {
 			Weapon = "StandardSword",
