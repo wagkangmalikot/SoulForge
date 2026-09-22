@@ -451,6 +451,7 @@ function HUDController.Start()
 	playerFrame.BackgroundColor3 = Color3.fromRGB(16, 18, 26)
 	playerFrame.BackgroundTransparency = 0.15
 	playerFrame.BorderSizePixel = 0
+	playerFrame.Active = true
 	playerFrame.Parent = topLeftContainer
 
 	local playerFrameCorner = Instance.new("UICorner")
