@@ -1199,10 +1199,21 @@ end
 -- 5. EQUIPMENT MODEL DISPATCHERS & VISUAL ATTACHMENTS
 -- ============================================================================
 
+-- Weapon ids that render as a staff-style model (caster/support classes) rather than a
+-- sword. Phase 1 of the Healer class deliberately reuses the Mage's staff visuals (see
+-- docs/superpowers/plans/2026-09-22-healer-class.md) -- bespoke Healer weapon
+-- geometry is a separate future phase. Also used below to skip staff wielders' shield.
+local STAFF_STYLE_WEAPONS = {
+	ApprenticeStaff = true,
+	RockhideStaff = true,
+	BlessedScepter = true,
+	RockhideStaffOfMercy = true,
+}
+
 local function createWeaponModel(weaponId: string?): (Model, BasePart, Trail)
-	if weaponId == "ApprenticeStaff" then
+	if weaponId == "ApprenticeStaff" or weaponId == "BlessedScepter" then
 		return createApprenticeStaffModel()
-	elseif weaponId == "RockhideStaff" then
+	elseif weaponId == "RockhideStaff" or weaponId == "RockhideStaffOfMercy" then
 		return createRockhideStaffModel()
 	elseif weaponId == "RockhideFang" or weaponId == "Rockhide" then
 		return createRockhideSwordModel()
@@ -1214,8 +1225,8 @@ end
 local createSwordModel = createWeaponModel -- compatibility alias
 
 local function createShieldModel(armsId: string?, weaponId: string?): (Model?, BasePart?)
-	-- Mages and staff wielders do not carry heavy shields
-	if weaponId == "ApprenticeStaff" or weaponId == "RockhideStaff" then
+	-- Mages, Healers, and other staff wielders do not carry heavy shields
+	if STAFF_STYLE_WEAPONS[weaponId] then
 		return nil, nil
 	end
 	if armsId == "ApprenticeBracers" or armsId == "RockhideWraps" then
@@ -2390,6 +2401,12 @@ local function attachBoots(character: Model, feetId: string?)
 	boots.Parent = character
 end
 
+local DEFAULT_EQUIPMENT_BY_CLASS = {
+	Tank = { Weapon = "StandardSword", Head = "StandardHelm", Body = "StandardChest", Arms = "StandardArms", Feet = "StandardFeet" },
+	Mage = { Weapon = "ApprenticeStaff", Head = "ApprenticeHood", Body = "ApprenticeRobe", Arms = "ApprenticeBracers", Feet = "ApprenticeBoots" },
+	Healer = { Weapon = "BlessedScepter", Head = "SanctumHood", Body = "SanctumRobe", Arms = "SanctumBracers", Feet = "SanctumBoots" },
+}
+
 function WeaponService.EquipWeapons(character: Model, weaponSetId: string?, shieldSetId: string?)
 	if not character or not character.Parent then
 		return
@@ -2400,17 +2417,19 @@ function WeaponService.EquipWeapons(character: Model, weaponSetId: string?, shie
 	local charData = profile and profile.Data.Character
 
 	local classId = (charData and charData.ClassId) or "Mage"
-	local isMage = (classId == "Mage")
+	local defaults = DEFAULT_EQUIPMENT_BY_CLASS[classId] or DEFAULT_EQUIPMENT_BY_CLASS.Mage
 
 	local equipped = charData and charData.EquippedEquipment or {}
-	local targetWeapon = weaponSetId or equipped.Weapon or (charData and charData.EquippedWeapon) or (isMage and "ApprenticeStaff" or "StandardSword")
-	local targetArms = shieldSetId or equipped.Arms or (isMage and "ApprenticeBracers" or "StandardArms")
-	local targetHead = equipped.Head or (isMage and "ApprenticeHood" or "StandardHelm")
-	local targetBody = equipped.Body or (isMage and "ApprenticeRobe" or "StandardChest")
-	local targetFeet = equipped.Feet or (isMage and "ApprenticeBoots" or "StandardFeet")
+	local targetWeapon = weaponSetId or equipped.Weapon or (charData and charData.EquippedWeapon) or defaults.Weapon
+	local targetArms = shieldSetId or equipped.Arms or defaults.Arms
+	local targetHead = equipped.Head or defaults.Head
+	local targetBody = equipped.Body or defaults.Body
+	local targetFeet = equipped.Feet or defaults.Feet
 
-	-- If character is Mage, sanitize any Tank gear to Mage equivalents
-	if isMage then
+	-- If character is Mage or Healer, sanitize any foreign-class gear to this class's
+	-- equivalents (e.g. a stale item from before a reforge). Tank gets no sanitization,
+	-- same as before this class existed -- it's always been the unconditional default.
+	if classId == "Mage" then
 		if targetWeapon == "StandardSword" or targetWeapon == "Standard" then
 			targetWeapon = "ApprenticeStaff"
 		elseif targetWeapon == "RockhideFang" or targetWeapon == "Rockhide" then
@@ -2442,6 +2461,45 @@ function WeaponService.EquipWeapons(character: Model, weaponSetId: string?, shie
 		end
 
 		-- Keep profile data in sync
+		if charData and charData.EquippedEquipment then
+			charData.EquippedEquipment.Weapon = targetWeapon
+			charData.EquippedEquipment.Head = targetHead
+			charData.EquippedEquipment.Body = targetBody
+			charData.EquippedEquipment.Arms = targetArms
+			charData.EquippedEquipment.Feet = targetFeet
+			charData.EquippedWeapon = targetWeapon
+		end
+	elseif classId == "Healer" then
+		if targetWeapon == "StandardSword" or targetWeapon == "Standard" or targetWeapon == "ApprenticeStaff" then
+			targetWeapon = "BlessedScepter"
+		elseif targetWeapon == "RockhideFang" or targetWeapon == "Rockhide" or targetWeapon == "RockhideStaff" then
+			targetWeapon = "RockhideStaffOfMercy"
+		end
+
+		if targetHead == "StandardHelm" or targetHead == "ApprenticeHood" then
+			targetHead = "SanctumHood"
+		elseif targetHead == "RockhideHelm" or targetHead == "RockhideCowl" then
+			targetHead = "RockhideSanctumCowl"
+		end
+
+		if targetBody == "StandardChest" or targetBody == "ApprenticeRobe" then
+			targetBody = "SanctumRobe"
+		elseif targetBody == "RockhideChest" or targetBody == "RockhideRobes" then
+			targetBody = "RockhideSanctumVestments"
+		end
+
+		if targetArms == "StandardArms" or targetArms == "ApprenticeBracers" then
+			targetArms = "SanctumBracers"
+		elseif targetArms == "RockhideArms" or targetArms == "RockhideWraps" then
+			targetArms = "RockhideMercyWraps"
+		end
+
+		if targetFeet == "StandardFeet" or targetFeet == "ApprenticeBoots" then
+			targetFeet = "SanctumBoots"
+		elseif targetFeet == "RockhideFeet" or targetFeet == "RockhideStriders" then
+			targetFeet = "RockhideSanctumTreads"
+		end
+
 		if charData and charData.EquippedEquipment then
 			charData.EquippedEquipment.Weapon = targetWeapon
 			charData.EquippedEquipment.Head = targetHead
@@ -2523,7 +2581,7 @@ function WeaponService.EquipWeapons(character: Model, weaponSetId: string?, shie
 	weaponGrip.Name = "SwordGrip"
 	weaponGrip.Part0 = rightHand
 	weaponGrip.Part1 = weaponHandle
-	if targetWeapon == "ApprenticeStaff" or targetWeapon == "RockhideStaff" then
+	if STAFF_STYLE_WEAPONS[targetWeapon] then
 		weaponGrip.C0 = CFrame.new(0, -0.35, -0.1) * CFrame.Angles(math.rad(-90), 0, 0)
 	else
 		weaponGrip.C0 = CFrame.new(0, -0.4, -0.2) * CFrame.Angles(math.rad(-90), math.rad(0), math.rad(0))
@@ -2531,8 +2589,8 @@ function WeaponService.EquipWeapons(character: Model, weaponSetId: string?, shie
 	weaponGrip.Parent = rightHand
 	weaponModel.Parent = character
 
-	-- 2. Equip Shield (Tank only; Mages do not carry shields)
-	if not isMage and targetWeapon ~= "ApprenticeStaff" and targetWeapon ~= "RockhideStaff" then
+	-- 2. Equip Shield (Tank only; Mages/Healers/other staff wielders do not carry shields)
+	if not STAFF_STYLE_WEAPONS[targetWeapon] then
 		local shieldModel, shieldHandle = createShieldModel(targetArms, targetWeapon)
 		if shieldModel and shieldHandle then
 			local shieldGrip = Instance.new("Motor6D")
@@ -2549,13 +2607,7 @@ function WeaponService.EquipWeapons(character: Model, weaponSetId: string?, shie
 	if player and charData then
 		Net.Get("EquipmentDataChanged"):FireClient(
 			player,
-			charData.EquippedEquipment or {
-				Weapon = isMage and "ApprenticeStaff" or "StandardSword",
-				Head = isMage and "ApprenticeHood" or "StandardHelm",
-				Body = isMage and "ApprenticeRobe" or "StandardChest",
-				Arms = isMage and "ApprenticeBracers" or "StandardArms",
-				Feet = isMage and "ApprenticeBoots" or "StandardFeet",
-			},
+			charData.EquippedEquipment or defaults,
 			charData.StoredEquipment or {},
 			charData.CraftingMaterials or {}
 		)
@@ -2595,14 +2647,11 @@ function WeaponService.Start()
 
 		if hasOwned then
 			if not charData.EquippedEquipment then
-				local isMage = (playerClass == "Mage")
-				charData.EquippedEquipment = {
-					Weapon = isMage and "ApprenticeStaff" or "StandardSword",
-					Head = isMage and "ApprenticeHood" or "StandardHelm",
-					Body = isMage and "ApprenticeRobe" or "StandardChest",
-					Arms = isMage and "ApprenticeBracers" or "StandardArms",
-					Feet = isMage and "ApprenticeBoots" or "StandardFeet",
-				}
+				-- table.clone: the class default is a shared module-level table, and the
+				-- line below (charData.EquippedEquipment[item.slot] = itemId) mutates
+				-- whatever table we assign here in place. Without cloning, that write
+				-- would corrupt DEFAULT_EQUIPMENT_BY_CLASS itself for every player.
+				charData.EquippedEquipment = table.clone(DEFAULT_EQUIPMENT_BY_CLASS[playerClass] or DEFAULT_EQUIPMENT_BY_CLASS.Mage)
 			end
 			charData.EquippedEquipment[item.slot] = itemId
 			if item.slot == "Weapon" then
