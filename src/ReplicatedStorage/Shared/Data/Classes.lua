@@ -35,4 +35,22 @@ return {
 			},
 		},
 	},
+
+	Healer = {
+		name = "Healer",
+		baseHealth = 90,
+		startingSkills = {"Mend"},
+		branches = {
+			Mending = {
+				name = "Mending",
+				description = "Focused single-target healing that scales from a quick touch to a powerful restoration.",
+				skills = {"SoothingLight", "RadiantMend", "DivineRestoration"},
+			},
+			Sanctuary = {
+				name = "Sanctuary",
+				description = "Area healing that keeps the whole party topped up, building to a party-wide burst.",
+				skills = {"SacredCircle", "HealingRain", "Sanctuary"},
+			},
+		},
+	},
 }
