@@ -24,7 +24,7 @@ local REMOTE_NAMES = {
 	"DungeonResult",          -- server -> client: {result = "victory" | "wipe", expEarned, fragmentsEarned, goldEarned}
 	"ShowCharacterCreation",     -- server -> client: tells this client to show the create screen (first-timer, no existing character)
 	"SubmitCharacterCreation",   -- client -> server: {classId} -- name comes from player.DisplayName
-	"ShowCharacterChoice",       -- server -> client: {level} -- tells this client to show the Load/Create New choice (returning player)
+	"ShowCharacterChoice",       -- server -> client: {level, classId} -- tells this client to show the Load/Create New choice (returning player)
 	"RequestLoadCharacter",      -- client -> server: no args -- spawn as the existing character
 	"RequestCreateNewCharacter", -- client -> server: {classId} -- reset Character to defaults (keeping DisplayName/HasCreatedCharacter) and spawn
 	"RequestLevelUp",          -- client -> server (no args)

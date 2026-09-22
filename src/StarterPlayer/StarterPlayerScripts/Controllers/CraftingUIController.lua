@@ -40,6 +40,8 @@ local cachedEquippedEquipment: {[string]: string} = {
 -- Currently selected set & piece
 local selectedSetId: string = "Rockhide"
 local selectedPieceId: string = "RockhideFang"
+local hasManuallySelectedSet = false
+local updateSetTabsFunc: (() -> ())? = nil
 
 -- ============================================================================
 -- THEME & PALETTE
@@ -217,23 +219,23 @@ local function renderDetailPanel(itemId: string)
 	local slotBadge = Instance.new("TextLabel")
 	slotBadge.Text = string.format("[ %s PIECE ]", string.upper(item.slot))
 	slotBadge.TextColor3 = THEME.amberBright
-	slotBadge.TextSize = 11
+	slotBadge.TextSize = 14
 	slotBadge.Font = Enum.Font.GothamBold
 	slotBadge.BackgroundTransparency = 1
 	slotBadge.TextXAlignment = Enum.TextXAlignment.Left
 	slotBadge.Position = UDim2.new(0, 78, 0, 8)
-	slotBadge.Size = UDim2.new(0.6, 0, 0, 16)
+	slotBadge.Size = UDim2.new(0.6, 0, 0, 18)
 	slotBadge.Parent = headerCard
 
 	-- Item Display Name
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Text = item.displayName or item.id
 	titleLabel.TextColor3 = THEME.textWhite
-	titleLabel.TextSize = 17
+	titleLabel.TextSize = 21
 	titleLabel.Font = Enum.Font.GothamBold
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-	titleLabel.Position = UDim2.new(0, 78, 0, 26)
+	titleLabel.Position = UDim2.new(0, 78, 0, 27)
 	titleLabel.Size = UDim2.new(0.65, 0, 0, 24)
 	titleLabel.Parent = headerCard
 
@@ -241,12 +243,12 @@ local function renderDetailPanel(itemId: string)
 	local subLabel = Instance.new("TextLabel")
 	subLabel.Text = string.format("Tier %d  ·  %s", item.tier or 1, string.upper(item.rarity or "Common"))
 	subLabel.TextColor3 = rarityColor
-	subLabel.TextSize = 11
+	subLabel.TextSize = 14
 	subLabel.Font = Enum.Font.GothamSemibold
 	subLabel.BackgroundTransparency = 1
 	subLabel.TextXAlignment = Enum.TextXAlignment.Left
-	subLabel.Position = UDim2.new(0, 78, 0, 52)
-	subLabel.Size = UDim2.new(0.6, 0, 0, 16)
+	subLabel.Position = UDim2.new(0, 78, 0, 53)
+	subLabel.Size = UDim2.new(0.6, 0, 0, 18)
 	subLabel.Parent = headerCard
 
 	-- Ownership Status Pill
@@ -256,8 +258,8 @@ local function renderDetailPanel(itemId: string)
 	local pillTextColor = equipped and THEME.textWhite or (owned and THEME.green or (canForge and THEME.cyan or THEME.textDim))
 
 	local statusPill = Instance.new("Frame")
-	statusPill.Size = UDim2.new(0, 110, 0, 26)
-	statusPill.Position = UDim2.new(1, -120, 0, 12)
+	statusPill.Size = UDim2.new(0, 120, 0, 28)
+	statusPill.Position = UDim2.new(1, -128, 0, 10)
 	statusPill.BackgroundColor3 = pillBg
 	statusPill.BorderSizePixel = 0
 	makeCorner(statusPill, 4)
@@ -267,7 +269,7 @@ local function renderDetailPanel(itemId: string)
 	local pillLabel = Instance.new("TextLabel")
 	pillLabel.Text = pillText
 	pillLabel.TextColor3 = pillTextColor
-	pillLabel.TextSize = 10
+	pillLabel.TextSize = 13.5
 	pillLabel.Font = Enum.Font.GothamBold
 	pillLabel.BackgroundTransparency = 1
 	pillLabel.Size = UDim2.new(1, 0, 1, 0)
@@ -307,7 +309,7 @@ local function renderDetailPanel(itemId: string)
 		local descText = Instance.new("TextLabel")
 		descText.Text = "“ " .. item.description .. " ”"
 		descText.TextColor3 = THEME.textSilver
-		descText.TextSize = 11
+		descText.TextSize = 14.5
 		descText.Font = Enum.Font.Gotham
 		descText.BackgroundTransparency = 1
 		descText.TextXAlignment = Enum.TextXAlignment.Left
@@ -332,11 +334,11 @@ local function renderDetailPanel(itemId: string)
 	local statsHeader = Instance.new("TextLabel")
 	statsHeader.Text = "ITEM ATTRIBUTES"
 	statsHeader.TextColor3 = THEME.amberBright
-	statsHeader.TextSize = 11
+	statsHeader.TextSize = 14.5
 	statsHeader.Font = Enum.Font.GothamBold
 	statsHeader.BackgroundTransparency = 1
 	statsHeader.TextXAlignment = Enum.TextXAlignment.Left
-	statsHeader.Size = UDim2.new(1, 0, 0, 20)
+	statsHeader.Size = UDim2.new(1, 0, 0, 24)
 	statsHeader.Parent = statsSection
 
 	local statsList = Instance.new("UIListLayout")
@@ -361,7 +363,7 @@ local function renderDetailPanel(itemId: string)
 	local statOrder = 1
 	for statKey, statVal in pairs(item.stats or {}) do
 		local statRow = Instance.new("Frame")
-		statRow.Size = UDim2.new(1, 0, 0, 24)
+		statRow.Size = UDim2.new(1, 0, 0, 30)
 		statRow.BackgroundColor3 = (statOrder % 2 == 0) and THEME.rowBg or THEME.rowBgAlt
 		statRow.BorderSizePixel = 0
 		statRow.LayoutOrder = statOrder + 1
@@ -372,7 +374,7 @@ local function renderDetailPanel(itemId: string)
 		local nameLbl = Instance.new("TextLabel")
 		nameLbl.Text = statLabels[statKey] or statKey
 		nameLbl.TextColor3 = THEME.textSilver
-		nameLbl.TextSize = 11
+		nameLbl.TextSize = 14
 		nameLbl.Font = Enum.Font.Gotham
 		nameLbl.BackgroundTransparency = 1
 		nameLbl.TextXAlignment = Enum.TextXAlignment.Left
@@ -397,7 +399,7 @@ local function renderDetailPanel(itemId: string)
 		local valLbl = Instance.new("TextLabel")
 		valLbl.Text = valStr
 		valLbl.TextColor3 = THEME.amberBright
-		valLbl.TextSize = 12
+		valLbl.TextSize = 15
 		valLbl.Font = Enum.Font.GothamBold
 		valLbl.BackgroundTransparency = 1
 		valLbl.TextXAlignment = Enum.TextXAlignment.Right
@@ -424,11 +426,11 @@ local function renderDetailPanel(itemId: string)
 		local matsHeader = Instance.new("TextLabel")
 		matsHeader.Text = "CRAFTING REAGENTS"
 		matsHeader.TextColor3 = THEME.amberBright
-		matsHeader.TextSize = 11
+		matsHeader.TextSize = 14.5
 		matsHeader.Font = Enum.Font.GothamBold
 		matsHeader.BackgroundTransparency = 1
 		matsHeader.TextXAlignment = Enum.TextXAlignment.Left
-		matsHeader.Size = UDim2.new(1, 0, 0, 20)
+		matsHeader.Size = UDim2.new(1, 0, 0, 24)
 		matsHeader.Parent = matsSection
 
 		local matsList = Instance.new("UIListLayout")
@@ -445,7 +447,7 @@ local function renderDetailPanel(itemId: string)
 			local matColor = RARITY_COLOR[matDef and matDef.rarity or "Common"] or THEME.textWhite
 
 			local matRow = Instance.new("Frame")
-			matRow.Size = UDim2.new(1, 0, 0, 40)
+			matRow.Size = UDim2.new(1, 0, 0, 46)
 			matRow.BackgroundColor3 = enough and Color3.fromRGB(18, 30, 20) or Color3.fromRGB(32, 18, 16)
 			matRow.BorderSizePixel = 0
 			matRow.LayoutOrder = matOrder + 1
@@ -455,37 +457,37 @@ local function renderDetailPanel(itemId: string)
 			matRow.Parent = matsSection
 
 			-- Procedural Material Icon
-			local iconTile = ItemIconHelper.CreateMaterialIcon(matRow, matId, UDim2.new(0, 28, 0, 28))
-			iconTile.Position = UDim2.new(0, 0, 0.5, -14)
+			local iconTile = ItemIconHelper.CreateMaterialIcon(matRow, matId, UDim2.new(0, 32, 0, 32))
+			iconTile.Position = UDim2.new(0, 0, 0.5, -16)
 
 			-- Material Name
 			local nameLbl = Instance.new("TextLabel")
 			nameLbl.Text = matName
 			nameLbl.TextColor3 = matColor
-			nameLbl.TextSize = 12
+			nameLbl.TextSize = 15
 			nameLbl.Font = Enum.Font.GothamBold
 			nameLbl.BackgroundTransparency = 1
 			nameLbl.TextXAlignment = Enum.TextXAlignment.Left
-			nameLbl.Position = UDim2.new(0, 36, 0, 2)
-			nameLbl.Size = UDim2.new(0.6, 0, 0, 18)
+			nameLbl.Position = UDim2.new(0, 40, 0, 2)
+			nameLbl.Size = UDim2.new(0.6, 0, 0, 22)
 			nameLbl.Parent = matRow
 
 			-- Fragment note
 			local hintLbl = Instance.new("TextLabel")
 			hintLbl.Text = (matId == "RockhideFragment") and "Obtained from Rockhide Boss Arena" or "Smelted / Refined Reagent"
 			hintLbl.TextColor3 = THEME.textDim
-			hintLbl.TextSize = 9
+			hintLbl.TextSize = 13
 			hintLbl.Font = Enum.Font.Gotham
 			hintLbl.BackgroundTransparency = 1
 			hintLbl.TextXAlignment = Enum.TextXAlignment.Left
-			hintLbl.Position = UDim2.new(0, 36, 0, 20)
-			hintLbl.Size = UDim2.new(0.6, 0, 0, 16)
+			hintLbl.Position = UDim2.new(0, 40, 0, 24)
+			hintLbl.Size = UDim2.new(0.6, 0, 0, 18)
 			hintLbl.Parent = matRow
 
 			-- Have / Need Pill (Big & clear)
 			local countPill = Instance.new("Frame")
-			countPill.Size = UDim2.new(0, 72, 0, 26)
-			countPill.Position = UDim2.new(1, -72, 0.5, -13)
+			countPill.Size = UDim2.new(0, 80, 0, 28)
+			countPill.Position = UDim2.new(1, -80, 0.5, -14)
 			countPill.BackgroundColor3 = enough and THEME.greenDark or THEME.redDark
 			countPill.BorderSizePixel = 0
 			makeCorner(countPill, 4)
@@ -495,7 +497,7 @@ local function renderDetailPanel(itemId: string)
 			local countText = Instance.new("TextLabel")
 			countText.Text = string.format("%d / %d", have, needed)
 			countText.TextColor3 = enough and THEME.green or THEME.red
-			countText.TextSize = 11
+			countText.TextSize = 14
 			countText.Font = Enum.Font.GothamBold
 			countText.BackgroundTransparency = 1
 			countText.Size = UDim2.new(1, 0, 1, 0)
@@ -550,7 +552,7 @@ local function updateSetBonusBanner()
 			local pieceId = setData.pieces[i]
 			local isThisPieceEquipped = isItemEquipped(pieceId)
 			local pip = Instance.new("Frame")
-			pip.Size = UDim2.new(0, 18, 0, 18)
+			pip.Size = UDim2.new(0, 22, 0, 22)
 			pip.BackgroundColor3 = isThisPieceEquipped and THEME.amberBright or THEME.panelBg
 			pip.BorderSizePixel = 0
 			makeCorner(pip, 3)
@@ -561,7 +563,7 @@ local function updateSetBonusBanner()
 			local pipIcon = Instance.new("TextLabel")
 			pipIcon.Text = slotChar
 			pipIcon.Font = Enum.Font.GothamBold
-			pipIcon.TextSize = 9
+			pipIcon.TextSize = 12.5
 			pipIcon.TextColor3 = isThisPieceEquipped and THEME.bgDark or THEME.textDim
 			pipIcon.BackgroundTransparency = 1
 			pipIcon.Size = UDim2.new(1, 0, 1, 0)
@@ -612,7 +614,7 @@ local function renderPiecesList()
 
 		local card = Instance.new("TextButton")
 		card.Name = "PieceCard_" .. pieceId
-		card.Size = UDim2.new(1, -4, 0, 58)
+		card.Size = UDim2.new(1, -4, 0, 62)
 		card.BackgroundColor3 = cardBg
 		card.BorderSizePixel = 0
 		card.Text = ""
@@ -626,32 +628,32 @@ local function renderPiecesList()
 		end
 
 		-- Procedural Vector Item Icon
-		local iconTile = ItemIconHelper.CreateItemIcon(card, pieceId, UDim2.new(0, 36, 0, 36), isSelected)
-		iconTile.Position = UDim2.new(0, 10, 0.5, -18)
+		local iconTile = ItemIconHelper.CreateItemIcon(card, pieceId, UDim2.new(0, 42, 0, 42), isSelected)
+		iconTile.Position = UDim2.new(0, 8, 0.5, -21)
 
 		-- Item name
 		local nameLabel = Instance.new("TextLabel")
 		nameLabel.Text = item.displayName or item.id
 		nameLabel.TextColor3 = isSelected and THEME.amberBright or THEME.textWhite
-		nameLabel.TextSize = 12
+		nameLabel.TextSize = 15.5
 		nameLabel.Font = Enum.Font.GothamBold
 		nameLabel.BackgroundTransparency = 1
 		nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 		nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
-		nameLabel.Position = UDim2.new(0, 54, 0, 8)
-		nameLabel.Size = UDim2.new(1, -135, 0, 18)
+		nameLabel.Position = UDim2.new(0, 56, 0, 8)
+		nameLabel.Size = UDim2.new(1, -148, 0, 22)
 		nameLabel.Parent = card
 
 		-- Slot & Rarity subtitle
 		local subLabel = Instance.new("TextLabel")
 		subLabel.Text = string.format("%s · Tier %d %s", string.upper(item.slot), item.tier or 1, item.rarity or "Common")
 		subLabel.TextColor3 = rarityColor
-		subLabel.TextSize = 10
+		subLabel.TextSize = 13.5
 		subLabel.Font = Enum.Font.Gotham
 		subLabel.BackgroundTransparency = 1
 		subLabel.TextXAlignment = Enum.TextXAlignment.Left
-		subLabel.Position = UDim2.new(0, 54, 0, 28)
-		subLabel.Size = UDim2.new(1, -135, 0, 16)
+		subLabel.Position = UDim2.new(0, 56, 0, 32)
+		subLabel.Size = UDim2.new(1, -148, 0, 18)
 		subLabel.Parent = card
 
 		-- State Pill (EQUIPPED / OWNED / READY / LOCKED)
@@ -661,8 +663,8 @@ local function renderPiecesList()
 		local pillColor = equipped and THEME.amberBright or (owned and THEME.green or (canForge and THEME.cyan or THEME.textDim))
 
 		local statePill = Instance.new("Frame")
-		statePill.Size = UDim2.new(0, 68, 0, 22)
-		statePill.Position = UDim2.new(1, -76, 0.5, -11)
+		statePill.Size = UDim2.new(0, 82, 0, 24)
+		statePill.Position = UDim2.new(1, -88, 0.5, -12)
 		statePill.BackgroundColor3 = pillBg
 		statePill.BorderSizePixel = 0
 		makeCorner(statePill, 4)
@@ -672,7 +674,7 @@ local function renderPiecesList()
 		local stateLabel = Instance.new("TextLabel")
 		stateLabel.Text = pillText
 		stateLabel.TextColor3 = pillColor
-		stateLabel.TextSize = 9
+		stateLabel.TextSize = 13
 		stateLabel.Font = Enum.Font.GothamBold
 		stateLabel.BackgroundTransparency = 1
 		stateLabel.Size = UDim2.new(1, 0, 1, 0)
@@ -715,11 +717,12 @@ local function buildUI()
 		CraftingUIController.Close()
 	end)
 
-	-- Main Modal Frame (880 × 590)
+	-- Main Modal Frame (920 × 600)
 	mainFrame = Instance.new("Frame")
 	mainFrame.Name = "MainModal"
-	mainFrame.Size = UDim2.new(0, 880, 0, 590)
-	mainFrame.Position = UDim2.new(0.5, -440, 0.5, -295)
+	mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+	mainFrame.Size = UDim2.new(0, 940, 0, 600)
+	mainFrame.Position = UDim2.new(0.5, 0, 0.5, 18)
 	mainFrame.BackgroundColor3 = THEME.bgDark
 	mainFrame.BorderSizePixel = 0
 	mainFrame.ZIndex = 10
@@ -728,10 +731,37 @@ local function buildUI()
 	makeGradient(mainFrame, Color3.fromRGB(24, 18, 12), THEME.bgDark, 90)
 	mainFrame.Parent = screenGui
 
+	local modalScale = Instance.new("UIScale")
+	modalScale.Name = "ModalScale"
+	modalScale.Parent = mainFrame
+
+	local function updateScale()
+		local camera = workspace.CurrentCamera
+		if not camera then return end
+		local vp = camera.ViewportSize
+		if vp.X <= 0 or vp.Y <= 0 then return end
+		local scaleX = (vp.X * 0.94) / 940
+		local scaleY = (vp.Y * 0.88) / 600
+		local targetScale = math.min(scaleX, scaleY)
+		modalScale.Scale = math.clamp(targetScale, 0.78, 1.35)
+	end
+
+	workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+		local c = workspace.CurrentCamera
+		if c then
+			c:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
+			updateScale()
+		end
+	end)
+	if workspace.CurrentCamera then
+		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
+		updateScale()
+	end
+
 	-- ── HEADER ────────────────────────────────────────────────────────────
 	local header = Instance.new("Frame")
 	header.Name = "Header"
-	header.Size = UDim2.new(1, 0, 0, 50)
+	header.Size = UDim2.new(1, 0, 0, 58)
 	header.BackgroundColor3 = Color3.fromRGB(18, 14, 8)
 	header.BorderSizePixel = 0
 	header.ZIndex = 11
@@ -749,47 +779,47 @@ local function buildUI()
 	local headerTitle = Instance.new("TextLabel")
 	headerTitle.Text = "SOULFORGE FORGE  ·  ROCKHIDE CRAFTING"
 	headerTitle.TextColor3 = THEME.amberBright
-	headerTitle.TextSize = 16
+	headerTitle.TextSize = 22
 	headerTitle.Font = Enum.Font.GothamBold
 	headerTitle.BackgroundTransparency = 1
 	headerTitle.TextXAlignment = Enum.TextXAlignment.Left
 	headerTitle.Position = UDim2.new(0, 16, 0, 6)
-	headerTitle.Size = UDim2.new(0.55, 0, 0, 20)
+	headerTitle.Size = UDim2.new(0.55, 0, 0, 26)
 	headerTitle.Parent = header
 
 	local headerSubtitle = Instance.new("TextLabel")
 	headerSubtitle.Text = "Forge boss weapons and armor pieces from collected fragments"
 	headerSubtitle.TextColor3 = THEME.textSilver
-	headerSubtitle.TextSize = 10
-	headerSubtitle.Font = Enum.Font.Gotham
+	headerSubtitle.TextSize = 14.5
+	headerSubtitle.Font = Enum.Font.GothamMedium
 	headerSubtitle.BackgroundTransparency = 1
 	headerSubtitle.TextXAlignment = Enum.TextXAlignment.Left
-	headerSubtitle.Position = UDim2.new(0, 16, 0, 26)
-	headerSubtitle.Size = UDim2.new(0.55, 0, 0, 16)
+	headerSubtitle.Position = UDim2.new(0, 16, 0, 32)
+	headerSubtitle.Size = UDim2.new(0.55, 0, 0, 20)
 	headerSubtitle.Parent = header
 
 	-- Gold display pill
 	local goldPill = Instance.new("Frame")
 	goldPill.Name = "GoldPill"
-	goldPill.Size = UDim2.new(0, 150, 0, 28)
-	goldPill.Position = UDim2.new(1, -204, 0.5, -14)
+	goldPill.Size = UDim2.new(0, 180, 0, 36)
+	goldPill.Position = UDim2.new(1, -232, 0.5, -18)
 	goldPill.BackgroundColor3 = THEME.panelBg
 	goldPill.BorderSizePixel = 0
 	makeCorner(goldPill, 5)
 	makeStroke(goldPill, THEME.borderBright, 1)
 
-	local coinIcon = ItemIconHelper.CreateGoldCoinIcon(goldPill, UDim2.new(0, 18, 0, 18))
-	coinIcon.Position = UDim2.new(0, 8, 0.5, -9)
+	local coinIcon = ItemIconHelper.CreateGoldCoinIcon(goldPill, UDim2.new(0, 22, 0, 22))
+	coinIcon.Position = UDim2.new(0, 8, 0.5, -11)
 
 	local goldLabel = Instance.new("TextLabel")
 	goldLabel.Text = "9,999,999 GOLD"
 	goldLabel.TextColor3 = THEME.amberBright
-	goldLabel.TextSize = 11
+	goldLabel.TextSize = 14.5
 	goldLabel.Font = Enum.Font.GothamBold
 	goldLabel.BackgroundTransparency = 1
 	goldLabel.TextXAlignment = Enum.TextXAlignment.Left
-	goldLabel.Position = UDim2.new(0, 32, 0, 0)
-	goldLabel.Size = UDim2.new(1, -36, 1, 0)
+	goldLabel.Position = UDim2.new(0, 36, 0, 0)
+	goldLabel.Size = UDim2.new(1, -40, 1, 0)
 	goldLabel.Parent = goldPill
 	goldPill.Parent = header
 
@@ -798,10 +828,10 @@ local function buildUI()
 	closeBtn.Name = "CloseBtn"
 	closeBtn.Text = "X"
 	closeBtn.TextColor3 = THEME.textSilver
-	closeBtn.TextSize = 16
+	closeBtn.TextSize = 20
 	closeBtn.Font = Enum.Font.GothamBold
-	closeBtn.Size = UDim2.new(0, 36, 0, 32)
-	closeBtn.Position = UDim2.new(1, -44, 0.5, -16)
+	closeBtn.Size = UDim2.new(0, 38, 0, 34)
+	closeBtn.Position = UDim2.new(1, -46, 0.5, -17)
 	closeBtn.BackgroundColor3 = THEME.panelBg
 	closeBtn.BorderSizePixel = 0
 	makeCorner(closeBtn, 5)
@@ -816,8 +846,8 @@ local function buildUI()
 	-- ── SET BONUS BANNER (Top of content) ──────────────────────────────────
 	setBonusBanner = Instance.new("Frame")
 	setBonusBanner.Name = "SetBonusBanner"
-	setBonusBanner.Size = UDim2.new(1, -20, 0, 42)
-	setBonusBanner.Position = UDim2.new(0, 10, 0, 56)
+	setBonusBanner.Size = UDim2.new(1, -20, 0, 48)
+	setBonusBanner.Position = UDim2.new(0, 10, 0, 64)
 	setBonusBanner.BackgroundColor3 = Color3.fromRGB(28, 20, 10)
 	setBonusBanner.BorderSizePixel = 0
 	setBonusBanner.ZIndex = 11
@@ -829,7 +859,7 @@ local function buildUI()
 	setBonusStatusText.Name = "StatusText"
 	setBonusStatusText.Text = "SET BONUS: Loading..."
 	setBonusStatusText.TextColor3 = THEME.textSilver
-	setBonusStatusText.TextSize = 11
+	setBonusStatusText.TextSize = 13.5
 	setBonusStatusText.Font = Enum.Font.GothamBold
 	setBonusStatusText.BackgroundTransparency = 1
 	setBonusStatusText.TextXAlignment = Enum.TextXAlignment.Left
@@ -840,8 +870,8 @@ local function buildUI()
 	-- Pips container on right (showing 5 slots)
 	setBonusPipsContainer = Instance.new("Frame")
 	setBonusPipsContainer.Name = "PipsContainer"
-	setBonusPipsContainer.Size = UDim2.new(0, 115, 1, 0)
-	setBonusPipsContainer.Position = UDim2.new(1, -125, 0, 0)
+	setBonusPipsContainer.Size = UDim2.new(0, 135, 1, 0)
+	setBonusPipsContainer.Position = UDim2.new(1, -145, 0, 0)
 	setBonusPipsContainer.BackgroundTransparency = 1
 	local pipLayout = Instance.new("UIListLayout")
 	pipLayout.FillDirection = Enum.FillDirection.Horizontal
@@ -856,8 +886,8 @@ local function buildUI()
 	-- ── BODY: LEFT PANEL (PIECE SELECTOR) + RIGHT PANEL (DETAILS) ──────────
 	local body = Instance.new("Frame")
 	body.Name = "Body"
-	body.Size = UDim2.new(1, -20, 1, -162)
-	body.Position = UDim2.new(0, 10, 0, 104)
+	body.Size = UDim2.new(1, -20, 1, -178)
+	body.Position = UDim2.new(0, 10, 0, 118)
 	body.BackgroundTransparency = 1
 	body.BorderSizePixel = 0
 	body.ZIndex = 11
@@ -873,26 +903,81 @@ local function buildUI()
 	makeStroke(leftPanel, THEME.borderDim, 1)
 
 	local leftHeader = Instance.new("Frame")
-	leftHeader.Size = UDim2.new(1, 0, 0, 32)
+	leftHeader.Name = "SetTabsHeader"
+	leftHeader.Size = UDim2.new(1, 0, 0, 36)
 	leftHeader.BackgroundColor3 = THEME.panelInner
 	leftHeader.BorderSizePixel = 0
 	makeCorner(leftHeader, 6)
 
-	local leftTitle = Instance.new("TextLabel")
-	leftTitle.Text = "  SELECT PIECE TO FORGE"
-	leftTitle.TextColor3 = THEME.amberBright
-	leftTitle.TextSize = 11
-	leftTitle.Font = Enum.Font.GothamBold
-	leftTitle.BackgroundTransparency = 1
-	leftTitle.TextXAlignment = Enum.TextXAlignment.Left
-	leftTitle.Size = UDim2.new(1, 0, 1, 0)
-	leftTitle.Parent = leftHeader
+	local tankTab = Instance.new("TextButton")
+	tankTab.Name = "TankTab"
+	tankTab.Size = UDim2.new(0.5, -5, 1, -6)
+	tankTab.Position = UDim2.new(0, 3, 0, 3)
+	tankTab.BackgroundColor3 = (selectedSetId == "Rockhide") and THEME.rowSelected or THEME.panelBg
+	tankTab.Text = "🛡️ WARLORD (TANK)"
+	tankTab.Font = Enum.Font.GothamBold
+	tankTab.TextSize = 12.5
+	tankTab.TextColor3 = (selectedSetId == "Rockhide") and THEME.amberBright or THEME.textDim
+	tankTab.BorderSizePixel = 0
+	makeCorner(tankTab, 4)
+	local tankTabStroke = makeStroke(tankTab, (selectedSetId == "Rockhide") and THEME.borderBright or THEME.borderDim, 1)
+	tankTab.Parent = leftHeader
+
+	local mageTab = Instance.new("TextButton")
+	mageTab.Name = "MageTab"
+	mageTab.Size = UDim2.new(0.5, -5, 1, -6)
+	mageTab.Position = UDim2.new(0.5, 2, 0, 3)
+	mageTab.BackgroundColor3 = (selectedSetId == "RockhideMage") and THEME.rowSelected or THEME.panelBg
+	mageTab.Text = "🔮 GEOMANCER (MAGE)"
+	mageTab.Font = Enum.Font.GothamBold
+	mageTab.TextSize = 12.5
+	mageTab.TextColor3 = (selectedSetId == "RockhideMage") and THEME.amberBright or THEME.textDim
+	mageTab.BorderSizePixel = 0
+	makeCorner(mageTab, 4)
+	local mageTabStroke = makeStroke(mageTab, (selectedSetId == "RockhideMage") and THEME.borderBright or THEME.borderDim, 1)
+	mageTab.Parent = leftHeader
+
+	local function updateSetTabs()
+		local isTank = (selectedSetId == "Rockhide")
+		tankTab.BackgroundColor3 = isTank and THEME.rowSelected or THEME.panelBg
+		tankTab.TextColor3 = isTank and THEME.amberBright or THEME.textDim
+		tankTabStroke.Color = isTank and THEME.borderBright or THEME.borderDim
+
+		local isMage = (selectedSetId == "RockhideMage")
+		mageTab.BackgroundColor3 = isMage and THEME.rowSelected or THEME.panelBg
+		mageTab.TextColor3 = isMage and THEME.amberBright or THEME.textDim
+		mageTabStroke.Color = isMage and THEME.borderBright or THEME.borderDim
+	end
+	updateSetTabsFunc = updateSetTabs
+
+	tankTab.Activated:Connect(function()
+		hasManuallySelectedSet = true
+		if selectedSetId == "Rockhide" then return end
+		selectedSetId = "Rockhide"
+		selectedPieceId = "RockhideFang"
+		updateSetTabs()
+		updateSetBonusBanner()
+		renderPiecesList()
+		renderDetailPanel(selectedPieceId)
+	end)
+
+	mageTab.Activated:Connect(function()
+		hasManuallySelectedSet = true
+		if selectedSetId == "RockhideMage" then return end
+		selectedSetId = "RockhideMage"
+		selectedPieceId = "RockhideStaff"
+		updateSetTabs()
+		updateSetBonusBanner()
+		renderPiecesList()
+		renderDetailPanel(selectedPieceId)
+	end)
+
 	leftHeader.Parent = leftPanel
 
 	piecesListFrame = Instance.new("ScrollingFrame")
 	piecesListFrame.Name = "PiecesScroll"
-	piecesListFrame.Size = UDim2.new(1, -12, 1, -42)
-	piecesListFrame.Position = UDim2.new(0, 6, 0, 36)
+	piecesListFrame.Size = UDim2.new(1, -12, 1, -48)
+	piecesListFrame.Position = UDim2.new(0, 6, 0, 42)
 	piecesListFrame.BackgroundTransparency = 1
 	piecesListFrame.BorderSizePixel = 0
 	piecesListFrame.ScrollBarThickness = 3
@@ -908,7 +993,6 @@ local function buildUI()
 	local rightPanel = Instance.new("Frame")
 	rightPanel.Name = "RightPanel"
 	rightPanel.Size = UDim2.new(1, -350, 1, 0)
-	rightPanel.Position = UDim2.new(0, 350, 1, 0)
 	rightPanel.Position = UDim2.new(0, 350, 0, 0)
 	rightPanel.BackgroundColor3 = THEME.panelBg
 	rightPanel.BorderSizePixel = 0
@@ -939,7 +1023,7 @@ local function buildUI()
 	statusLabel.Name = "StatusLabel"
 	statusLabel.Text = ""
 	statusLabel.TextColor3 = THEME.green
-	statusLabel.TextSize = 12
+	statusLabel.TextSize = 15
 	statusLabel.Font = Enum.Font.GothamBold
 	statusLabel.BackgroundTransparency = 1
 	statusLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -949,8 +1033,8 @@ local function buildUI()
 
 	actionButton = Instance.new("TextButton")
 	actionButton.Name = "ActionButton"
-	actionButton.Size = UDim2.new(0, 240, 0, 36)
-	actionButton.Position = UDim2.new(1, -248, 0.5, -18)
+	actionButton.Size = UDim2.new(0, 240, 0, 44)
+	actionButton.Position = UDim2.new(1, -248, 0.5, -22)
 	actionButton.BackgroundColor3 = THEME.amberDim
 	actionButton.BorderSizePixel = 0
 	actionButton.Text = ""
@@ -960,7 +1044,7 @@ local function buildUI()
 	actionButtonLabel = Instance.new("TextLabel")
 	actionButtonLabel.Text = "FORGE PIECE"
 	actionButtonLabel.TextColor3 = THEME.amberBright
-	actionButtonLabel.TextSize = 13
+	actionButtonLabel.TextSize = 16.5
 	actionButtonLabel.Font = Enum.Font.GothamBold
 	actionButtonLabel.BackgroundTransparency = 1
 	actionButtonLabel.Size = UDim2.new(1, 0, 1, 0)
@@ -978,7 +1062,10 @@ local function buildUI()
 		else
 			-- Craft action
 			actionButton.Active = false
+			actionButton.BackgroundColor3 = THEME.panelBg
 			actionButtonLabel.Text = "FORGING..."
+			actionButtonLabel.TextColor3 = THEME.textDim
+
 			Net.Get("RequestCraftItem"):FireServer(selectedPieceId)
 		end
 	end)
@@ -996,10 +1083,30 @@ function CraftingUIController.Open()
 	isOpen = true
 	screenGui.Enabled = true
 
-	mainFrame.Position = UDim2.new(0.5, -440, 0.5, -270)
+	if not hasManuallySelectedSet then
+		local isMage = false
+		if cachedEquippedEquipment and cachedEquippedEquipment.Weapon then
+			local eq = EquipmentData.Items[cachedEquippedEquipment.Weapon]
+			if eq and eq.archetype == "Mage" then
+				isMage = true
+			end
+		end
+		if isMage then
+			selectedSetId = "RockhideMage"
+			selectedPieceId = "RockhideStaff"
+		else
+			selectedSetId = "Rockhide"
+			selectedPieceId = "RockhideFang"
+		end
+		if updateSetTabsFunc then
+			updateSetTabsFunc()
+		end
+	end
+
+	mainFrame.Position = UDim2.new(0.5, 0, 0.5, 32)
 	mainFrame.BackgroundTransparency = 1
 	TweenService:Create(mainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-		Position = UDim2.new(0.5, -440, 0.5, -295),
+		Position = UDim2.new(0.5, 0, 0.5, 18),
 		BackgroundTransparency = 0,
 	}):Play()
 
@@ -1022,7 +1129,7 @@ function CraftingUIController.Close()
 	isOpen = false
 
 	local tween = TweenService:Create(mainFrame, TweenInfo.new(0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
-		Position = UDim2.new(0.5, -440, 0.5, -270),
+		Position = UDim2.new(0.5, 0, 0.5, 32),
 		BackgroundTransparency = 1,
 	})
 	tween:Play()
@@ -1076,6 +1183,19 @@ function CraftingUIController.Start()
 	Net.Get("EquipmentDataChanged").OnClientEvent:Connect(function(equippedTable: {[string]: string}, storedList: {string}, materialsMap: {[string]: number})
 		if equippedTable and type(equippedTable) == "table" then
 			cachedEquippedEquipment = equippedTable
+			if not hasManuallySelectedSet and equippedTable.Weapon then
+				local eq = EquipmentData.Items[equippedTable.Weapon]
+				if eq and eq.archetype == "Mage" then
+					selectedSetId = "RockhideMage"
+					selectedPieceId = "RockhideStaff"
+				elseif eq and eq.archetype == "Tank" then
+					selectedSetId = "Rockhide"
+					selectedPieceId = "RockhideFang"
+				end
+				if updateSetTabsFunc then
+					updateSetTabsFunc()
+				end
+			end
 		end
 		if storedList and type(storedList) == "table" then
 			cachedStoredEquipment = storedList
@@ -1088,6 +1208,26 @@ function CraftingUIController.Start()
 			updateSetBonusBanner()
 			renderPiecesList()
 			renderDetailPanel(selectedPieceId)
+		end
+	end)
+
+	Net.Get("CharacterDataChanged").OnClientEvent:Connect(function(_level: number, _unspentEXP: number, classId: string?)
+		if classId and not hasManuallySelectedSet then
+			if classId == "Mage" then
+				selectedSetId = "RockhideMage"
+				selectedPieceId = "RockhideStaff"
+			else
+				selectedSetId = "Rockhide"
+				selectedPieceId = "RockhideFang"
+			end
+			if updateSetTabsFunc then
+				updateSetTabsFunc()
+			end
+			if isOpen then
+				updateSetBonusBanner()
+				renderPiecesList()
+				renderDetailPanel(selectedPieceId)
+			end
 		end
 	end)
 end

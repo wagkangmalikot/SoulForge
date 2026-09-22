@@ -41,6 +41,13 @@ local COLORS = {
 
 	runeCyan     = Color3.fromRGB(70, 215, 245),
 	runeDark     = Color3.fromRGB(20, 55, 68),
+
+	arcaneViolet = Color3.fromRGB(180, 70, 255),
+	arcaneBright = Color3.fromRGB(220, 140, 255),
+	arcaneDark   = Color3.fromRGB(80, 25, 120),
+	frostCyan    = Color3.fromRGB(110, 220, 255),
+	robeIndigo   = Color3.fromRGB(35, 38, 70),
+	robeDark     = Color3.fromRGB(22, 24, 45),
 }
 
 local function corner(parent: Instance, radius: number): UICorner
@@ -388,6 +395,326 @@ local function buildFeetGraphic(parent: Frame, isRockhide: boolean?)
 	toe.Parent = center
 end
 
+-- MAGE WEAPON ICON (Arcane Focus Staff / Earthcaller's Basalt Staff)
+local function buildStaffGraphic(parent: Frame, isRockhide: boolean?)
+	local center = Instance.new("Frame")
+	center.Name = "StaffGraphic"
+	center.Size = UDim2.new(1, 0, 1, 0)
+	center.BackgroundTransparency = 1
+	center.Parent = parent
+
+	-- Staff Haft (Slender diagonal wooden / petrified shaft)
+	local shaft = Instance.new("Frame")
+	shaft.Size = UDim2.new(0, 3, 0, 26)
+	shaft.AnchorPoint = Vector2.new(0.5, 0.5)
+	shaft.Position = UDim2.new(0.5, -2, 0.5, 2)
+	shaft.Rotation = -30
+	shaft.BackgroundColor3 = isRockhide and COLORS.rockDark or COLORS.woodBase
+	shaft.BorderSizePixel = 0
+	corner(shaft, 1.5)
+	gradient(shaft, isRockhide and COLORS.rockMid or COLORS.woodLight, isRockhide and COLORS.rockDark or COLORS.woodDark, 90)
+	shaft.Parent = center
+
+	-- Lower Grip Wrap
+	local wrap = Instance.new("Frame")
+	wrap.Size = UDim2.new(0, 5, 0, 5)
+	wrap.AnchorPoint = Vector2.new(0.5, 0.5)
+	wrap.Position = UDim2.new(0.5, -5, 0.5, 7)
+	wrap.Rotation = -30
+	wrap.BackgroundColor3 = isRockhide and COLORS.leatherDark or COLORS.goldMid
+	wrap.BorderSizePixel = 0
+	corner(wrap, 1)
+	wrap.Parent = center
+
+	-- Upper Collar / Ring Band
+	local collar = Instance.new("Frame")
+	collar.Size = UDim2.new(0, 7, 0, 3)
+	collar.AnchorPoint = Vector2.new(0.5, 0.5)
+	collar.Position = UDim2.new(0.5, 3, 0.5, -6)
+	collar.Rotation = -30
+	collar.BackgroundColor3 = isRockhide and COLORS.magmaCore or COLORS.goldBright
+	collar.BorderSizePixel = 0
+	corner(collar, 1)
+	collar.Parent = center
+
+	-- Crown / Prongs
+	local crownL = Instance.new("Frame")
+	crownL.Size = UDim2.new(0, 2.5, 0, 8)
+	crownL.AnchorPoint = Vector2.new(0.5, 1)
+	crownL.Position = UDim2.new(0.5, 3, 0.5, -6)
+	crownL.Rotation = -60
+	crownL.BackgroundColor3 = isRockhide and COLORS.rockMid or COLORS.goldBright
+	crownL.BorderSizePixel = 0
+	corner(crownL, 1)
+	crownL.Parent = center
+
+	local crownR = Instance.new("Frame")
+	crownR.Size = UDim2.new(0, 2.5, 0, 8)
+	crownR.AnchorPoint = Vector2.new(0.5, 1)
+	crownR.Position = UDim2.new(0.5, 6, 0.5, -7)
+	crownR.Rotation = 0
+	crownR.BackgroundColor3 = isRockhide and COLORS.rockMid or COLORS.goldBright
+	crownR.BorderSizePixel = 0
+	corner(crownR, 1)
+	crownR.Parent = center
+
+	-- Radiant Head Crystal / Magma Core
+	local crystal = Instance.new("Frame")
+	crystal.Size = UDim2.new(0, 9, 0, 9)
+	crystal.AnchorPoint = Vector2.new(0.5, 0.5)
+	crystal.Position = UDim2.new(0.5, 6, 0.5, -11)
+	crystal.Rotation = 45
+	crystal.BackgroundColor3 = isRockhide and COLORS.magmaGlow or COLORS.arcaneViolet
+	crystal.BorderSizePixel = 0
+	corner(crystal, isRockhide and 4 or 2)
+	gradient(crystal, isRockhide and COLORS.magmaCore or COLORS.arcaneBright, isRockhide and COLORS.magmaGlow or COLORS.arcaneDark, 45)
+	crystal.Parent = center
+
+	-- Center Radiant Sparkle
+	local spark = Instance.new("Frame")
+	spark.Size = UDim2.new(0, 3, 0, 3)
+	spark.AnchorPoint = Vector2.new(0.5, 0.5)
+	spark.Position = UDim2.new(0.5, 6, 0.5, -11)
+	spark.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	spark.BorderSizePixel = 0
+	corner(spark, 2)
+	spark.Parent = center
+end
+
+-- MAGE HEAD ICON (Indigo Arcanist Hood / Rockhide Basalt Cowl)
+local function buildHoodGraphic(parent: Frame, isRockhide: boolean?)
+	local center = Instance.new("Frame")
+	center.Name = "HoodGraphic"
+	center.Size = UDim2.new(1, 0, 1, 0)
+	center.BackgroundTransparency = 1
+	center.Parent = parent
+
+	-- Hood Outer Dome
+	local hoodDome = Instance.new("Frame")
+	hoodDome.Size = UDim2.new(0, 20, 0, 19)
+	hoodDome.AnchorPoint = Vector2.new(0.5, 0.5)
+	hoodDome.Position = UDim2.new(0.5, 0, 0.5, -1)
+	hoodDome.BackgroundColor3 = isRockhide and COLORS.rockDark or COLORS.robeIndigo
+	hoodDome.BorderSizePixel = 0
+	corner(hoodDome, 9)
+	gradient(hoodDome, isRockhide and COLORS.rockMid or COLORS.robeIndigo, isRockhide and COLORS.rockDark or COLORS.robeDark, 90)
+	hoodDome.Parent = center
+
+	-- Face Aperture Shadow (Dark Inner Void)
+	local shadowAperture = Instance.new("Frame")
+	shadowAperture.Size = UDim2.new(0, 11, 0, 11)
+	shadowAperture.AnchorPoint = Vector2.new(0.5, 0.5)
+	shadowAperture.Position = UDim2.new(0.5, 0, 0.5, 0)
+	shadowAperture.BackgroundColor3 = Color3.fromRGB(12, 10, 15)
+	shadowAperture.BorderSizePixel = 0
+	corner(shadowAperture, 5)
+	shadowAperture.Parent = center
+
+	if isRockhide then
+		-- Obsidian Brow Plaque
+		local browPlaque = Instance.new("Frame")
+		browPlaque.Size = UDim2.new(0, 15, 0, 3.5)
+		browPlaque.AnchorPoint = Vector2.new(0.5, 0.5)
+		browPlaque.Position = UDim2.new(0.5, 0, 0.5, -4)
+		browPlaque.BackgroundColor3 = COLORS.rockMid
+		browPlaque.BorderSizePixel = 0
+		corner(browPlaque, 2)
+		browPlaque.Parent = center
+
+		-- Glowing Magma Eye Slits
+		local eyeL = Instance.new("Frame")
+		eyeL.Size = UDim2.new(0, 3, 0, 1.5)
+		eyeL.AnchorPoint = Vector2.new(0.5, 0.5)
+		eyeL.Position = UDim2.new(0.5, -3, 0.5, 0.5)
+		eyeL.BackgroundColor3 = COLORS.magmaGlow
+		eyeL.BorderSizePixel = 0
+		eyeL.Parent = center
+
+		local eyeR = Instance.new("Frame")
+		eyeR.Size = UDim2.new(0, 3, 0, 1.5)
+		eyeR.AnchorPoint = Vector2.new(0.5, 0.5)
+		eyeR.Position = UDim2.new(0.5, 3, 0.5, 0.5)
+		eyeR.BackgroundColor3 = COLORS.magmaGlow
+		eyeR.BorderSizePixel = 0
+		eyeR.Parent = center
+	else
+		-- Fine Gold Hem Trim along hood edge
+		local hemTrim = Instance.new("Frame")
+		hemTrim.Size = UDim2.new(0, 13, 0, 1.5)
+		hemTrim.AnchorPoint = Vector2.new(0.5, 0.5)
+		hemTrim.Position = UDim2.new(0.5, 0, 0.5, -5)
+		hemTrim.BackgroundColor3 = COLORS.goldBright
+		hemTrim.BorderSizePixel = 0
+		hemTrim.Parent = center
+
+		-- Subtle Arcane Eye Shimmer
+		local shimmer = Instance.new("Frame")
+		shimmer.Size = UDim2.new(0, 5, 0, 1.5)
+		shimmer.AnchorPoint = Vector2.new(0.5, 0.5)
+		shimmer.Position = UDim2.new(0.5, 0, 0.5, 1)
+		shimmer.BackgroundColor3 = COLORS.arcaneViolet
+		shimmer.BorderSizePixel = 0
+		corner(shimmer, 1)
+		shimmer.Parent = center
+	end
+end
+
+-- MAGE BODY ICON (Scholar Robe / Earthcaller Mantle)
+local function buildRobeGraphic(parent: Frame, isRockhide: boolean?)
+	local center = Instance.new("Frame")
+	center.Name = "RobeGraphic"
+	center.Size = UDim2.new(1, 0, 1, 0)
+	center.BackgroundTransparency = 1
+	center.Parent = parent
+
+	-- Robe Vestment Base (Flowing trapezoidal tunic)
+	local vestment = Instance.new("Frame")
+	vestment.Size = UDim2.new(0, 22, 0, 22)
+	vestment.AnchorPoint = Vector2.new(0.5, 0.5)
+	vestment.Position = UDim2.new(0.5, 0, 0.5, 1)
+	vestment.BackgroundColor3 = isRockhide and COLORS.rockDark or COLORS.robeIndigo
+	vestment.BorderSizePixel = 0
+	corner(vestment, 4)
+	gradient(vestment, isRockhide and COLORS.rockMid or COLORS.robeIndigo, isRockhide and COLORS.rockDark or COLORS.robeDark, 90)
+	vestment.Parent = center
+
+	-- Shoulder Mantle Folds
+	local mantleL = Instance.new("Frame")
+	mantleL.Size = UDim2.new(0, 7, 0, 8)
+	mantleL.AnchorPoint = Vector2.new(0.5, 0)
+	mantleL.Position = UDim2.new(0.5, -8, 0.5, -10)
+	mantleL.BackgroundColor3 = isRockhide and COLORS.rockMid or COLORS.robeDark
+	mantleL.BorderSizePixel = 0
+	corner(mantleL, 2)
+	mantleL.Parent = center
+
+	local mantleR = Instance.new("Frame")
+	mantleR.Size = UDim2.new(0, 7, 0, 8)
+	mantleR.AnchorPoint = Vector2.new(0.5, 0)
+	mantleR.Position = UDim2.new(0.5, 8, 0.5, -10)
+	mantleR.BackgroundColor3 = isRockhide and COLORS.rockMid or COLORS.robeDark
+	mantleR.BorderSizePixel = 0
+	corner(mantleR, 2)
+	mantleR.Parent = center
+
+	-- V-Neck Inset
+	local vNeck = Instance.new("Frame")
+	vNeck.Size = UDim2.new(0, 8, 0, 8)
+	vNeck.AnchorPoint = Vector2.new(0.5, 0)
+	vNeck.Position = UDim2.new(0.5, 0, 0.5, -9)
+	vNeck.Rotation = 45
+	vNeck.BackgroundColor3 = isRockhide and COLORS.magmaCore or COLORS.goldMid
+	vNeck.BorderSizePixel = 0
+	vNeck.Parent = center
+
+	-- Central Runic Sash / Tectonic Filament (Vertical stole)
+	local stole = Instance.new("Frame")
+	stole.Size = UDim2.new(0, 3.5, 0, 16)
+	stole.AnchorPoint = Vector2.new(0.5, 0)
+	stole.Position = UDim2.new(0.5, 0, 0.5, -3)
+	stole.BackgroundColor3 = isRockhide and COLORS.magmaGlow or COLORS.goldBright
+	stole.BorderSizePixel = 0
+	corner(stole, 1)
+	stole.Parent = center
+end
+
+-- MAGE ARMS ICON (Apprentice Bracers / Tremor-Bound Wraps)
+local function buildMageBracersGraphic(parent: Frame, isRockhide: boolean?)
+	local center = Instance.new("Frame")
+	center.Name = "MageBracersGraphic"
+	center.Size = UDim2.new(1, 0, 1, 0)
+	center.BackgroundTransparency = 1
+	center.Parent = parent
+
+	-- Left and Right Bracer Cuffs
+	for _, xOffset in {-7, 7} do
+		local bracer = Instance.new("Frame")
+		bracer.Size = UDim2.new(0, 8, 0, 18)
+		bracer.AnchorPoint = Vector2.new(0.5, 0.5)
+		bracer.Position = UDim2.new(0.5, xOffset, 0.5, 0)
+		bracer.BackgroundColor3 = isRockhide and COLORS.rockDark or COLORS.leatherBase
+		bracer.BorderSizePixel = 0
+		corner(bracer, 3)
+		gradient(bracer, isRockhide and COLORS.rockMid or COLORS.leatherLight, isRockhide and COLORS.rockDark or COLORS.leatherDark, 90)
+		bracer.Parent = center
+
+		-- Wrap Rings / Filaments
+		for _, yOff in {-4, 0, 4} do
+			local band = Instance.new("Frame")
+			band.Size = UDim2.new(0, 8, 0, 1.5)
+			band.AnchorPoint = Vector2.new(0.5, 0.5)
+			band.Position = UDim2.new(0.5, 0, 0.5, yOff)
+			band.BackgroundColor3 = isRockhide and COLORS.magmaGlow or COLORS.goldMid
+			band.BorderSizePixel = 0
+			band.Parent = bracer
+		end
+	end
+
+	-- Central Arcane Focus Rune between bracers
+	local focusGem = Instance.new("Frame")
+	focusGem.Size = UDim2.new(0, 5, 0, 5)
+	focusGem.AnchorPoint = Vector2.new(0.5, 0.5)
+	focusGem.Position = UDim2.new(0.5, 0, 0.5, 0)
+	focusGem.Rotation = 45
+	focusGem.BackgroundColor3 = isRockhide and COLORS.magmaCore or COLORS.arcaneViolet
+	focusGem.BorderSizePixel = 0
+	corner(focusGem, 2)
+	focusGem.Parent = center
+end
+
+-- MAGE FEET ICON (Apprentice Treads / Earthstrider Boots)
+local function buildMageBootsGraphic(parent: Frame, isRockhide: boolean?)
+	local center = Instance.new("Frame")
+	center.Name = "MageBootsGraphic"
+	center.Size = UDim2.new(1, 0, 1, 0)
+	center.BackgroundTransparency = 1
+	center.Parent = parent
+
+	-- Left Boot
+	local bootL = Instance.new("Frame")
+	bootL.Size = UDim2.new(0, 8, 0, 16)
+	bootL.AnchorPoint = Vector2.new(0.5, 0.5)
+	bootL.Position = UDim2.new(0.5, -6, 0.5, 0)
+	bootL.BackgroundColor3 = isRockhide and COLORS.rockDark or COLORS.leatherDark
+	bootL.BorderSizePixel = 0
+	corner(bootL, 3)
+	gradient(bootL, isRockhide and COLORS.rockMid or COLORS.leatherBase, isRockhide and COLORS.rockDark or COLORS.leatherDark, 90)
+	bootL.Parent = center
+
+	-- Right Boot
+	local bootR = Instance.new("Frame")
+	bootR.Size = UDim2.new(0, 8, 0, 16)
+	bootR.AnchorPoint = Vector2.new(0.5, 0.5)
+	bootR.Position = UDim2.new(0.5, 6, 0.5, 0)
+	bootR.BackgroundColor3 = isRockhide and COLORS.rockDark or COLORS.leatherDark
+	bootR.BorderSizePixel = 0
+	corner(bootR, 3)
+	gradient(bootR, isRockhide and COLORS.rockMid or COLORS.leatherBase, isRockhide and COLORS.rockDark or COLORS.leatherDark, 90)
+	bootR.Parent = center
+
+	-- Ankle Cuffs / Straps
+	for _, boot in {bootL, bootR} do
+		local cuff = Instance.new("Frame")
+		cuff.Size = UDim2.new(0, 9, 0, 3)
+		cuff.AnchorPoint = Vector2.new(0.5, 0)
+		cuff.Position = UDim2.new(0.5, 0, 0, 0)
+		cuff.BackgroundColor3 = isRockhide and COLORS.rockLight or COLORS.goldMid
+		cuff.BorderSizePixel = 0
+		corner(cuff, 1)
+		cuff.Parent = boot
+
+		if isRockhide then
+			local glowSole = Instance.new("Frame")
+			glowSole.Size = UDim2.new(0, 8, 0, 2)
+			glowSole.AnchorPoint = Vector2.new(0.5, 1)
+			glowSole.Position = UDim2.new(0.5, 0, 1, 0)
+			glowSole.BackgroundColor3 = COLORS.magmaGlow
+			glowSole.BorderSizePixel = 0
+			glowSole.Parent = boot
+		end
+	end
+end
+
 -- ============================================================================
 -- 2. CRAFTING REAGENT ICONS
 -- ============================================================================
@@ -716,18 +1043,39 @@ function ItemIconHelper.CreateItemIcon(parent: Instance, itemId: string, size: U
 	local tile = createBaseTile(parent, size, isSelected)
 	local item = EquipmentData.Items[itemId]
 	local slot = item and item.slot or "Weapon"
-	local isRockhide = (item and item.setId == "Rockhide")
+	local isRockhide = (item and (item.setId == "Rockhide" or item.setId == "RockhideMage"))
+	local isMage = (item and (item.setId == "Apprentice" or item.setId == "RockhideMage"))
 
 	if slot == "Weapon" then
-		buildWeaponGraphic(tile, isRockhide)
+		if isMage or itemId == "ApprenticeStaff" or itemId == "RockhideStaff" then
+			buildStaffGraphic(tile, isRockhide)
+		else
+			buildWeaponGraphic(tile, isRockhide)
+		end
 	elseif slot == "Head" then
-		buildHeadGraphic(tile, isRockhide)
+		if isMage or itemId == "ApprenticeHood" or itemId == "RockhideCowl" then
+			buildHoodGraphic(tile, isRockhide)
+		else
+			buildHeadGraphic(tile, isRockhide)
+		end
 	elseif slot == "Body" then
-		buildBodyGraphic(tile, isRockhide)
+		if isMage or itemId == "ApprenticeRobe" or itemId == "RockhideRobes" then
+			buildRobeGraphic(tile, isRockhide)
+		else
+			buildBodyGraphic(tile, isRockhide)
+		end
 	elseif slot == "Arms" then
-		buildArmsGraphic(tile, isRockhide)
+		if isMage or itemId == "ApprenticeBracers" or itemId == "RockhideWraps" then
+			buildMageBracersGraphic(tile, isRockhide)
+		else
+			buildArmsGraphic(tile, isRockhide)
+		end
 	elseif slot == "Feet" then
-		buildFeetGraphic(tile, isRockhide)
+		if isMage or itemId == "ApprenticeBoots" or itemId == "RockhideStriders" then
+			buildMageBootsGraphic(tile, isRockhide)
+		else
+			buildFeetGraphic(tile, isRockhide)
+		end
 	end
 
 	if item and item.icon then

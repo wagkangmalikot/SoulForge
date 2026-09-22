@@ -73,6 +73,68 @@ local Equipment = {
 			stats = { armor = 3, movementSpeed = 0 },
 		},
 
+		-- ── Apprentice (Tier 1 — Mage Starter, not craftable) ──────────────
+		ApprenticeStaff = {
+			id = "ApprenticeStaff",
+			setId = "Apprentice",
+			displayName = "Apprentice Staff",
+			slot = "Weapon",
+			tier = 1,
+			rarity = "Common",
+			icon = "rbxasset://textures/Soulforge/apprentice_staff_icon.png",
+			description = "A polished oak staff crowned with a focused arcane focus crystal. Channels raw celestial energy.",
+			stats = {
+				magicDamage    = 14,
+				attackSpeed    = 1.0,
+				criticalChance = 0.05,
+				attackRange    = 35,
+			},
+		},
+		ApprenticeHood = {
+			id = "ApprenticeHood",
+			setId = "Apprentice",
+			displayName = "Apprentice Hood",
+			slot = "Head",
+			tier = 1,
+			rarity = "Common",
+			icon = "rbxasset://textures/Soulforge/apprentice_hood_icon.png",
+			description = "A cowl of woven indigo wool that shields the caster's mind and sharpens arcane senses.",
+			stats = { armor = 2, magicResist = 5, maxHPBonus = 5 },
+		},
+		ApprenticeRobe = {
+			id = "ApprenticeRobe",
+			setId = "Apprentice",
+			displayName = "Apprentice Robe",
+			slot = "Body",
+			tier = 1,
+			rarity = "Common",
+			icon = "rbxasset://textures/Soulforge/apprentice_robe_icon.png",
+			description = "Flowing linen scholar robes inscribed with subtle warding glyphs along the inner hem.",
+			stats = { armor = 4, magicResist = 8, maxHPBonus = 10 },
+		},
+		ApprenticeBracers = {
+			id = "ApprenticeBracers",
+			setId = "Apprentice",
+			displayName = "Apprentice Bracers",
+			slot = "Arms",
+			tier = 1,
+			rarity = "Common",
+			icon = "rbxasset://textures/Soulforge/apprentice_bracers_icon.png",
+			description = "Soft leather wrist wraps with runic stitching that stabilize magical flow during casting.",
+			stats = { armor = 2, magicResist = 4, spellAmp = 0.05 },
+		},
+		ApprenticeBoots = {
+			id = "ApprenticeBoots",
+			setId = "Apprentice",
+			displayName = "Apprentice Boots",
+			slot = "Feet",
+			tier = 1,
+			rarity = "Common",
+			icon = "rbxasset://textures/Soulforge/apprentice_boots_icon.png",
+			description = "Supple leather traveling boots enchanted with feather-step charms for swift positioning.",
+			stats = { armor = 2, magicResist = 3, movementSpeed = 0 },
+		},
+
 		-- ── Rockhide (Tier 2 — Boss Fragment Gear, craftable) ──────────────
 		RockhideFang = {
 			id = "RockhideFang",
@@ -198,6 +260,130 @@ local Equipment = {
 				materials     = {
 					RockhideFragment = 3,
 					IronIngot        = 3,
+					OakTimber        = 1,
+				},
+			},
+		},
+
+		-- ── Rockhide Geomancer (Tier 2 Mage — Boss Fragment Gear, craftable) ──
+		RockhideStaff = {
+			id = "RockhideStaff",
+			setId = "RockhideMage",
+			displayName = "Earthcaller's Basalt Staff",
+			slot = "Weapon",
+			tier = 2,
+			rarity = "Rare",
+			icon = "rbxasset://textures/Soulforge/rockhide_staff_icon.png",
+			description = "A petrified ancient timber staff bound with jagged volcanic basalt and crowned with an incandescent pulsing magma core.",
+			stats = {
+				magicDamage           = 28,
+				attackSpeed           = 0.95,
+				criticalChance        = 0.10,
+				attackRange           = 35,
+				bonusDamageUnder50Pct = 0.20,
+			},
+			crafting = {
+				levelRequired = 2,
+				craftTime     = 5.0,
+				materials     = {
+					RockhideFragment = 8,
+					OakTimber        = 4,
+					LeatherStrap     = 2,
+				},
+			},
+		},
+		RockhideCowl = {
+			id = "RockhideCowl",
+			setId = "RockhideMage",
+			displayName = "Geomancer's Basalt Cowl",
+			slot = "Head",
+			tier = 2,
+			rarity = "Rare",
+			icon = "rbxasset://textures/Soulforge/rockhide_cowl_icon.png",
+			description = "A heavy hood interwoven with flexible stone-hide mesh and socketed with glowing obsidian ember facets.",
+			stats = {
+				armor       = 5,
+				magicResist = 12,
+				maxHPBonus  = 15,
+			},
+			crafting = {
+				levelRequired = 2,
+				craftTime     = 4.0,
+				materials     = {
+					RockhideFragment = 4,
+					LeatherStrap     = 3,
+					OakTimber        = 2,
+				},
+			},
+		},
+		RockhideRobes = {
+			id = "RockhideRobes",
+			setId = "RockhideMage",
+			displayName = "Earthcaller's Robes",
+			slot = "Body",
+			tier = 2,
+			rarity = "Rare",
+			icon = "rbxasset://textures/Soulforge/rockhide_robes_icon.png",
+			description = "Heavy volcanic leather vestments draped with a rugged basalt shoulder mantle and pulsing tectonic filaments.",
+			stats = {
+				armor       = 10,
+				magicResist = 18,
+				maxHPBonus  = 25,
+			},
+			crafting = {
+				levelRequired = 2,
+				craftTime     = 6.0,
+				materials     = {
+					RockhideFragment = 10,
+					LeatherStrap     = 5,
+					IronIngot        = 2,
+				},
+			},
+		},
+		RockhideWraps = {
+			id = "RockhideWraps",
+			setId = "RockhideMage",
+			displayName = "Tremor-Bound Wraps",
+			slot = "Arms",
+			tier = 2,
+			rarity = "Rare",
+			icon = "rbxasset://textures/Soulforge/rockhide_wraps_icon.png",
+			description = "Drake-hide wraps embedded with polished rock shards that vibrate in resonance with subterranean magic.",
+			stats = {
+				armor       = 4,
+				magicResist = 8,
+				spellAmp    = 0.10,
+			},
+			crafting = {
+				levelRequired = 2,
+				craftTime     = 3.5,
+				materials     = {
+					RockhideFragment = 3,
+					LeatherStrap     = 3,
+					IronIngot        = 1,
+				},
+			},
+		},
+		RockhideStriders = {
+			id = "RockhideStriders",
+			setId = "RockhideMage",
+			displayName = "Earthstrider Treads",
+			slot = "Feet",
+			tier = 2,
+			rarity = "Rare",
+			icon = "rbxasset://textures/Soulforge/rockhide_striders_icon.png",
+			description = "Sturdy basalt-soled boots lined with insulating dragon-hide, maintaining firm footing atop trembling ground.",
+			stats = {
+				armor         = 5,
+				magicResist   = 7,
+				movementSpeed = 1,
+			},
+			crafting = {
+				levelRequired = 2,
+				craftTime     = 3.5,
+				materials     = {
+					RockhideFragment = 3,
+					LeatherStrap     = 4,
 					OakTimber        = 1,
 				},
 			},
@@ -341,15 +527,27 @@ local Equipment = {
 		Standard = {
 			id          = "Standard",
 			displayName = "Adventurer's Standard Set",
+			classId     = "Tank",
 			tier        = 1,
 			bossOrigin  = nil,
 			stashed     = false,
 			pieces      = { "StandardSword", "StandardHelm", "StandardChest", "StandardArms", "StandardFeet" },
 			setBonus    = nil, -- no set bonus for starter gear
 		},
+		Apprentice = {
+			id          = "Apprentice",
+			displayName = "Apprentice Arcanist Set",
+			classId     = "Mage",
+			tier        = 1,
+			bossOrigin  = nil,
+			stashed     = false,
+			pieces      = { "ApprenticeStaff", "ApprenticeHood", "ApprenticeRobe", "ApprenticeBracers", "ApprenticeBoots" },
+			setBonus    = nil, -- no set bonus for starter gear
+		},
 		Rockhide = {
 			id          = "Rockhide",
 			displayName = "Rockhide Warlord Set",
+			classId     = "Tank",
 			tier        = 2,
 			rarity      = "Rare",
 			bossOrigin  = "Rockhide",
@@ -358,10 +556,23 @@ local Equipment = {
 			setBonus    = "Seismic Fury",
 			setBonusDesc = "+20% damage dealt when HP is below 50%.",
 		},
+		RockhideMage = {
+			id          = "RockhideMage",
+			displayName = "Rockhide Geomancer Set",
+			classId     = "Mage",
+			tier        = 2,
+			rarity      = "Rare",
+			bossOrigin  = "Rockhide",
+			stashed     = false,
+			pieces      = { "RockhideStaff", "RockhideCowl", "RockhideRobes", "RockhideWraps", "RockhideStriders" },
+			setBonus    = "Geomantic Surge",
+			setBonusDesc = "+20% damage dealt when HP is below 50%.",
+		},
 		-- STASHED: Sunforged kept for future release
 		Sunforged = {
 			id          = "Sunforged",
 			displayName = "Sunforged Relic Set",
+			classId     = "Tank",
 			tier        = 3,
 			rarity      = "Legendary",
 			bossOrigin  = "Sunforged",
@@ -380,6 +591,15 @@ function Equipment.GetSetForItem(itemId: string)
 	local item = Equipment.Items[itemId]
 	if not item then return nil end
 	return Equipment.Sets[item.setId]
+end
+
+--- Returns the class required to equip an item ("Tank", "Mage"), or nil if unrestricted.
+function Equipment.GetItemClass(itemId: string): string?
+	local item = Equipment.Items[itemId]
+	if not item then return nil end
+	if item.classId then return item.classId end
+	local setData = Equipment.Sets[item.setId]
+	return setData and setData.classId or nil
 end
 
 --- Returns how many of a set's pieces the player has equipped, given their loadout.

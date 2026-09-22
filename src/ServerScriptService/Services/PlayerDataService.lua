@@ -9,25 +9,40 @@ local PlayerDataService = {}
 local DEFAULT_DATA = {
 	Character = {
 		Level = 1,
-		ClassId = "Tank",
+		ClassId = "Mage",
 		UnspentEXP = 999999,
 		SkillPoints = 50,
-		UnlockedSkills = {"Taunt"},
-		EquippedSkills = {"Taunt"},
-		EquippedWeapon = "StandardSword",
+		UnlockedSkills = {"ArcaneBolt"},
+		EquippedSkills = {"ArcaneBolt"},
+		EquippedWeapon = "ApprenticeStaff",
 		EquippedEquipment = {
-			Weapon = "StandardSword",
-			Head = "StandardHelm",
-			Body = "StandardChest",
-			Arms = "StandardArms",
-			Feet = "StandardFeet",
+			Weapon = "ApprenticeStaff",
+			Head = "ApprenticeHood",
+			Body = "ApprenticeRobe",
+			Arms = "ApprenticeBracers",
+			Feet = "ApprenticeBoots",
 		},
 		StoredEquipment = {
+			"ApprenticeStaff",
+			"ApprenticeHood",
+			"ApprenticeRobe",
+			"ApprenticeBracers",
+			"ApprenticeBoots",
+			"RockhideStaff",
+			"RockhideCowl",
+			"RockhideRobes",
+			"RockhideWraps",
+			"RockhideStriders",
 			"StandardSword",
 			"StandardHelm",
 			"StandardChest",
 			"StandardArms",
 			"StandardFeet",
+			"RockhideFang",
+			"RockhideHelm",
+			"RockhideChest",
+			"RockhideArms",
+			"RockhideFeet",
 		},
 		CraftingMaterials = {
 			IronIngot = 99999,
@@ -111,30 +126,63 @@ local function onPlayerAdded(player: Player)
 		charData.UnspentEXP = math.max(charData.UnspentEXP or 0, 999999)
 		charData.SkillPoints = math.max(charData.SkillPoints or 0, 50)
 
-		if not charData.UnlockedSkills or #charData.UnlockedSkills == 0 then
-			charData.UnlockedSkills = {"Taunt"}
-		end
-		if not charData.EquippedEquipment or type(charData.EquippedEquipment) ~= "table" then
-			charData.EquippedEquipment = {
-				Weapon = "StandardSword",
-				Head = "StandardHelm",
-				Body = "StandardChest",
-				Arms = "StandardArms",
-				Feet = "StandardFeet",
-			}
-		end
-		if charData.EquippedWeapon == "Standard" or charData.EquippedWeapon == "Sunforged" then
-			charData.EquippedWeapon = "StandardSword"
-		end
-		if not charData.EquippedEquipment.Weapon or charData.EquippedEquipment.Weapon == "Standard" or charData.EquippedEquipment.Weapon == "Sunforged" then
-			charData.EquippedEquipment.Weapon = charData.EquippedWeapon or "StandardSword"
-		end
-		if not charData.EquippedEquipment.Head then charData.EquippedEquipment.Head = "StandardHelm" end
-		if not charData.EquippedEquipment.Body then charData.EquippedEquipment.Body = "StandardChest" end
-		if not charData.EquippedEquipment.Arms then charData.EquippedEquipment.Arms = "StandardArms" end
-		if not charData.EquippedEquipment.Feet then charData.EquippedEquipment.Feet = "StandardFeet" end
+		-- Set player class to Mage
+		charData.ClassId = "Mage"
 
-		-- Clean up StoredEquipment: stash Sunforged, ensure all default standard pieces
+		if not charData.UnlockedSkills or #charData.UnlockedSkills == 0 or (charData.UnlockedSkills[1] == "Taunt" and #charData.UnlockedSkills == 1) then
+			charData.UnlockedSkills = {"ArcaneBolt"}
+		end
+		if not charData.EquippedSkills or #charData.EquippedSkills == 0 or (charData.EquippedSkills[1] == "Taunt" and #charData.EquippedSkills == 1) then
+			charData.EquippedSkills = {"ArcaneBolt"}
+		end
+
+		-- Gear reconciliation for Mage:
+		local TANK_TO_MAGE = {
+			StandardSword = "ApprenticeStaff",
+			StandardHelm = "ApprenticeHood",
+			StandardChest = "ApprenticeRobe",
+			StandardArms = "ApprenticeBracers",
+			StandardFeet = "ApprenticeBoots",
+			Standard = "ApprenticeStaff",
+			RockhideFang = "RockhideStaff",
+			RockhideHelm = "RockhideCowl",
+			RockhideChest = "RockhideRobes",
+			RockhideArms = "RockhideWraps",
+			RockhideFeet = "RockhideStriders",
+			Rockhide = "RockhideStaff",
+		}
+
+		local MAGE_ALLOWED_PIECES = {
+			Weapon = { ApprenticeStaff = true, RockhideStaff = true },
+			Head = { ApprenticeHood = true, RockhideCowl = true },
+			Body = { ApprenticeRobe = true, RockhideRobes = true },
+			Arms = { ApprenticeBracers = true, RockhideWraps = true },
+			Feet = { ApprenticeBoots = true, RockhideStriders = true },
+		}
+
+		local MAGE_DEFAULT_PIECES = {
+			Weapon = "ApprenticeStaff",
+			Head = "ApprenticeHood",
+			Body = "ApprenticeRobe",
+			Arms = "ApprenticeBracers",
+			Feet = "ApprenticeBoots",
+		}
+
+		if not charData.EquippedEquipment or type(charData.EquippedEquipment) ~= "table" then
+			charData.EquippedEquipment = table.clone(MAGE_DEFAULT_PIECES)
+		end
+
+		for slot, defaultItem in pairs(MAGE_DEFAULT_PIECES) do
+			local current = charData.EquippedEquipment[slot]
+			if current and TANK_TO_MAGE[current] then
+				charData.EquippedEquipment[slot] = TANK_TO_MAGE[current]
+			elseif not current or not (MAGE_ALLOWED_PIECES[slot] and MAGE_ALLOWED_PIECES[slot][current]) then
+				charData.EquippedEquipment[slot] = defaultItem
+			end
+		end
+		charData.EquippedWeapon = charData.EquippedEquipment.Weapon or "ApprenticeStaff"
+
+		-- Clean up StoredEquipment: stash Sunforged, ensure all default Apprentice, Rockhide, and Standard pieces
 		local cleanedStored = {}
 		for _, itemOrSetId in ipairs(charData.StoredEquipment or {}) do
 			if itemOrSetId == "Sunforged" or string.find(itemOrSetId, "Sunforged") then
@@ -143,7 +191,12 @@ local function onPlayerAdded(player: Player)
 				table.insert(cleanedStored, itemOrSetId)
 			end
 		end
-		local defaultPieces = {"StandardSword", "StandardHelm", "StandardChest", "StandardArms", "StandardFeet"}
+		local defaultPieces = {
+			"ApprenticeStaff", "ApprenticeHood", "ApprenticeRobe", "ApprenticeBracers", "ApprenticeBoots",
+			"RockhideStaff", "RockhideCowl", "RockhideRobes", "RockhideWraps", "RockhideStriders",
+			"StandardSword", "StandardHelm", "StandardChest", "StandardArms", "StandardFeet",
+			"RockhideFang", "RockhideHelm", "RockhideChest", "RockhideArms", "RockhideFeet",
+		}
 		for _, pieceId in ipairs(defaultPieces) do
 			local found = false
 			for _, id in ipairs(cleanedStored) do
@@ -180,6 +233,17 @@ local function onPlayerAdded(player: Player)
 	end
 
 	profiles[player.UserId] = profile
+
+	-- Refresh equipped weapons and gear on character model if already spawned
+	if player.Character then
+		task.defer(function()
+			local ws = ServerScriptService.Services:FindFirstChild("WeaponService")
+			if ws then
+				local weaponService = require(ws)
+				weaponService.EquipWeapons(player.Character)
+			end
+		end)
+	end
 end
 
 local function onPlayerRemoving(player: Player)

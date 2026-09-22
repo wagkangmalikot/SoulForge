@@ -84,6 +84,53 @@ local function loadCharacterAndNotify(player: Player, profile, context: string)
 	actionInFlight[player.UserId] = nil
 end
 
+local function setupInitialEquipment(profile, classId: string)
+	local char = profile.Data.Character
+	if classId == "Mage" then
+		char.EquippedEquipment = {
+			Weapon = "ApprenticeStaff",
+			Head = "ApprenticeHood",
+			Body = "ApprenticeRobe",
+			Arms = "ApprenticeBracers",
+			Feet = "ApprenticeBoots",
+		}
+		char.EquippedWeapon = "ApprenticeStaff"
+		char.StoredEquipment = {
+			"ApprenticeStaff",
+			"ApprenticeHood",
+			"ApprenticeRobe",
+			"ApprenticeBracers",
+			"ApprenticeBoots",
+			"RockhideStaff",
+			"RockhideCowl",
+			"RockhideRobes",
+			"RockhideWraps",
+			"RockhideStriders",
+		}
+	else
+		char.EquippedEquipment = {
+			Weapon = "StandardSword",
+			Head = "StandardHelm",
+			Body = "StandardChest",
+			Arms = "StandardArms",
+			Feet = "StandardFeet",
+		}
+		char.EquippedWeapon = "StandardSword"
+		char.StoredEquipment = {
+			"StandardSword",
+			"StandardHelm",
+			"StandardChest",
+			"StandardArms",
+			"StandardFeet",
+			"RockhideFang",
+			"RockhideHelm",
+			"RockhideChest",
+			"RockhideArms",
+			"RockhideFeet",
+		}
+	end
+end
+
 local function handlePlayer(player: Player)
 	if processedPlayers[player.UserId] then
 		return
@@ -105,17 +152,18 @@ local function handlePlayer(player: Player)
 		-- immediately play and test in the Hub (unless TestCharacterCreation is set).
 		local autoLoadInStudio = RunService:IsStudio() and not ReplicatedStorage:GetAttribute("TestCharacterCreation")
 		if autoLoadInStudio then
-			if not profile.Data.Character.HasCreatedCharacter then
-				profile.Data.Character.Name = player.DisplayName
-				profile.Data.Character.ClassId = "Tank"
-				profile.Data.Character.HasCreatedCharacter = true
-			end
+			profile.Data.Character.Name = player.DisplayName
+			profile.Data.Character.ClassId = "Mage"
+			profile.Data.Character.HasCreatedCharacter = true
+			profile.Data.Character.UnlockedSkills = table.clone(Classes.Mage.startingSkills)
+			profile.Data.Character.EquippedSkills = table.clone(Classes.Mage.startingSkills)
+			setupInitialEquipment(profile, "Mage")
 			loadCharacterAndNotify(player, profile, "studio auto-load")
 			return
 		end
 
 		if profile.Data.Character.HasCreatedCharacter then
-			Net.Get("ShowCharacterChoice"):FireClient(player, profile.Data.Character.Level)
+			Net.Get("ShowCharacterChoice"):FireClient(player, profile.Data.Character.Level, profile.Data.Character.ClassId or "Mage")
 		else
 			Net.Get("ShowCharacterCreation"):FireClient(player)
 		end
@@ -145,6 +193,7 @@ local function onSubmitCharacterCreation(player: Player, classId: any)
 	-- corrupt that shared class-data table for everyone if it weren't cloned here.
 	profile.Data.Character.UnlockedSkills = table.clone(Classes[validatedClassId].startingSkills)
 	profile.Data.Character.EquippedSkills = table.clone(Classes[validatedClassId].startingSkills)
+	setupInitialEquipment(profile, validatedClassId)
 	profile.Data.Character.HasCreatedCharacter = true
 
 	loadCharacterAndNotify(player, profile, "after submission")
@@ -190,6 +239,7 @@ local function onRequestCreateNewCharacter(player: Player, classId: any)
 	profile.Data.Character.UnlockedSkills = table.clone(Classes[validatedClassId].startingSkills)
 	profile.Data.Character.EquippedSkills = table.clone(Classes[validatedClassId].startingSkills)
 	profile.Data.Character.Name = player.DisplayName
+	setupInitialEquipment(profile, validatedClassId)
 
 	loadCharacterAndNotify(player, profile, "after create-new")
 end
@@ -249,7 +299,7 @@ function CharacterCreationService.Start()
 		local profile = PlayerDataService.GetProfile(player)
 		if profile then
 			if profile.Data.Character.HasCreatedCharacter then
-				Net.Get("ShowCharacterChoice"):FireClient(player, profile.Data.Character.Level)
+				Net.Get("ShowCharacterChoice"):FireClient(player, profile.Data.Character.Level, profile.Data.Character.ClassId or "Mage")
 			else
 				Net.Get("ShowCharacterCreation"):FireClient(player)
 			end

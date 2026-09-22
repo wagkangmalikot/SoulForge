@@ -76,15 +76,25 @@ function LevelUpService.Start()
 				local profile = PlayerDataService.GetProfile(player)
 				if profile and profile.Data.Character then
 					local char = profile.Data.Character
-					local rockhidePieces = {"RockhideFang", "RockhideHelm", "RockhideChest", "RockhideArms", "RockhideFeet"}
-					char.EquippedEquipment = {
+					local isMage = (char.ClassId == "Mage")
+					local rockhidePieces = isMage
+						and {"RockhideStaff", "RockhideCowl", "RockhideRobes", "RockhideWraps", "RockhideStriders"}
+						or {"RockhideFang", "RockhideHelm", "RockhideChest", "RockhideArms", "RockhideFeet"}
+					char.EquippedEquipment = isMage and {
+						Weapon = "RockhideStaff",
+						Head = "RockhideCowl",
+						Body = "RockhideRobes",
+						Arms = "RockhideWraps",
+						Feet = "RockhideStriders",
+					} or {
 						Weapon = "RockhideFang",
 						Head = "RockhideHelm",
 						Body = "RockhideChest",
 						Arms = "RockhideArms",
 						Feet = "RockhideFeet",
 					}
-					char.EquippedWeapon = "RockhideFang"
+					char.EquippedWeapon = isMage and "RockhideStaff" or "RockhideFang"
+					char.StoredEquipment = char.StoredEquipment or {}
 					for _, piece in ipairs(rockhidePieces) do
 						if not table.find(char.StoredEquipment, piece) then
 							table.insert(char.StoredEquipment, piece)
@@ -101,10 +111,91 @@ function LevelUpService.Start()
 						char.CraftingMaterials
 					)
 				end
-			elseif cmd == "/standard" or cmd == "/teststandard" then
+			elseif cmd == "/standard" or cmd == "/teststandard" or cmd == "/starter" then
 				local profile = PlayerDataService.GetProfile(player)
 				if profile and profile.Data.Character then
 					local char = profile.Data.Character
+					local isMage = (char.ClassId == "Mage")
+					local starterPieces = isMage
+						and {"ApprenticeStaff", "ApprenticeHood", "ApprenticeRobe", "ApprenticeBracers", "ApprenticeBoots"}
+						or {"StandardSword", "StandardHelm", "StandardChest", "StandardArms", "StandardFeet"}
+					char.EquippedEquipment = isMage and {
+						Weapon = "ApprenticeStaff",
+						Head = "ApprenticeHood",
+						Body = "ApprenticeRobe",
+						Arms = "ApprenticeBracers",
+						Feet = "ApprenticeBoots",
+					} or {
+						Weapon = "StandardSword",
+						Head = "StandardHelm",
+						Body = "StandardChest",
+						Arms = "StandardArms",
+						Feet = "StandardFeet",
+					}
+					char.EquippedWeapon = isMage and "ApprenticeStaff" or "StandardSword"
+					char.StoredEquipment = char.StoredEquipment or {}
+					for _, piece in ipairs(starterPieces) do
+						if not table.find(char.StoredEquipment, piece) then
+							table.insert(char.StoredEquipment, piece)
+						end
+					end
+					local WeaponService = require(script.Parent.WeaponService)
+					if player.Character then
+						WeaponService.EquipWeapons(player.Character)
+					end
+					Net.Get("EquipmentDataChanged"):FireClient(
+						player,
+						char.EquippedEquipment,
+						char.StoredEquipment,
+						char.CraftingMaterials
+					)
+				end
+			elseif cmd == "/mage" or cmd == "/makemage" or cmd == "/setmage" or cmd == "/class mage" then
+				local profile = PlayerDataService.GetProfile(player)
+				if profile and profile.Data.Character then
+					local char = profile.Data.Character
+					char.ClassId = "Mage"
+					char.UnlockedSkills = {"ArcaneBolt"}
+					char.EquippedSkills = {"ArcaneBolt"}
+					char.SkillPoints = math.max(char.SkillPoints or 0, 50)
+					local magePieces = {"ApprenticeStaff", "ApprenticeHood", "ApprenticeRobe", "ApprenticeBracers", "ApprenticeBoots"}
+					char.EquippedEquipment = {
+						Weapon = "ApprenticeStaff",
+						Head = "ApprenticeHood",
+						Body = "ApprenticeRobe",
+						Arms = "ApprenticeBracers",
+						Feet = "ApprenticeBoots",
+					}
+					char.EquippedWeapon = "ApprenticeStaff"
+					char.StoredEquipment = char.StoredEquipment or {}
+					for _, piece in ipairs(magePieces) do
+						if not table.find(char.StoredEquipment, piece) then
+							table.insert(char.StoredEquipment, piece)
+						end
+					end
+					local WeaponService = require(script.Parent.WeaponService)
+					if player.Character then
+						WeaponService.EquipWeapons(player.Character)
+					end
+					Net.Get("CharacterDataChanged"):FireClient(player, char.Level, char.UnspentEXP, char.ClassId)
+					local SkillTreeService = require(script.Parent.SkillTreeService)
+					SkillTreeService.SyncSkills(player)
+					Net.Get("EquipmentDataChanged"):FireClient(
+						player,
+						char.EquippedEquipment,
+						char.StoredEquipment,
+						char.CraftingMaterials
+					)
+				end
+			elseif cmd == "/tank" or cmd == "/maketank" or cmd == "/settank" or cmd == "/class tank" then
+				local profile = PlayerDataService.GetProfile(player)
+				if profile and profile.Data.Character then
+					local char = profile.Data.Character
+					char.ClassId = "Tank"
+					char.UnlockedSkills = {"Taunt"}
+					char.EquippedSkills = {"Taunt"}
+					char.SkillPoints = math.max(char.SkillPoints or 0, 50)
+					local tankPieces = {"StandardSword", "StandardHelm", "StandardChest", "StandardArms", "StandardFeet"}
 					char.EquippedEquipment = {
 						Weapon = "StandardSword",
 						Head = "StandardHelm",
@@ -113,10 +204,19 @@ function LevelUpService.Start()
 						Feet = "StandardFeet",
 					}
 					char.EquippedWeapon = "StandardSword"
+					char.StoredEquipment = char.StoredEquipment or {}
+					for _, piece in ipairs(tankPieces) do
+						if not table.find(char.StoredEquipment, piece) then
+							table.insert(char.StoredEquipment, piece)
+						end
+					end
 					local WeaponService = require(script.Parent.WeaponService)
 					if player.Character then
 						WeaponService.EquipWeapons(player.Character)
 					end
+					Net.Get("CharacterDataChanged"):FireClient(player, char.Level, char.UnspentEXP, char.ClassId)
+					local SkillTreeService = require(script.Parent.SkillTreeService)
+					SkillTreeService.SyncSkills(player)
 					Net.Get("EquipmentDataChanged"):FireClient(
 						player,
 						char.EquippedEquipment,

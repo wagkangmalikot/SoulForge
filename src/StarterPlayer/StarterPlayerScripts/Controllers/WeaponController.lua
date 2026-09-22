@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
+local CollectionService = game:GetService("CollectionService")
 
 local Net = require(ReplicatedStorage.Shared.Net)
 
@@ -930,6 +931,719 @@ local function safeTweenC0(joint: Instance?, tweenInfo: TweenInfo, targetC0: CFr
 	return nil
 end
 
+-- ============================================================================
+-- MAGE SPELL EFFECT HELPERS
+-- ============================================================================
+
+local function getCastOrigin(character: Model): Vector3
+	local staff = character:FindFirstChild("EquippedSword") or character:FindFirstChild("EquippedWeapon")
+	if staff then
+		local crystal = staff:FindFirstChild("FocusCrystal") or staff:FindFirstChild("MagmaCore") or staff:FindFirstChild("CrownBase")
+		if crystal and crystal:IsA("BasePart") then
+			return crystal.Position
+		end
+	end
+	local rightHand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+	if rightHand then
+		local root = character:FindFirstChild("HumanoidRootPart")
+		local forward = root and root.CFrame.LookVector or Vector3.new(0, 0, -1)
+		return rightHand.Position + forward * 1.5 + Vector3.new(0, 0.5, 0)
+	end
+	local root = character:FindFirstChild("HumanoidRootPart")
+	return root and (root.Position + root.CFrame.LookVector * 2 + Vector3.new(0, 0.5, 0)) or Vector3.zero
+end
+
+local function findSpellTarget(character: Model, maxDist: number, maxAngle: number?): Vector3
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if not root then
+		return character:GetPivot().Position + character:GetPivot().LookVector * (maxDist or 30)
+	end
+
+	local look = root.CFrame.LookVector
+	local origin = root.Position
+	local bestTarget: Vector3? = nil
+	local bestDist = maxDist or 45
+	local angleThreshold = math.cos(math.rad(maxAngle or 60))
+
+	for _, enemy in CollectionService:GetTagged("Enemy") do
+		if enemy:IsA("Model") and enemy.Parent then
+			local part = enemy.PrimaryPart or enemy:FindFirstChildWhichIsA("BasePart")
+			if part then
+				local toPart = (part.Position - origin)
+				local dist = toPart.Magnitude
+				if dist > 0 and dist <= bestDist then
+					local dot = look:Dot(toPart.Unit)
+					if dot >= angleThreshold then
+						bestDist = dist
+						bestTarget = part.Position + Vector3.new(0, 0.5, 0)
+					end
+				end
+			end
+		end
+	end
+
+	if bestTarget then
+		return bestTarget
+	end
+
+	return origin + look * (maxDist or 30)
+end
+
+local function playSpellSound(parent: Instance, soundId: string, volume: number?, speed: number?)
+	local snd = Instance.new("Sound")
+	snd.SoundId = soundId
+	snd.Volume = volume or 0.65
+	snd.PlaybackSpeed = (speed or 1.0) + (math.random() - 0.5) * 0.1
+	snd.Parent = parent
+	snd:Play()
+	Debris:AddItem(snd, 1.2)
+end
+
+local function spawnArcaneBoltEffect(character: Model)
+	local origin = getCastOrigin(character)
+	local target = findSpellTarget(character, 35)
+
+	-- Arcane projectile orb
+	local bolt = Instance.new("Part")
+	bolt.Name = "ArcaneBoltProjectile"
+	bolt.Size = Vector3.new(0.85, 0.85, 0.85)
+	bolt.Shape = Enum.PartType.Ball
+	bolt.Position = origin
+	bolt.Color = Color3.fromRGB(195, 85, 255)
+	bolt.Material = Enum.Material.Neon
+	bolt.CanCollide = false
+	bolt.Anchored = true
+	bolt.CastShadow = false
+
+	local glow = Instance.new("PointLight")
+	glow.Color = Color3.fromRGB(215, 120, 255)
+	glow.Brightness = 3.5
+	glow.Range = 10
+	glow.Parent = bolt
+
+	local sparkles = Instance.new("ParticleEmitter")
+	sparkles.LightEmission = 1
+	sparkles.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 200, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 40, 255)),
+	})
+	sparkles.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.22),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	sparkles.Lifetime = NumberRange.new(0.15, 0.35)
+	sparkles.Rate = 25
+	sparkles.Speed = NumberRange.new(0.5, 1.5)
+	sparkles.Parent = bolt
+	bolt.Parent = workspace
+
+	playSpellSound(bolt, "rbxasset://sounds/electronicpingshort.wav", 0.5, 1.3)
+
+	local travelDist = (target - origin).Magnitude
+	local flightTime = math.clamp(travelDist / 120, 0.12, 0.28)
+
+	local tween = TweenService:Create(bolt, TweenInfo.new(flightTime, Enum.EasingStyle.Linear), {
+		Position = target,
+	})
+	tween:Play()
+
+	task.delay(flightTime, function()
+		if bolt and bolt.Parent then
+			bolt:Destroy()
+		end
+
+		-- Arcane impact ring
+		local ring = Instance.new("Part")
+		ring.Name = "ArcaneImpactRing"
+		ring.Size = Vector3.new(1.0, 0.1, 1.0)
+		ring.Position = target
+		ring.Color = Color3.fromRGB(215, 110, 255)
+		ring.Material = Enum.Material.Neon
+		ring.CanCollide = false
+		ring.Anchored = true
+		ring.CastShadow = false
+
+		local rMesh = Instance.new("SpecialMesh")
+		rMesh.MeshType = Enum.MeshType.Sphere
+		rMesh.Scale = Vector3.new(1.0, 0.05, 1.0)
+		rMesh.Parent = ring
+		ring.Parent = workspace
+
+		TweenService:Create(ring, TweenInfo.new(0.20, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = Vector3.new(5.0, 0.1, 5.0),
+			Transparency = 1,
+		}):Play()
+		Debris:AddItem(ring, 0.25)
+
+		spawnShardBurst(target, Color3.fromRGB(205, 95, 255), 6, 2.5, 0.25)
+		playSpellSound(workspace, "rbxasset://sounds/bell.wav", 0.6, 1.8)
+	end)
+end
+
+local function spawnFireboltEffect(character: Model)
+	local origin = getCastOrigin(character)
+	local target = findSpellTarget(character, 35)
+
+	local bolt = Instance.new("Part")
+	bolt.Name = "FireboltProjectile"
+	bolt.Size = Vector3.new(0.7, 0.7, 1.4)
+	bolt.CFrame = CFrame.new(origin, target)
+	bolt.Color = Color3.fromRGB(255, 115, 20)
+	bolt.Material = Enum.Material.Neon
+	bolt.CanCollide = false
+	bolt.Anchored = true
+	bolt.CastShadow = false
+
+	local bMesh = Instance.new("SpecialMesh")
+	bMesh.MeshType = Enum.MeshType.Sphere
+	bMesh.Scale = Vector3.new(0.8, 0.8, 1.4)
+	bMesh.Parent = bolt
+
+	local fireLight = Instance.new("PointLight")
+	fireLight.Color = Color3.fromRGB(255, 130, 30)
+	fireLight.Brightness = 4.0
+	fireLight.Range = 12
+	fireLight.Parent = bolt
+
+	local fireTrail = Instance.new("ParticleEmitter")
+	fireTrail.LightEmission = 1
+	fireTrail.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 220, 60)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 90, 15)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 20, 5)),
+	})
+	fireTrail.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.35),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	fireTrail.Lifetime = NumberRange.new(0.2, 0.4)
+	fireTrail.Rate = 35
+	fireTrail.Speed = NumberRange.new(0.5, 2.0)
+	fireTrail.Parent = bolt
+	bolt.Parent = workspace
+
+	playSpellSound(bolt, "rbxasset://sounds/swordslash.wav", 0.5, 1.4)
+
+	local travelDist = (target - origin).Magnitude
+	local flightTime = math.clamp(travelDist / 130, 0.12, 0.26)
+
+	TweenService:Create(bolt, TweenInfo.new(flightTime, Enum.EasingStyle.Linear), {
+		CFrame = CFrame.new(target, target + (target - origin)),
+	}):Play()
+
+	task.delay(flightTime, function()
+		if bolt and bolt.Parent then bolt:Destroy() end
+
+		-- Fiery burst pop
+		local blast = Instance.new("Part")
+		blast.Shape = Enum.PartType.Ball
+		blast.Size = Vector3.new(1.8, 1.8, 1.8)
+		blast.Position = target
+		blast.Color = Color3.fromRGB(255, 130, 25)
+		blast.Material = Enum.Material.Neon
+		blast.CanCollide = false
+		blast.Anchored = true
+		blast.Parent = workspace
+
+		TweenService:Create(blast, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = Vector3.new(5.5, 5.5, 5.5),
+			Transparency = 1,
+		}):Play()
+		Debris:AddItem(blast, 0.25)
+
+		spawnShardBurst(target, Color3.fromRGB(255, 120, 20), 8, 3.2, 0.35)
+		playSpellSound(workspace, "rbxasset://sounds/collide.wav", 0.6, 1.5)
+	end)
+end
+
+local function spawnFireballEffect(character: Model)
+	local origin = getCastOrigin(character)
+	local target = findSpellTarget(character, 35)
+
+	local orb = Instance.new("Part")
+	orb.Name = "FireballOrb"
+	orb.Shape = Enum.PartType.Ball
+	orb.Size = Vector3.new(2.2, 2.2, 2.2)
+	orb.Position = origin
+	orb.Color = Color3.fromRGB(255, 95, 15)
+	orb.Material = Enum.Material.Neon
+	orb.CanCollide = false
+	orb.Anchored = true
+	orb.CastShadow = false
+
+	local core = Instance.new("Part")
+	core.Name = "FireballCore"
+	core.Shape = Enum.PartType.Ball
+	core.Size = Vector3.new(1.4, 1.4, 1.4)
+	core.Position = origin
+	core.Color = Color3.fromRGB(255, 230, 90)
+	core.Material = Enum.Material.Neon
+	core.CanCollide = false
+	core.Anchored = true
+	core.Parent = orb
+
+	local fireLight = Instance.new("PointLight")
+	fireLight.Color = Color3.fromRGB(255, 130, 25)
+	fireLight.Brightness = 6.0
+	fireLight.Range = 20
+	fireLight.Parent = orb
+
+	local emberEmitter = Instance.new("ParticleEmitter")
+	emberEmitter.LightEmission = 1
+	emberEmitter.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 240, 110)),
+		ColorSequenceKeypoint.new(0.4, Color3.fromRGB(255, 105, 20)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 15, 5)),
+	})
+	emberEmitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.6),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	emberEmitter.Lifetime = NumberRange.new(0.3, 0.6)
+	emberEmitter.Rate = 50
+	emberEmitter.Speed = NumberRange.new(1.0, 3.5)
+	emberEmitter.Parent = orb
+	orb.Parent = workspace
+
+	playSpellSound(orb, "rbxasset://sounds/collide.wav", 0.7, 0.9)
+
+	local travelDist = (target - origin).Magnitude
+	local flightTime = math.clamp(travelDist / 105, 0.16, 0.32)
+
+	TweenService:Create(orb, TweenInfo.new(flightTime, Enum.EasingStyle.Linear), { Position = target }):Play()
+	TweenService:Create(core, TweenInfo.new(flightTime, Enum.EasingStyle.Linear), { Position = target }):Play()
+
+	task.delay(flightTime, function()
+		if orb and orb.Parent then orb:Destroy() end
+
+		-- Heavy Explosive Detonation Blast Dome
+		local blast = Instance.new("Part")
+		blast.Name = "FireballBlastDome"
+		blast.Shape = Enum.PartType.Ball
+		blast.Size = Vector3.new(3.0, 3.0, 3.0)
+		blast.Position = target
+		blast.Color = Color3.fromRGB(255, 110, 20)
+		blast.Material = Enum.Material.Neon
+		blast.Transparency = 0.1
+		blast.CanCollide = false
+		blast.Anchored = true
+		blast.Parent = workspace
+
+		local blastLight = Instance.new("PointLight")
+		blastLight.Color = Color3.fromRGB(255, 150, 40)
+		blastLight.Brightness = 8.0
+		blastLight.Range = 26
+		blastLight.Parent = blast
+
+		TweenService:Create(blast, TweenInfo.new(0.32, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = Vector3.new(10.5, 10.5, 10.5),
+			Transparency = 1,
+		}):Play()
+		Debris:AddItem(blast, 0.38)
+
+		-- Radial Shockwave Ring
+		local ring = Instance.new("Part")
+		ring.Name = "FireballShockwaveRing"
+		ring.Size = Vector3.new(2.0, 0.15, 2.0)
+		ring.Position = target
+		ring.Color = Color3.fromRGB(255, 175, 45)
+		ring.Material = Enum.Material.Neon
+		ring.CanCollide = false
+		ring.Anchored = true
+		local rMesh = Instance.new("SpecialMesh")
+		rMesh.MeshType = Enum.MeshType.Sphere
+		rMesh.Scale = Vector3.new(1.0, 0.05, 1.0)
+		rMesh.Parent = ring
+		ring.Parent = workspace
+
+		TweenService:Create(ring, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = Vector3.new(14.0, 0.15, 14.0),
+			Transparency = 1,
+		}):Play()
+		Debris:AddItem(ring, 0.32)
+
+		spawnShardBurst(target, Color3.fromRGB(255, 120, 20), 14, 5.5, 0.5)
+		playSpellSound(workspace, "rbxasset://sounds/collide.wav", 0.9, 0.75)
+	end)
+end
+
+local function spawnMeteorEffect(character: Model)
+	local target = findSpellTarget(character, 30)
+
+	-- 1. Red Molten Ground Summoning Rune
+	local rune = Instance.new("Part")
+	rune.Name = "MeteorGroundRune"
+	rune.Size = Vector3.new(16.0, 0.1, 16.0)
+	rune.Position = Vector3.new(target.X, target.Y - 0.2, target.Z)
+	rune.Color = Color3.fromRGB(255, 55, 15)
+	rune.Material = Enum.Material.Neon
+	rune.Transparency = 0.4
+	rune.CanCollide = false
+	rune.Anchored = true
+	local rMesh = Instance.new("SpecialMesh")
+	rMesh.MeshType = Enum.MeshType.Sphere
+	rMesh.Scale = Vector3.new(1.0, 0.04, 1.0)
+	rMesh.Parent = rune
+	rune.Parent = workspace
+
+	local runeGlow = Instance.new("PointLight")
+	runeGlow.Color = Color3.fromRGB(255, 80, 20)
+	runeGlow.Brightness = 4.0
+	runeGlow.Range = 22
+	runeGlow.Parent = rune
+
+	-- 2. Falling Giant Blazing Meteor from the Sky
+	local skyOrigin = target + Vector3.new(-14, 55, -12)
+
+	local meteor = Instance.new("Part")
+	meteor.Name = "MeteorRock"
+	meteor.Size = Vector3.new(4.2, 4.2, 4.2)
+	meteor.Position = skyOrigin
+	meteor.Color = Color3.fromRGB(38, 30, 24)
+	meteor.Material = Enum.Material.Slate
+	meteor.CanCollide = false
+	meteor.Anchored = true
+	meteor.Parent = workspace
+
+	local mCore = Instance.new("Part")
+	mCore.Shape = Enum.PartType.Ball
+	mCore.Size = Vector3.new(3.8, 3.8, 3.8)
+	mCore.Position = skyOrigin
+	mCore.Color = Color3.fromRGB(255, 90, 15)
+	mCore.Material = Enum.Material.Neon
+	mCore.CanCollide = false
+	mCore.Anchored = true
+	mCore.Parent = meteor
+
+	local mLight = Instance.new("PointLight")
+	mLight.Color = Color3.fromRGB(255, 120, 25)
+	mLight.Brightness = 8.0
+	mLight.Range = 30
+	mLight.Parent = meteor
+
+	local flameColumn = Instance.new("ParticleEmitter")
+	flameColumn.LightEmission = 1
+	flameColumn.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 240, 100)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 80, 15)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 15, 5)),
+	})
+	flameColumn.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1.2),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	flameColumn.Lifetime = NumberRange.new(0.4, 0.8)
+	flameColumn.Rate = 70
+	flameColumn.Speed = NumberRange.new(3.0, 7.0)
+	flameColumn.Parent = meteor
+
+	playSpellSound(meteor, "rbxasset://sounds/collide.wav", 0.7, 0.6)
+
+	-- Meteor plunge
+	local fallTime = 0.42
+	TweenService:Create(meteor, TweenInfo.new(fallTime, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = target }):Play()
+	TweenService:Create(mCore, TweenInfo.new(fallTime, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = target }):Play()
+
+	task.delay(fallTime, function()
+		if meteor and meteor.Parent then meteor:Destroy() end
+		if rune and rune.Parent then rune:Destroy() end
+
+		-- Massive Impact Blast
+		local craterBlast = Instance.new("Part")
+		craterBlast.Name = "MeteorBlastDome"
+		craterBlast.Shape = Enum.PartType.Ball
+		craterBlast.Size = Vector3.new(4.0, 4.0, 4.0)
+		craterBlast.Position = target
+		craterBlast.Color = Color3.fromRGB(255, 100, 20)
+		craterBlast.Material = Enum.Material.Neon
+		craterBlast.Transparency = 0.05
+		craterBlast.CanCollide = false
+		craterBlast.Anchored = true
+		craterBlast.Parent = workspace
+
+		TweenService:Create(craterBlast, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = Vector3.new(18.0, 18.0, 18.0),
+			Transparency = 1,
+		}):Play()
+		Debris:AddItem(craterBlast, 0.50)
+
+		-- Ground Volcanic Shockwave Ring
+		local sRing = Instance.new("Part")
+		sRing.Name = "MeteorShockwave"
+		sRing.Size = Vector3.new(3.0, 0.2, 3.0)
+		sRing.Position = target
+		sRing.Color = Color3.fromRGB(255, 160, 35)
+		sRing.Material = Enum.Material.Neon
+		sRing.CanCollide = false
+		sRing.Anchored = true
+		local srMesh = Instance.new("SpecialMesh")
+		srMesh.MeshType = Enum.MeshType.Sphere
+		srMesh.Scale = Vector3.new(1.0, 0.04, 1.0)
+		srMesh.Parent = sRing
+		sRing.Parent = workspace
+
+		TweenService:Create(sRing, TweenInfo.new(0.38, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = Vector3.new(24.0, 0.2, 24.0),
+			Transparency = 1,
+		}):Play()
+		Debris:AddItem(sRing, 0.45)
+
+		-- Cooling Magma Ground Scorch Crater
+		local crater = Instance.new("Part")
+		crater.Name = "MeteorCraterPlate"
+		crater.Size = Vector3.new(14.0, 0.1, 14.0)
+		crater.Position = Vector3.new(target.X, target.Y - 0.15, target.Z)
+		crater.Color = Color3.fromRGB(180, 50, 15)
+		crater.Material = Enum.Material.Neon
+		crater.Transparency = 0.2
+		crater.CanCollide = false
+		crater.Anchored = true
+		local cMesh = Instance.new("SpecialMesh")
+		cMesh.MeshType = Enum.MeshType.Sphere
+		cMesh.Scale = Vector3.new(1.0, 0.04, 1.0)
+		cMesh.Parent = crater
+		crater.Parent = workspace
+
+		TweenService:Create(crater, TweenInfo.new(1.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			Color = Color3.fromRGB(35, 28, 24),
+			Transparency = 1,
+		}):Play()
+		Debris:AddItem(crater, 1.5)
+
+		spawnShardBurst(target, Color3.fromRGB(255, 100, 20), 18, 7.5, 0.65)
+		playSpellSound(workspace, "rbxasset://sounds/collide.wav", 1.0, 0.6)
+	end)
+end
+
+local function spawnFrostboltEffect(character: Model)
+	local origin = getCastOrigin(character)
+	local target = findSpellTarget(character, 35)
+
+	local shard = Instance.new("Part")
+	shard.Name = "FrostboltShard"
+	shard.Size = Vector3.new(0.65, 0.65, 1.8)
+	shard.CFrame = CFrame.new(origin, target)
+	shard.Color = Color3.fromRGB(150, 230, 255)
+	shard.Material = Enum.Material.Neon
+	shard.CanCollide = false
+	shard.Anchored = true
+
+	local sMesh = Instance.new("SpecialMesh")
+	sMesh.MeshType = Enum.MeshType.Sphere
+	sMesh.Scale = Vector3.new(0.7, 0.7, 1.5)
+	sMesh.Parent = shard
+
+	local frostLight = Instance.new("PointLight")
+	frostLight.Color = Color3.fromRGB(130, 215, 255)
+	frostLight.Brightness = 3.5
+	frostLight.Range = 10
+	frostLight.Parent = shard
+
+	local mistEmitter = Instance.new("ParticleEmitter")
+	mistEmitter.LightEmission = 1
+	mistEmitter.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 245, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(90, 185, 255)),
+	})
+	mistEmitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.3),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	mistEmitter.Lifetime = NumberRange.new(0.2, 0.4)
+	mistEmitter.Rate = 30
+	mistEmitter.Speed = NumberRange.new(0.5, 1.5)
+	mistEmitter.Parent = shard
+	shard.Parent = workspace
+
+	playSpellSound(shard, "rbxasset://sounds/snap.wav", 0.5, 1.6)
+
+	local travelDist = (target - origin).Magnitude
+	local flightTime = math.clamp(travelDist / 125, 0.12, 0.26)
+
+	TweenService:Create(shard, TweenInfo.new(flightTime, Enum.EasingStyle.Linear), {
+		CFrame = CFrame.new(target, target + (target - origin)),
+	}):Play()
+
+	task.delay(flightTime, function()
+		if shard and shard.Parent then shard:Destroy() end
+
+		-- Shattering ice crystal burst
+		local burst = Instance.new("Part")
+		burst.Name = "FrostImpactBurst"
+		burst.Size = Vector3.new(1.2, 1.2, 1.2)
+		burst.Position = target
+		burst.Color = Color3.fromRGB(170, 240, 255)
+		burst.Material = Enum.Material.Neon
+		burst.CanCollide = false
+		burst.Anchored = true
+		burst.Parent = workspace
+
+		TweenService:Create(burst, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = Vector3.new(4.5, 4.5, 4.5),
+			Transparency = 1,
+		}):Play()
+		Debris:AddItem(burst, 0.22)
+
+		spawnShardBurst(target, Color3.fromRGB(140, 225, 255), 8, 2.8, 0.3)
+		playSpellSound(workspace, "rbxasset://sounds/electronicpingshort.wav", 0.6, 2.0)
+	end)
+end
+
+local function spawnIceLanceEffect(character: Model)
+	local origin = getCastOrigin(character)
+	local target = findSpellTarget(character, 35)
+
+	-- Long piercing glacial lance
+	local lance = Instance.new("Part")
+	lance.Name = "IceLanceSpear"
+	lance.Size = Vector3.new(0.5, 0.5, 3.4)
+	lance.CFrame = CFrame.new(origin, target)
+	lance.Color = Color3.fromRGB(130, 225, 255)
+	lance.Material = Enum.Material.Neon
+	lance.CanCollide = false
+	lance.Anchored = true
+
+	local lMesh = Instance.new("SpecialMesh")
+	lMesh.MeshType = Enum.MeshType.Sphere
+	lMesh.Scale = Vector3.new(0.6, 0.6, 1.8)
+	lMesh.Parent = lance
+
+	local lanceLight = Instance.new("PointLight")
+	lanceLight.Color = Color3.fromRGB(150, 230, 255)
+	lanceLight.Brightness = 4.5
+	lanceLight.Range = 14
+	lanceLight.Parent = lance
+
+	local vaporEmitter = Instance.new("ParticleEmitter")
+	vaporEmitter.LightEmission = 1
+	vaporEmitter.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(240, 250, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 180, 255)),
+	})
+	vaporEmitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.4),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	vaporEmitter.Lifetime = NumberRange.new(0.2, 0.45)
+	vaporEmitter.Rate = 45
+	vaporEmitter.Speed = NumberRange.new(0.8, 2.5)
+	vaporEmitter.Parent = lance
+	lance.Parent = workspace
+
+	playSpellSound(lance, "rbxasset://sounds/swordslash.wav", 0.6, 1.8)
+
+	local travelDist = (target - origin).Magnitude
+	local flightTime = math.clamp(travelDist / 160, 0.10, 0.22)
+
+	TweenService:Create(lance, TweenInfo.new(flightTime, Enum.EasingStyle.Linear), {
+		CFrame = CFrame.new(target, target + (target - origin)),
+	}):Play()
+
+	task.delay(flightTime, function()
+		if lance and lance.Parent then lance:Destroy() end
+
+		-- Glacial Nova Ring
+		local ring = Instance.new("Part")
+		ring.Name = "IceNovaRing"
+		ring.Size = Vector3.new(2.0, 0.12, 2.0)
+		ring.Position = target
+		ring.Color = Color3.fromRGB(160, 235, 255)
+		ring.Material = Enum.Material.Neon
+		ring.CanCollide = false
+		ring.Anchored = true
+		local rMesh = Instance.new("SpecialMesh")
+		rMesh.MeshType = Enum.MeshType.Sphere
+		rMesh.Scale = Vector3.new(1.0, 0.05, 1.0)
+		rMesh.Parent = ring
+		ring.Parent = workspace
+
+		TweenService:Create(ring, TweenInfo.new(0.24, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = Vector3.new(9.0, 0.12, 9.0),
+			Transparency = 1,
+		}):Play()
+		Debris:AddItem(ring, 0.28)
+
+		spawnShardBurst(target, Color3.fromRGB(150, 230, 255), 12, 4.5, 0.4)
+		playSpellSound(workspace, "rbxasset://sounds/snap.wav", 0.7, 1.4)
+	end)
+end
+
+local function spawnBlizzardEffect(character: Model)
+	local root = character:FindFirstChild("HumanoidRootPart")
+	local centre = root and root.Position or character:GetPivot().Position
+	local floorY = centre.Y - 2.8
+
+	-- 1. Large Winter Glyphic Ground Ring (20 studs diameter)
+	local ring = Instance.new("Part")
+	ring.Name = "BlizzardGroundZone"
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Orientation = Vector3.new(0, 0, 90)
+	ring.Position = Vector3.new(centre.X, floorY + 0.1, centre.Z)
+	ring.Size = Vector3.new(0.12, 22.0, 22.0)
+	ring.Color = Color3.fromRGB(120, 210, 255)
+	ring.Material = Enum.Material.ForceField
+	ring.Transparency = 0.35
+	ring.CanCollide = false
+	ring.Anchored = true
+	ring.Parent = workspace
+
+	local zoneLight = Instance.new("PointLight")
+	zoneLight.Color = Color3.fromRGB(140, 220, 255)
+	zoneLight.Brightness = 4.0
+	zoneLight.Range = 26
+	zoneLight.Parent = ring
+
+	-- 2. Cloud Emitter raining snowflakes & icicles for 3.5 seconds
+	local cloud = Instance.new("Part")
+	cloud.Name = "BlizzardStormCloud"
+	cloud.Size = Vector3.new(18, 1, 18)
+	cloud.Position = Vector3.new(centre.X, floorY + 16, centre.Z)
+	cloud.Transparency = 1
+	cloud.CanCollide = false
+	cloud.Anchored = true
+
+	local snowEmitter = Instance.new("ParticleEmitter")
+	snowEmitter.LightEmission = 1
+	snowEmitter.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 225, 255)),
+	})
+	snowEmitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.4),
+		NumberSequenceKeypoint.new(1, 0.1),
+	})
+	snowEmitter.Lifetime = NumberRange.new(0.8, 1.4)
+	snowEmitter.Rate = 60
+	snowEmitter.Speed = NumberRange.new(12, 18)
+	snowEmitter.EmissionDirection = Enum.NormalId.Bottom
+	snowEmitter.SpreadAngle = Vector2.new(20, 20)
+	snowEmitter.Parent = cloud
+	cloud.Parent = workspace
+
+	playSpellSound(ring, "rbxasset://sounds/swordslash.wav", 0.6, 0.7)
+
+	-- Burst shards every 0.5s for the duration
+	task.spawn(function()
+		for i = 1, 6 do
+			task.wait(0.5)
+			if not ring or not ring.Parent then break end
+			local randOffset = Vector3.new((math.random() - 0.5) * 16, 0.5, (math.random() - 0.5) * 16)
+			spawnShardBurst(centre + randOffset, Color3.fromRGB(150, 230, 255), 4, 2.0, 0.25)
+		end
+	end)
+
+	task.delay(3.5, function()
+		if snowEmitter and snowEmitter.Parent then
+			snowEmitter.Enabled = false
+		end
+		if ring and ring.Parent then
+			TweenService:Create(ring, TweenInfo.new(0.6, Enum.EasingStyle.Quad), { Transparency = 1 }):Play()
+		end
+	end)
+	Debris:AddItem(cloud, 4.5)
+	Debris:AddItem(ring, 4.2)
+end
+
 function WeaponController.PlaySwing(character: Model, attackType: string)
 	if not character or not character.Parent then
 		return
@@ -1259,6 +1973,135 @@ function WeaponController.PlaySwing(character: Model, attackType: string)
 			end)
 		else
 			spawnFortressAuraEffect(character)
+		end
+
+	-- ── 8. ARCANE BOLT (Mage Starter / Normal Attack) ─────────────────────────
+	elseif attackType == "ArcaneBolt" or attackType == "MageAttack" then
+		if rightShoulder and defaultRightC0 then
+			local thrustC0 = defaultRightC0 * CFrame.Angles(math.rad(85), math.rad(-10), math.rad(15))
+			safeTweenC0(rightShoulder, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), thrustC0)
+			spawnArcaneBoltEffect(character)
+			if trail then
+				trail.Enabled = true
+				task.delay(0.22, function()
+					if trail and trail.Parent then trail.Enabled = false end
+				end)
+			end
+			task.delay(0.18, function()
+				safeTweenC0(rightShoulder, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), defaultRightC0)
+			end)
+		else
+			spawnArcaneBoltEffect(character)
+		end
+
+	-- ── 9. FIREBOLT (Searing flame missile) ──────────────────────────────────
+	elseif attackType == "Firebolt" then
+		if rightShoulder and defaultRightC0 then
+			local castC0 = defaultRightC0 * CFrame.Angles(math.rad(95), math.rad(-15), math.rad(10))
+			safeTweenC0(rightShoulder, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), castC0)
+			spawnFireboltEffect(character)
+			if trail then
+				trail.Enabled = true
+				task.delay(0.22, function()
+					if trail and trail.Parent then trail.Enabled = false end
+				end)
+			end
+			task.delay(0.18, function()
+				safeTweenC0(rightShoulder, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), defaultRightC0)
+			end)
+		else
+			spawnFireboltEffect(character)
+		end
+
+	-- ── 10. FIREBALL (Roaring heavy magma orb) ───────────────────────────────
+	elseif attackType == "Fireball" then
+		if rightShoulder and defaultRightC0 then
+			local windupC0 = defaultRightC0 * CFrame.Angles(math.rad(45), math.rad(25), math.rad(-20))
+			local launchC0 = defaultRightC0 * CFrame.Angles(math.rad(110), math.rad(-15), math.rad(15))
+			safeTweenC0(rightShoulder, TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), windupC0)
+			task.delay(0.12, function()
+				safeTweenC0(rightShoulder, TweenInfo.new(0.10, Enum.EasingStyle.Back, Enum.EasingDirection.In), launchC0)
+				spawnFireballEffect(character)
+				if trail then
+					trail.Enabled = true
+					task.delay(0.28, function()
+						if trail and trail.Parent then trail.Enabled = false end
+					end)
+				end
+				task.delay(0.22, function()
+					safeTweenC0(rightShoulder, TweenInfo.new(0.20, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), defaultRightC0)
+				end)
+			end)
+		else
+			spawnFireballEffect(character)
+		end
+
+	-- ── 11. METEOR (Summon blazing asteroid from sky) ────────────────────────
+	elseif attackType == "Meteor" then
+		if rightShoulder and defaultRightC0 then
+			local raiseC0 = defaultRightC0 * CFrame.Angles(math.rad(155), math.rad(-15), math.rad(20))
+			safeTweenC0(rightShoulder, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), raiseC0)
+			spawnMeteorEffect(character)
+			task.delay(0.65, function()
+				safeTweenC0(rightShoulder, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), defaultRightC0)
+			end)
+		else
+			spawnMeteorEffect(character)
+		end
+
+	-- ── 12. FROSTBOLT (Crystalline ice shard) ────────────────────────────────
+	elseif attackType == "Frostbolt" then
+		if rightShoulder and defaultRightC0 then
+			local castC0 = defaultRightC0 * CFrame.Angles(math.rad(85), math.rad(-10), math.rad(12))
+			safeTweenC0(rightShoulder, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), castC0)
+			spawnFrostboltEffect(character)
+			if trail then
+				trail.Enabled = true
+				task.delay(0.22, function()
+					if trail and trail.Parent then trail.Enabled = false end
+				end)
+			end
+			task.delay(0.18, function()
+				safeTweenC0(rightShoulder, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), defaultRightC0)
+			end)
+		else
+			spawnFrostboltEffect(character)
+		end
+
+	-- ── 13. ICE LANCE (Glacial piercing spear) ───────────────────────────────
+	elseif attackType == "IceLance" then
+		if rightShoulder and defaultRightC0 then
+			local pullbackC0 = defaultRightC0 * CFrame.Angles(math.rad(30), math.rad(15), math.rad(-15))
+			local spearC0 = defaultRightC0 * CFrame.Angles(math.rad(100), math.rad(-10), math.rad(10))
+			safeTweenC0(rightShoulder, TweenInfo.new(0.10, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), pullbackC0)
+			task.delay(0.10, function()
+				safeTweenC0(rightShoulder, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.In), spearC0)
+				spawnIceLanceEffect(character)
+				if trail then
+					trail.Enabled = true
+					task.delay(0.20, function()
+						if trail and trail.Parent then trail.Enabled = false end
+					end)
+				end
+				task.delay(0.20, function()
+					safeTweenC0(rightShoulder, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), defaultRightC0)
+				end)
+			end)
+		else
+			spawnIceLanceEffect(character)
+		end
+
+	-- ── 14. BLIZZARD (Swirling winter vortex) ────────────────────────────────
+	elseif attackType == "Blizzard" then
+		if rightShoulder and defaultRightC0 then
+			local channelC0 = defaultRightC0 * CFrame.Angles(math.rad(150), math.rad(-15), math.rad(25))
+			safeTweenC0(rightShoulder, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), channelC0)
+			spawnBlizzardEffect(character)
+			task.delay(1.2, function()
+				safeTweenC0(rightShoulder, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), defaultRightC0)
+			end)
+		else
+			spawnBlizzardEffect(character)
 		end
 	end
 end

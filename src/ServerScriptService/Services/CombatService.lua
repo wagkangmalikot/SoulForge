@@ -48,9 +48,10 @@ local function getDamageMultiplier(player: Player): number
 	local charData = profile and profile.Data.Character
 	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 	if humanoid and charData and charData.EquippedEquipment then
-		if EquipmentData.IsSetBonusActive("Rockhide", charData.EquippedEquipment) then
+		if EquipmentData.IsSetBonusActive("Rockhide", charData.EquippedEquipment)
+			or EquipmentData.IsSetBonusActive("RockhideMage", charData.EquippedEquipment) then
 			if humanoid.Health / math.max(humanoid.MaxHealth, 1) <= 0.5 then
-				return 1.20 -- +20% damage from Seismic Fury set bonus!
+				return 1.20 -- +20% damage from Seismic Fury / Geomantic Surge set bonus!
 			end
 		end
 	end
@@ -60,11 +61,12 @@ end
 local function getPlayerNormalAttackDamage(player: Player): number
 	local profile = PlayerDataService.GetProfile(player)
 	local charData = profile and profile.Data.Character
+	local isMage = (charData and charData.ClassId == "Mage")
 	local weaponId = (charData and charData.EquippedEquipment and charData.EquippedEquipment.Weapon)
 		or (charData and charData.EquippedWeapon)
-		or "StandardSword"
+		or (isMage and "ApprenticeStaff" or "StandardSword")
 	local weaponItem = EquipmentData.Items[weaponId]
-	local baseDamage = (weaponItem and weaponItem.stats and weaponItem.stats.physicalDamage) or NORMAL_ATTACK_DAMAGE
+	local baseDamage = (weaponItem and weaponItem.stats and (weaponItem.stats.magicDamage or weaponItem.stats.physicalDamage)) or NORMAL_ATTACK_DAMAGE
 	local mult = getDamageMultiplier(player)
 	return math.floor(baseDamage * mult)
 end
@@ -237,8 +239,19 @@ local function onCastNormalAttack(player: Player, targetId: string?)
 		return
 	end
 
+	local profile = PlayerDataService.GetProfile(player)
+	local charData = profile and profile.Data.Character
+	local isMage = (charData and charData.ClassId == "Mage")
+	local weaponId = (charData and charData.EquippedEquipment and charData.EquippedEquipment.Weapon)
+		or (charData and charData.EquippedWeapon)
+		or (isMage and "ApprenticeStaff" or "StandardSword")
+	local isStaff = (weaponId == "ApprenticeStaff" or weaponId == "RockhideStaff")
+
+	local attackType = (isMage or isStaff) and "ArcaneBolt" or "Slash"
+	local attackRange = (isMage or isStaff) and 35 or NORMAL_ATTACK_RANGE
+
 	lastNormalAttackAt[player.UserId] = os.clock()
-	Net.Get("WeaponAttack"):FireAllClients(player.UserId, "Slash")
+	Net.Get("WeaponAttack"):FireAllClients(player.UserId, attackType)
 
 	local normalDmg = getPlayerNormalAttackDamage(player)
 
@@ -250,14 +263,14 @@ local function onCastNormalAttack(player: Player, targetId: string?)
 			local extents = targetEnemy.model:GetExtentsSize()
 			local radius = math.max(extents.X, extents.Z) * 0.5
 			local dist = (part.Position - rootPart.Position).Magnitude
-			if dist <= (NORMAL_ATTACK_RANGE + radius) then
+			if dist <= (attackRange + radius) then
 				targetEnemy.onDamaged(normalDmg, player)
 				return
 			end
 		end
 	end
 
-	-- 2. Proximity fallback: hit closest enemy in melee reach (great for untargeted swings / mobs moving)
+	-- 2. Proximity fallback: hit closest enemy in reach (great for untargeted casts / swings)
 	local closestEnemy = nil
 	local closestDist = math.huge
 	for _, e in pairs(enemies) do
@@ -267,7 +280,7 @@ local function onCastNormalAttack(player: Player, targetId: string?)
 				local extents = e.model:GetExtentsSize()
 				local radius = math.max(extents.X, extents.Z) * 0.5
 				local dist = (part.Position - rootPart.Position).Magnitude - radius
-				if dist <= NORMAL_ATTACK_RANGE and dist < closestDist then
+				if dist <= attackRange and dist < closestDist then
 					closestDist = dist
 					closestEnemy = e
 				end

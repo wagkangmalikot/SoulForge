@@ -13,6 +13,7 @@ local UserInputService = game:GetService("UserInputService")
 local Net = require(ReplicatedStorage.Shared.Net)
 local Skills = require(ReplicatedStorage.Shared.Data.Skills)
 local Classes = require(ReplicatedStorage.Shared.Data.Classes)
+local Equipment = require(ReplicatedStorage.Shared.Data.Equipment)
 local BossAttacks = require(ReplicatedStorage.Shared.Data.BossAttacks)
 local WeaponController = require(script.Parent.WeaponController)
 local SkillTreeUIController = require(script.Parent.SkillTreeUIController)
@@ -25,17 +26,17 @@ local HUDController = {}
 local TOTAL_SLOTS = 4
 local equippedSkills: {string} = {"Taunt"}
 
-local ATTACK_BUTTON_SIZE = 76   -- px circular primary action button
-local SKILL_BUTTON_SIZE  = 46   -- px compact skill buttons in radial arc
-local ATTACK_POS_X       = -135 -- px from right edge (leaves clear room for mobile jump button)
-local ATTACK_POS_Y       = -72  -- px from bottom edge
+local ATTACK_BUTTON_SIZE = 86   -- px circular primary action button
+local SKILL_BUTTON_SIZE  = 58   -- px compact skill buttons in radial arc
+local ATTACK_POS_X       = -148 -- px from right edge (leaves clear room for mobile jump button)
+local ATTACK_POS_Y       = -80  -- px from bottom edge
 
 -- Radial arc offsets relative to (ATTACK_POS_X, ATTACK_POS_Y)
 local SKILL_SLOT_OFFSETS = {
-	[1] = Vector2.new(-66, 0),     -- Slot 1 (Taunt): 9:00 (left)
-	[2] = Vector2.new(-50, -48),   -- Slot 2: 10:30 (up-left)
-	[3] = Vector2.new(0, -66),     -- Slot 3: 12:00 (up)
-	[4] = Vector2.new(48, -48),    -- Slot 4: 1:30 (up-right)
+	[1] = Vector2.new(-82, 0),     -- Slot 1 (Taunt): 9:00 (left)
+	[2] = Vector2.new(-62, -62),   -- Slot 2: 10:30 (up-left)
+	[3] = Vector2.new(0, -82),     -- Slot 3: 12:00 (up)
+	[4] = Vector2.new(62, -62),    -- Slot 4: 1:30 (up-right)
 }
 
 local TARGET_RAYCAST_DISTANCE = 500
@@ -54,6 +55,26 @@ local attackCdLabel: TextLabel? = nil
 
 local currentLevel = 1
 local levelBadgeText: TextLabel? = nil
+local currentClassId = "Tank"
+local attackIconLabel: TextLabel? = nil
+local classBadgeIcon: TextLabel? = nil
+local playerNameLabel: TextLabel? = nil
+
+local function updateClassVisuals()
+	local isMage = (currentClassId == "Mage")
+	if attackIconLabel then
+		attackIconLabel.Text = isMage and "🔮" or "⚔️"
+	end
+	if classBadgeIcon then
+		classBadgeIcon.Text = isMage and "🔮" or "🛡️"
+	end
+	if playerNameLabel then
+		local classTitle = isMage and "ARCANE MAGE" or "WARRIOR TANK"
+		local player = Players.LocalPlayer
+		local dName = (player and player.DisplayName) or "Hero"
+		playerNameLabel.Text = dName .. "  •  [" .. classTitle .. "]"
+	end
+end
 
 local function formatNumber(n: number): string
 	local formatted = tostring(math.floor(n))
@@ -254,8 +275,8 @@ local function fireSkill(skillId: string)
 	end
 
 	-- Auto-target nearest only if skill is a single-target enemy skill (e.g. ProvokingStrike, ShieldBash)
-	-- AoE and self buffs (Taunt, Earthshaker, IronWill, FortressAura) cast freely around the player
-	local isAoeOrSelf = (skillId == "Taunt" or skillId == "Earthshaker" or skillId == "IronWill" or skillId == "FortressAura")
+	-- AoE and self buffs (Taunt, Earthshaker, IronWill, FortressAura, Meteor, Blizzard) cast freely around the player / target area
+	local isAoeOrSelf = (skillId == "Taunt" or skillId == "Earthshaker" or skillId == "IronWill" or skillId == "FortressAura" or skillId == "Meteor" or skillId == "Blizzard")
 	if skill.range > 0 and not isAoeOrSelf then
 		if not selectedTargetId or not workspace:FindFirstChild(selectedTargetId, true) then
 			local nearestModel, nearestId = getNearestEnemy(60)
@@ -287,7 +308,7 @@ local function fireNormalAttack()
 	-- 1. Always play local weapon swing immediately for responsive feedback
 	local char = Players.LocalPlayer.Character
 	if char then
-		WeaponController.PlaySwing(char, "Slash")
+		WeaponController.PlaySwing(char, (currentClassId == "Mage") and "ArcaneBolt" or "Slash")
 	end
 
 	-- 2. Target resolution: use selected target if valid, or auto-target closest enemy in range (40 studs)
@@ -315,6 +336,7 @@ function HUDController.Start()
 	local screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "HUD"
 	screenGui.ResetOnSpawn = false
+	screenGui.Enabled = false
 	screenGui.Parent = playerGui
 
 	-- ── Responsive HUD Scale Containers (Scales up cleanly on Laptop & Desktop) ─
@@ -404,7 +426,7 @@ function HUDController.Start()
 	-- ── Player Unit Frame (Top-Left: leaves bottom-left 100% free for mobile joystick) ─
 	local playerFrame = Instance.new("Frame")
 	playerFrame.Name = "PlayerUnitFrame"
-	playerFrame.Size = UDim2.new(0, 240, 0, 46)
+	playerFrame.Size = UDim2.new(0, 280, 0, 58)
 	playerFrame.Position = UDim2.new(0, 16, 0, 48)
 	playerFrame.BackgroundColor3 = Color3.fromRGB(16, 18, 26)
 	playerFrame.BackgroundTransparency = 0.15
@@ -429,8 +451,8 @@ function HUDController.Start()
 	-- Level / Class Shield Badge (Left)
 	local levelBadge = Instance.new("Frame")
 	levelBadge.Name = "LevelBadge"
-	levelBadge.Size = UDim2.new(0, 36, 0, 36)
-	levelBadge.Position = UDim2.new(0, 5, 0.5, -18)
+	levelBadge.Size = UDim2.new(0, 44, 0, 44)
+	levelBadge.Position = UDim2.new(0, 6, 0.5, -22)
 	levelBadge.BackgroundColor3 = Color3.fromRGB(22, 26, 36)
 	levelBadge.BorderSizePixel = 0
 	levelBadge.Parent = playerFrame
@@ -452,6 +474,7 @@ function HUDController.Start()
 	badgeIcon.Text = "🛡️"
 	badgeIcon.TextScaled = true
 	badgeIcon.Parent = levelBadge
+	classBadgeIcon = badgeIcon
 
 	local levelLabel = Instance.new("TextLabel")
 	levelLabel.Name = "LevelText"
@@ -468,25 +491,26 @@ function HUDController.Start()
 	levelBadgeText = levelLabel
 
 	-- Player Name & Class Subtitle
-	local playerNameLabel = Instance.new("TextLabel")
+	playerNameLabel = Instance.new("TextLabel")
 	playerNameLabel.Name = "PlayerName"
-	playerNameLabel.Size = UDim2.new(1, -48, 0, 14)
-	playerNameLabel.Position = UDim2.new(0, 46, 0, 4)
+	playerNameLabel.Size = UDim2.new(1, -58, 0, 20)
+	playerNameLabel.Position = UDim2.new(0, 56, 0, 4)
 	playerNameLabel.BackgroundTransparency = 1
 	playerNameLabel.Font = Enum.Font.GothamBold
-	playerNameLabel.TextSize = 11
+	playerNameLabel.TextSize = 15.5
 	playerNameLabel.TextColor3 = Color3.fromRGB(240, 242, 248)
 	playerNameLabel.TextStrokeColor3 = Color3.fromRGB(12, 14, 18)
 	playerNameLabel.TextStrokeTransparency = 0.3
 	playerNameLabel.TextXAlignment = Enum.TextXAlignment.Left
 	playerNameLabel.Text = player.DisplayName .. "  •  [WARRIOR TANK]"
 	playerNameLabel.Parent = playerFrame
+	updateClassVisuals()
 
 	-- Health Bar Container
 	local playerHealthBg = Instance.new("Frame")
 	playerHealthBg.Name = "HealthBg"
-	playerHealthBg.Size = UDim2.new(1, -50, 0, 18)
-	playerHealthBg.Position = UDim2.new(0, 46, 0, 21)
+	playerHealthBg.Size = UDim2.new(1, -58, 0, 24)
+	playerHealthBg.Position = UDim2.new(0, 56, 0, 26)
 	playerHealthBg.BackgroundColor3 = Color3.fromRGB(10, 12, 16)
 	playerHealthBg.BorderSizePixel = 0
 	playerHealthBg.ClipsDescendants = true
@@ -552,7 +576,7 @@ function HUDController.Start()
 	playerHealthText.Position = UDim2.new(0, 0, 0, 0)
 	playerHealthText.BackgroundTransparency = 1
 	playerHealthText.Font = Enum.Font.GothamBold
-	playerHealthText.TextSize = 11
+	playerHealthText.TextSize = 14
 	playerHealthText.TextColor3 = Color3.fromRGB(255, 255, 255)
 	playerHealthText.TextStrokeColor3 = Color3.fromRGB(12, 15, 14)
 	playerHealthText.TextStrokeTransparency = 0.2
@@ -564,7 +588,7 @@ function HUDController.Start()
 	local bossHealthContainer = Instance.new("Frame")
 	bossHealthContainer.Name = "BossHealthContainer"
 	bossHealthContainer.AnchorPoint = Vector2.new(0.5, 0)
-	bossHealthContainer.Size = UDim2.new(0, 280, 0, 32)
+	bossHealthContainer.Size = UDim2.new(0, 380, 0, 50)
 	bossHealthContainer.Position = UDim2.new(0, 0, 0, 8)
 	bossHealthContainer.BackgroundTransparency = 1
 	bossHealthContainer.Visible = false
@@ -573,7 +597,7 @@ function HUDController.Start()
 	-- Boss Title Header Card
 	local bossHeader = Instance.new("Frame")
 	bossHeader.Name = "BossHeader"
-	bossHeader.Size = UDim2.new(1, 0, 0, 15)
+	bossHeader.Size = UDim2.new(1, 0, 0, 20)
 	bossHeader.Position = UDim2.new(0, 0, 0, 0)
 	bossHeader.BackgroundTransparency = 1
 	bossHeader.Parent = bossHealthContainer
@@ -584,7 +608,7 @@ function HUDController.Start()
 	bossNameLabel.Position = UDim2.new(0, 0, 0, 0)
 	bossNameLabel.BackgroundTransparency = 1
 	bossNameLabel.Font = Enum.Font.GothamBold
-	bossNameLabel.TextSize = 11
+	bossNameLabel.TextSize = 15.5
 	bossNameLabel.TextColor3 = Color3.fromRGB(255, 220, 110)
 	bossNameLabel.TextStrokeColor3 = Color3.fromRGB(15, 15, 22)
 	bossNameLabel.TextStrokeTransparency = 0.2
@@ -594,15 +618,15 @@ function HUDController.Start()
 	-- Boss Bar Background Plate
 	local bossHealthBg = Instance.new("Frame")
 	bossHealthBg.Name = "BarBg"
-	bossHealthBg.Size = UDim2.new(1, 0, 0, 14)
-	bossHealthBg.Position = UDim2.new(0, 0, 0, 16)
+	bossHealthBg.Size = UDim2.new(1, 0, 0, 22)
+	bossHealthBg.Position = UDim2.new(0, 0, 0, 22)
 	bossHealthBg.BackgroundColor3 = Color3.fromRGB(16, 18, 24)
 	bossHealthBg.BorderSizePixel = 0
 	bossHealthBg.ClipsDescendants = true
 	bossHealthBg.Parent = bossHealthContainer
 
 	local bossBgCorner = Instance.new("UICorner")
-	bossBgCorner.CornerRadius = UDim.new(0, 4)
+	bossBgCorner.CornerRadius = UDim.new(0, 5)
 	bossBgCorner.Parent = bossHealthBg
 
 	local bossBgStroke = Instance.new("UIStroke")
@@ -663,7 +687,7 @@ function HUDController.Start()
 	bossHealthText.Position = UDim2.new(0, 0, 0, 0)
 	bossHealthText.BackgroundTransparency = 1
 	bossHealthText.Font = Enum.Font.GothamBold
-	bossHealthText.TextSize = 10
+	bossHealthText.TextSize = 14
 	bossHealthText.TextColor3 = Color3.fromRGB(255, 255, 255)
 	bossHealthText.TextStrokeColor3 = Color3.fromRGB(20, 10, 10)
 	bossHealthText.TextStrokeTransparency = 0.2
@@ -737,18 +761,35 @@ function HUDController.Start()
 		bossHealthContainer.Visible = false
 	end)
 
-	Net.Get("CharacterDataChanged").OnClientEvent:Connect(function(level, _unspentEXP)
+	Net.Get("CharacterDataChanged").OnClientEvent:Connect(function(level, _unspentEXP, classId)
 		currentLevel = level
+		if classId and type(classId) == "string" then
+			currentClassId = classId
+			updateClassVisuals()
+		end
 		if levelBadgeText then
 			levelBadgeText.Text = "Lv. " .. tostring(level)
+		end
+	end)
+
+	Net.Get("EquipmentDataChanged").OnClientEvent:Connect(function(equippedTable)
+		if equippedTable and equippedTable.Weapon then
+			local eq = Equipment.Items[equippedTable.Weapon]
+			if eq and eq.archetype == "Mage" then
+				currentClassId = "Mage"
+				updateClassVisuals()
+			elseif eq and eq.archetype == "Tank" then
+				currentClassId = "Tank"
+				updateClassVisuals()
+			end
 		end
 	end)
 
 	-- ── Dungeon Objective Tracker (Top-Left, below Player Unit Frame) ─────────
 	local objectiveCard = Instance.new("Frame")
 	objectiveCard.Name = "DungeonObjectiveCard"
-	objectiveCard.Size = UDim2.new(0, 240, 0, 56)
-	objectiveCard.Position = UDim2.new(0, 16, 0, 100)
+	objectiveCard.Size = UDim2.new(0, 280, 0, 76)
+	objectiveCard.Position = UDim2.new(0, 16, 0, 114)
 	objectiveCard.BackgroundColor3 = Color3.fromRGB(16, 20, 28)
 	objectiveCard.BackgroundTransparency = 0.15
 	objectiveCard.BorderSizePixel = 0
@@ -771,34 +812,34 @@ function HUDController.Start()
 	objStroke.Parent = objectiveCard
 
 	local objHeader = Instance.new("TextLabel")
-	objHeader.Size = UDim2.new(1, -16, 0, 16)
-	objHeader.Position = UDim2.new(0, 8, 0, 4)
+	objHeader.Size = UDim2.new(1, -16, 0, 20)
+	objHeader.Position = UDim2.new(0, 8, 0, 5)
 	objHeader.BackgroundTransparency = 1
 	objHeader.TextColor3 = Color3.fromRGB(255, 215, 80)
 	objHeader.TextStrokeColor3 = Color3.fromRGB(10, 12, 16)
 	objHeader.TextStrokeTransparency = 0.2
 	objHeader.Font = Enum.Font.GothamBold
-	objHeader.TextSize = 11
+	objHeader.TextSize = 14.5
 	objHeader.TextXAlignment = Enum.TextXAlignment.Left
 	objHeader.Text = "📜 DUNGEON OBJECTIVE"
 	objHeader.Parent = objectiveCard
 
 	local objDesc = Instance.new("TextLabel")
-	objDesc.Size = UDim2.new(1, -16, 0, 16)
-	objDesc.Position = UDim2.new(0, 8, 0, 19)
+	objDesc.Size = UDim2.new(1, -16, 0, 20)
+	objDesc.Position = UDim2.new(0, 8, 0, 26)
 	objDesc.BackgroundTransparency = 1
 	objDesc.TextColor3 = Color3.fromRGB(240, 242, 250)
 	objDesc.TextStrokeColor3 = Color3.fromRGB(10, 12, 16)
 	objDesc.TextStrokeTransparency = 0.3
 	objDesc.Font = Enum.Font.GothamMedium
-	objDesc.TextSize = 10
+	objDesc.TextSize = 13.5
 	objDesc.TextXAlignment = Enum.TextXAlignment.Left
 	objDesc.Text = "Slay Dungeon Guardians (0 / 10)"
 	objDesc.Parent = objectiveCard
 
 	local objProgressBg = Instance.new("Frame")
-	objProgressBg.Size = UDim2.new(1, -16, 0, 8)
-	objProgressBg.Position = UDim2.new(0, 8, 0, 39)
+	objProgressBg.Size = UDim2.new(1, -16, 0, 12)
+	objProgressBg.Position = UDim2.new(0, 8, 0, 52)
 	objProgressBg.BackgroundColor3 = Color3.fromRGB(10, 12, 16)
 	objProgressBg.BorderSizePixel = 0
 	objProgressBg.ClipsDescendants = true
@@ -1050,7 +1091,7 @@ function HUDController.Start()
 		distLabel.Position = UDim2.new(0, 4, 0, 0)
 		distLabel.BackgroundTransparency = 1
 		distLabel.Font = Enum.Font.GothamBold
-		distLabel.TextSize = 12
+		distLabel.TextSize = 14
 		distLabel.TextColor3 = Color3.fromRGB(255, 235, 100)
 		distLabel.TextStrokeColor3 = Color3.fromRGB(15, 10, 0)
 		distLabel.TextStrokeTransparency = 0.3
@@ -1116,7 +1157,7 @@ function HUDController.Start()
 
 		local gateBb = Instance.new("BillboardGui")
 		gateBb.Name = "GateBillboard"
-		gateBb.Size = UDim2.new(0, 240, 0, 56)
+		gateBb.Size = UDim2.new(0, 260, 0, 68)
 		gateBb.StudsOffset = Vector3.new(0, 3.2, 0)
 		gateBb.AlwaysOnTop = true
 		gateBb.MaxDistance = 250
@@ -1142,7 +1183,7 @@ function HUDController.Start()
 		gateArrowIcon.Position = UDim2.new(0, 0, 0.02, 0)
 		gateArrowIcon.BackgroundTransparency = 1
 		gateArrowIcon.Font = Enum.Font.GothamBold
-		gateArrowIcon.TextSize = 16
+		gateArrowIcon.TextSize = 17
 		gateArrowIcon.TextColor3 = Color3.fromRGB(255, 220, 60)
 		gateArrowIcon.Text = "▼  ENTER CHAMBER  ▼"
 		gateArrowIcon.Parent = gateBg
@@ -1152,7 +1193,7 @@ function HUDController.Start()
 		gateTitle.Position = UDim2.new(0, 0, 0.36, 0)
 		gateTitle.BackgroundTransparency = 1
 		gateTitle.Font = Enum.Font.GothamBold
-		gateTitle.TextSize = 13
+		gateTitle.TextSize = 15
 		gateTitle.TextColor3 = Color3.fromRGB(255, 240, 150)
 		gateTitle.Text = "⚡ BOSS GATE UNLOCKED ⚡"
 		gateTitle.Parent = gateBg
@@ -1162,7 +1203,7 @@ function HUDController.Start()
 		gateSub.Position = UDim2.new(0, 0, 0.7, 0)
 		gateSub.BackgroundTransparency = 1
 		gateSub.Font = Enum.Font.Gotham
-		gateSub.TextSize = 10
+		gateSub.TextSize = 13.5
 		gateSub.TextColor3 = Color3.fromRGB(200, 205, 220)
 		gateSub.Text = "[Approach to Awaken Rockhide]"
 		gateSub.Parent = gateBg
@@ -1405,7 +1446,7 @@ function HUDController.Start()
 	innerRingStroke.Transparency = 0.4
 	innerRingStroke.Parent = innerRing
 
-	-- Attack Icon (⚔️)
+	-- Attack Icon (⚔️ / 🔮)
 	local attackIcon = Instance.new("TextLabel")
 	attackIcon.Name = "Icon"
 	attackIcon.Size = UDim2.new(1, 0, 0.44, 0)
@@ -1415,6 +1456,8 @@ function HUDController.Start()
 	attackIcon.TextScaled = true
 	attackIcon.ZIndex = 2
 	attackIcon.Parent = attackFrame
+	attackIconLabel = attackIcon
+	updateClassVisuals()
 
 	-- Attack Label
 	local attackLabel = Instance.new("TextLabel")
@@ -1426,7 +1469,7 @@ function HUDController.Start()
 	attackLabel.TextStrokeColor3 = Color3.fromRGB(20, 10, 10)
 	attackLabel.TextStrokeTransparency = 0.2
 	attackLabel.Font = Enum.Font.GothamBlack
-	attackLabel.TextSize = 10
+	attackLabel.TextSize = 13.5
 	attackLabel.TextScaled = false
 	attackLabel.Text = "ATTACK"
 	attackLabel.ZIndex = 2
@@ -1492,12 +1535,12 @@ function HUDController.Start()
 	local skillsMenuBtn = Instance.new("TextButton")
 	skillsMenuBtn.Name = "SkillsMenuButton"
 	skillsMenuBtn.AnchorPoint = Vector2.new(1, 0)
-	skillsMenuBtn.Size = UDim2.new(0, 96, 0, 32)
+	skillsMenuBtn.Size = UDim2.new(0, 116, 0, 38)
 	skillsMenuBtn.Position = UDim2.new(0, -16, 0, 48)
 	skillsMenuBtn.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
 	skillsMenuBtn.BorderSizePixel = 0
 	skillsMenuBtn.Font = Enum.Font.GothamBold
-	skillsMenuBtn.TextSize = 12
+	skillsMenuBtn.TextSize = 15.5
 	skillsMenuBtn.TextColor3 = Color3.fromRGB(255, 225, 90)
 	skillsMenuBtn.Text = "SKILLS"
 	skillsMenuBtn.Parent = topRightContainer
@@ -1520,12 +1563,12 @@ function HUDController.Start()
 	local inventoryBtn = Instance.new("TextButton")
 	inventoryBtn.Name = "InventoryMenuButton"
 	inventoryBtn.AnchorPoint = Vector2.new(1, 0)
-	inventoryBtn.Size = UDim2.new(0, 114, 0, 32)
-	inventoryBtn.Position = UDim2.new(0, -120, 0, 48)
+	inventoryBtn.Size = UDim2.new(0, 136, 0, 38)
+	inventoryBtn.Position = UDim2.new(0, -140, 0, 48)
 	inventoryBtn.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
 	inventoryBtn.BorderSizePixel = 0
 	inventoryBtn.Font = Enum.Font.GothamBold
-	inventoryBtn.TextSize = 12
+	inventoryBtn.TextSize = 15.5
 	inventoryBtn.TextColor3 = Color3.fromRGB(255, 185, 65)
 	inventoryBtn.Text = "INVENTORY"
 	inventoryBtn.Parent = topRightContainer
@@ -1577,7 +1620,7 @@ function HUDController.Start()
 		-- Desktop Hotkey Pill (1, 2, 3, 4)
 		local hotkeyBadge = Instance.new("Frame")
 		hotkeyBadge.Name = "HotkeyBadge"
-		hotkeyBadge.Size = UDim2.new(0, 12, 0, 12)
+		hotkeyBadge.Size = UDim2.new(0, 18, 0, 18)
 		hotkeyBadge.Position = UDim2.new(0, 2, 0, 2)
 		hotkeyBadge.BackgroundColor3 = Color3.fromRGB(10, 12, 16)
 		hotkeyBadge.BackgroundTransparency = 0.2
@@ -1586,14 +1629,14 @@ function HUDController.Start()
 		hotkeyBadge.Parent = frame
 
 		local hkCorner = Instance.new("UICorner")
-		hkCorner.CornerRadius = UDim.new(0, 3)
+		hkCorner.CornerRadius = UDim.new(0, 4)
 		hkCorner.Parent = hotkeyBadge
 
 		local hkText = Instance.new("TextLabel")
 		hkText.Size = UDim2.new(1, 0, 1, 0)
 		hkText.BackgroundTransparency = 1
 		hkText.Font = Enum.Font.GothamBold
-		hkText.TextSize = 8
+		hkText.TextSize = 12
 		hkText.TextColor3 = Color3.fromRGB(240, 205, 90)
 		hkText.Text = tostring(i)
 		hkText.ZIndex = 5
@@ -1616,8 +1659,8 @@ function HUDController.Start()
 		-- Skill Name Banner Plate
 		local namePlate = Instance.new("Frame")
 		namePlate.Name = "NamePlate"
-		namePlate.Size = UDim2.new(1, 0, 0.28, 0)
-		namePlate.Position = UDim2.new(0, 0, 0.72, 0)
+		namePlate.Size = UDim2.new(1, 0, 0.32, 0)
+		namePlate.Position = UDim2.new(0, 0, 0.68, 0)
 		namePlate.BackgroundColor3 = Color3.fromRGB(10, 12, 16)
 		namePlate.BackgroundTransparency = 0.35
 		namePlate.BorderSizePixel = 0
@@ -1636,7 +1679,7 @@ function HUDController.Start()
 		nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 		nameLabel.TextStrokeTransparency = 0.2
 		nameLabel.Font = Enum.Font.GothamBold
-		nameLabel.TextSize = 9
+		nameLabel.TextSize = 12
 		nameLabel.TextScaled = false
 		nameLabel.Text = ""
 		nameLabel.ZIndex = 4
@@ -1718,7 +1761,7 @@ function HUDController.Start()
 
 	-- ── Input Handling (Keyboard Shortcuts, Mouse Click, Mobile Touch) ─────────
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
-		if gameProcessed then
+		if gameProcessed or not screenGui.Enabled then
 			return
 		end
 
@@ -1777,6 +1820,10 @@ function HUDController.Start()
 
 	-- ── Per-Frame Cooldown & Lock Display Loop ────────────────────────────────
 	RunService.Heartbeat:Connect(function()
+		if not screenGui.Enabled then
+			return
+		end
+
 		local now = os.clock()
 
 		-- Attack button cooldown
@@ -1816,6 +1863,43 @@ function HUDController.Start()
 				cdLabel.Text = ""
 				dimOverlay.BackgroundTransparency = 1
 			end
+		end
+	end)
+
+	-- ── Character Lifecycle and Login/HUD Visibility Sync ────────────────────
+	local function checkVisibility()
+		local charCreationGui = playerGui:FindFirstChild("CharacterCreation")
+		local isCreating = charCreationGui and charCreationGui:IsA("ScreenGui") and charCreationGui.Enabled
+		local hasChar = player.Character and player.Character.Parent ~= nil
+		screenGui.Enabled = (hasChar and not isCreating) == true
+	end
+
+	player.CharacterAdded:Connect(function()
+		local charCreationGui = playerGui:FindFirstChild("CharacterCreation")
+		local isCreating = charCreationGui and charCreationGui:IsA("ScreenGui") and charCreationGui.Enabled
+		screenGui.Enabled = not isCreating
+		updateClassVisuals()
+	end)
+
+	player.CharacterRemoving:Connect(function()
+		screenGui.Enabled = false
+	end)
+
+	checkVisibility()
+
+	task.spawn(function()
+		local charCreationGui = playerGui:WaitForChild("CharacterCreation", 5)
+		if charCreationGui and charCreationGui:IsA("ScreenGui") then
+			charCreationGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+				if charCreationGui.Enabled then
+					screenGui.Enabled = false
+				else
+					if player.Character and player.Character.Parent then
+						screenGui.Enabled = true
+					end
+				end
+			end)
+			checkVisibility()
 		end
 	end)
 end

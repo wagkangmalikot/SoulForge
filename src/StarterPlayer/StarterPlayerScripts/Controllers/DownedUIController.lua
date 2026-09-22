@@ -63,8 +63,8 @@ function DownedUIController.Start()
 	local downedCard = Instance.new("Frame")
 	downedCard.Name = "DownedCard"
 	downedCard.AnchorPoint = Vector2.new(0.5, 0)
-	downedCard.Size = UDim2.new(0, 380, 0, 48)
-	downedCard.Position = UDim2.new(0.5, 0, 0.24, 0)
+	downedCard.Size = UDim2.new(0, 420, 0, 56)
+	downedCard.Position = UDim2.new(0.5, 0, 0.22, 0)
 	downedCard.BackgroundColor3 = Color3.fromRGB(22, 12, 14)
 	downedCard.BackgroundTransparency = 0.18
 	downedCard.BorderSizePixel = 0
@@ -82,7 +82,7 @@ function DownedUIController.Start()
 	downedStroke.Parent = downedCard
 
 	local downedIcon = Instance.new("TextLabel")
-	downedIcon.Size = UDim2.new(0, 36, 1, 0)
+	downedIcon.Size = UDim2.new(0, 40, 1, 0)
 	downedIcon.Position = UDim2.new(0, 6, 0, 0)
 	downedIcon.BackgroundTransparency = 1
 	downedIcon.Text = "⚠️"
@@ -90,11 +90,11 @@ function DownedUIController.Start()
 	downedIcon.Parent = downedCard
 
 	local downedTitle = Instance.new("TextLabel")
-	downedTitle.Size = UDim2.new(1, -48, 0, 20)
-	downedTitle.Position = UDim2.new(0, 44, 0, 5)
+	downedTitle.Size = UDim2.new(1, -54, 0, 22)
+	downedTitle.Position = UDim2.new(0, 48, 0, 6)
 	downedTitle.BackgroundTransparency = 1
 	downedTitle.Font = Enum.Font.GothamBold
-	downedTitle.TextSize = 13
+	downedTitle.TextSize = 15.5
 	downedTitle.TextColor3 = Color3.fromRGB(255, 80, 75)
 	downedTitle.TextStrokeColor3 = Color3.fromRGB(15, 8, 8)
 	downedTitle.TextStrokeTransparency = 0.2
@@ -103,11 +103,11 @@ function DownedUIController.Start()
 	downedTitle.Parent = downedCard
 
 	local downedSub = Instance.new("TextLabel")
-	downedSub.Size = UDim2.new(1, -48, 0, 16)
-	downedSub.Position = UDim2.new(0, 44, 0, 25)
+	downedSub.Size = UDim2.new(1, -54, 0, 20)
+	downedSub.Position = UDim2.new(0, 48, 0, 28)
 	downedSub.BackgroundTransparency = 1
 	downedSub.Font = Enum.Font.GothamMedium
-	downedSub.TextSize = 11
+	downedSub.TextSize = 13.5
 	downedSub.TextColor3 = Color3.fromRGB(215, 185, 185)
 	downedSub.TextStrokeColor3 = Color3.fromRGB(15, 8, 8)
 	downedSub.TextStrokeTransparency = 0.3
@@ -119,7 +119,7 @@ function DownedUIController.Start()
 	local reviveBarBackground = Instance.new("Frame")
 	reviveBarBackground.Name = "ReviveBar"
 	reviveBarBackground.AnchorPoint = Vector2.new(0.5, 0)
-	reviveBarBackground.Size = UDim2.new(0, 320, 0, 28)
+	reviveBarBackground.Size = UDim2.new(0, 360, 0, 32)
 	reviveBarBackground.Position = UDim2.new(0.5, 0, 0.32, 0)
 	reviveBarBackground.BackgroundColor3 = Color3.fromRGB(16, 20, 28)
 	reviveBarBackground.BackgroundTransparency = 0.15
@@ -155,7 +155,7 @@ function DownedUIController.Start()
 	reviveLabel.Position = UDim2.new(0, 6, 0, 0)
 	reviveLabel.BackgroundTransparency = 1
 	reviveLabel.Font = Enum.Font.GothamBold
-	reviveLabel.TextSize = 11
+	reviveLabel.TextSize = 14.5
 	reviveLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	reviveLabel.TextStrokeColor3 = Color3.fromRGB(10, 14, 20)
 	reviveLabel.TextStrokeTransparency = 0.2
@@ -179,7 +179,7 @@ function DownedUIController.Start()
 	local resultModal = Instance.new("Frame")
 	resultModal.Name = "ResultModal"
 	resultModal.AnchorPoint = Vector2.new(0.5, 0.5)
-	resultModal.Size = UDim2.new(0, 460, 0, 260)
+	resultModal.Size = UDim2.new(0, 480, 0, 285)
 	resultModal.Position = UDim2.new(0.5, 0, 0.48, 0)
 	resultModal.BackgroundColor3 = Color3.fromRGB(16, 20, 28)
 	resultModal.BorderSizePixel = 0
@@ -235,11 +235,11 @@ function DownedUIController.Start()
 	-- Header Title
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Name = "TitleLabel"
-	titleLabel.Size = UDim2.new(1, 0, 0, 28)
+	titleLabel.Size = UDim2.new(1, 0, 0, 30)
 	titleLabel.Position = UDim2.new(0, 0, 0, 36)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.Font = Enum.Font.GothamBlack
-	titleLabel.TextSize = 22
+	titleLabel.TextSize = 24
 	titleLabel.TextColor3 = Color3.fromRGB(255, 225, 90)
 	titleLabel.TextStrokeColor3 = Color3.fromRGB(20, 12, 4)
 	titleLabel.TextStrokeTransparency = 0.2
@@ -250,11 +250,11 @@ function DownedUIController.Start()
 	-- Subtitle
 	local subtitleLabel = Instance.new("TextLabel")
 	subtitleLabel.Name = "SubtitleLabel"
-	subtitleLabel.Size = UDim2.new(1, -32, 0, 16)
-	subtitleLabel.Position = UDim2.new(0, 16, 0, 65)
+	subtitleLabel.Size = UDim2.new(1, -32, 0, 20)
+	subtitleLabel.Position = UDim2.new(0, 16, 0, 68)
 	subtitleLabel.BackgroundTransparency = 1
 	subtitleLabel.Font = Enum.Font.GothamMedium
-	subtitleLabel.TextSize = 12
+	subtitleLabel.TextSize = 15
 	subtitleLabel.TextColor3 = Color3.fromRGB(215, 205, 175)
 	subtitleLabel.TextStrokeColor3 = Color3.fromRGB(15, 15, 20)
 	subtitleLabel.TextStrokeTransparency = 0.3
@@ -266,7 +266,7 @@ function DownedUIController.Start()
 	local divider = Instance.new("Frame")
 	divider.Name = "Divider"
 	divider.Size = UDim2.new(0.86, 0, 0, 1.5)
-	divider.Position = UDim2.new(0.07, 0, 0, 86)
+	divider.Position = UDim2.new(0.07, 0, 0, 92)
 	divider.BackgroundColor3 = Color3.fromRGB(240, 195, 75)
 	divider.BackgroundTransparency = 0.35
 	divider.BorderSizePixel = 0
@@ -286,8 +286,8 @@ function DownedUIController.Start()
 	-- Rewards Inset Box
 	local rewardsPanel = Instance.new("Frame")
 	rewardsPanel.Name = "RewardsPanel"
-	rewardsPanel.Size = UDim2.new(1, -36, 0, 88)
-	rewardsPanel.Position = UDim2.new(0, 18, 0, 96)
+	rewardsPanel.Size = UDim2.new(1, -36, 0, 98)
+	rewardsPanel.Position = UDim2.new(0, 18, 0, 102)
 	rewardsPanel.BackgroundColor3 = Color3.fromRGB(11, 14, 20)
 	rewardsPanel.BackgroundTransparency = 0.35
 	rewardsPanel.BorderSizePixel = 0
@@ -306,11 +306,11 @@ function DownedUIController.Start()
 
 	local rewHeader = Instance.new("TextLabel")
 	rewHeader.Name = "RewardsHeader"
-	rewHeader.Size = UDim2.new(1, -16, 0, 16)
+	rewHeader.Size = UDim2.new(1, -16, 0, 20)
 	rewHeader.Position = UDim2.new(0, 10, 0, 6)
 	rewHeader.BackgroundTransparency = 1
 	rewHeader.Font = Enum.Font.GothamBold
-	rewHeader.TextSize = 10
+	rewHeader.TextSize = 14
 	rewHeader.TextColor3 = Color3.fromRGB(245, 205, 100)
 	rewHeader.TextStrokeColor3 = Color3.fromRGB(10, 12, 16)
 	rewHeader.TextStrokeTransparency = 0.3
@@ -322,8 +322,8 @@ function DownedUIController.Start()
 	-- 3 Reward Badges Container (EXP, Fragments, Gold)
 	local badgesContainer = Instance.new("Frame")
 	badgesContainer.Name = "BadgesContainer"
-	badgesContainer.Size = UDim2.new(1, -20, 0, 32)
-	badgesContainer.Position = UDim2.new(0, 10, 0, 26)
+	badgesContainer.Size = UDim2.new(1, -20, 0, 36)
+	badgesContainer.Position = UDim2.new(0, 10, 0, 28)
 	badgesContainer.BackgroundTransparency = 1
 	badgesContainer.ZIndex = 13
 	badgesContainer.Parent = rewardsPanel
@@ -358,7 +358,7 @@ function DownedUIController.Start()
 		pLabel.Position = UDim2.new(0, 3, 0, 0)
 		pLabel.BackgroundTransparency = 1
 		pLabel.Font = Enum.Font.GothamBold
-		pLabel.TextSize = 11
+		pLabel.TextSize = 14.5
 		pLabel.TextColor3 = textCol
 		pLabel.TextStrokeColor3 = Color3.fromRGB(10, 12, 16)
 		pLabel.TextStrokeTransparency = 0.3
@@ -372,11 +372,11 @@ function DownedUIController.Start()
 
 	local rewSubline = Instance.new("TextLabel")
 	rewSubline.Name = "RewardsSubline"
-	rewSubline.Size = UDim2.new(1, -16, 0, 16)
-	rewSubline.Position = UDim2.new(0, 10, 0, 64)
+	rewSubline.Size = UDim2.new(1, -16, 0, 18)
+	rewSubline.Position = UDim2.new(0, 10, 0, 70)
 	rewSubline.BackgroundTransparency = 1
 	rewSubline.Font = Enum.Font.GothamMedium
-	rewSubline.TextSize = 10
+	rewSubline.TextSize = 13.5
 	rewSubline.TextColor3 = Color3.fromRGB(160, 225, 175)
 	rewSubline.TextStrokeColor3 = Color3.fromRGB(10, 12, 16)
 	rewSubline.TextStrokeTransparency = 0.3
@@ -387,19 +387,19 @@ function DownedUIController.Start()
 	-- Countdown & Progress Bar to Hub Return
 	local countdownContainer = Instance.new("Frame")
 	countdownContainer.Name = "CountdownContainer"
-	countdownContainer.Size = UDim2.new(1, -36, 0, 48)
-	countdownContainer.Position = UDim2.new(0, 18, 0, 196)
+	countdownContainer.Size = UDim2.new(1, -36, 0, 52)
+	countdownContainer.Position = UDim2.new(0, 18, 0, 214)
 	countdownContainer.BackgroundTransparency = 1
 	countdownContainer.ZIndex = 12
 	countdownContainer.Parent = resultModal
 
 	local countdownLabel = Instance.new("TextLabel")
 	countdownLabel.Name = "CountdownLabel"
-	countdownLabel.Size = UDim2.new(1, 0, 0, 18)
+	countdownLabel.Size = UDim2.new(1, 0, 0, 20)
 	countdownLabel.Position = UDim2.new(0, 0, 0, 2)
 	countdownLabel.BackgroundTransparency = 1
 	countdownLabel.Font = Enum.Font.GothamBold
-	countdownLabel.TextSize = 11
+	countdownLabel.TextSize = 14.5
 	countdownLabel.TextColor3 = Color3.fromRGB(215, 220, 235)
 	countdownLabel.TextStrokeColor3 = Color3.fromRGB(12, 14, 18)
 	countdownLabel.TextStrokeTransparency = 0.3
@@ -409,8 +409,8 @@ function DownedUIController.Start()
 
 	local progressBarBg = Instance.new("Frame")
 	progressBarBg.Name = "ProgressBarBg"
-	progressBarBg.Size = UDim2.new(1, 0, 0, 6)
-	progressBarBg.Position = UDim2.new(0, 0, 0, 26)
+	progressBarBg.Size = UDim2.new(1, 0, 0, 8)
+	progressBarBg.Position = UDim2.new(0, 0, 0, 28)
 	progressBarBg.BackgroundColor3 = Color3.fromRGB(12, 14, 18)
 	progressBarBg.BorderSizePixel = 0
 	progressBarBg.ClipsDescendants = true

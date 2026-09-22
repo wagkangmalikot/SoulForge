@@ -92,6 +92,8 @@ local function leaveParty(player: Player)
 
 	if #party.members == 0 then
 		parties[partyId] = nil
+		-- Notify the leaving player to clear their party UI
+		Net.Get("PartyUpdated"):FireClient(player, nil, nil, {})
 		return
 	end
 

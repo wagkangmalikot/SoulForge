@@ -224,54 +224,61 @@ local function updateResponsiveScale()
 	if isMob then
 		-- Mobile layout: full-screen touch fit respecting Roblox topbar insets
 		modalScale.Scale = 1.0
-		modalFrame.Size = UDim2.new(0.98, 0, 0.96, 0)
-		modalFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+		modalFrame.Size = UDim2.new(0.96, 0, 0.86, 0)
+		modalFrame.Position = UDim2.new(0.5, 0, 0.5, 26)
 
 		if headerBar then
-			headerBar.Size = UDim2.new(1, 0, 0, 42)
+			headerBar.Size = UDim2.new(1, 0, 0, 52)
 		end
 		if titleLabel then
-			titleLabel.Size = UDim2.new(0.5, 0, 1, 0)
-			titleLabel.Position = UDim2.new(0, 12, 0, 0)
-			titleLabel.TextSize = 14
+			titleLabel.Size = UDim2.new(0.52, 0, 1, 0)
+			titleLabel.Position = UDim2.new(0, 16, 0, 0)
+			titleLabel.TextSize = 20
 			titleLabel.Text = getClassTitleText(true)
 		end
 		if pointsPill then
-			pointsPill.Size = UDim2.new(0, 126, 0, 28)
-			pointsPill.Position = UDim2.new(1, -168, 0.5, -14)
+			pointsPill.Size = UDim2.new(0, 156, 0, 36)
+			pointsPill.Position = UDim2.new(1, -206, 0.5, -18)
 		end
 		if pillLabel then
-			pillLabel.Size = UDim2.new(0.64, 0, 1, 0)
+			pillLabel.Size = UDim2.new(0.60, 0, 1, 0)
 			pillLabel.Position = UDim2.new(0, 8, 0, 0)
-			pillLabel.TextSize = 11
+			pillLabel.TextSize = 14.5
 			pillLabel.Text = "POINTS:"
 		end
 		if pointsValueLabel then
-			pointsValueLabel.Size = UDim2.new(0.36, 0, 1, 0)
-			pointsValueLabel.Position = UDim2.new(0.64, 0, 0, 0)
-			pointsValueLabel.TextSize = 16
+			pointsValueLabel.Size = UDim2.new(0.40, 0, 1, 0)
+			pointsValueLabel.Position = UDim2.new(0.60, 0, 0, 0)
+			pointsValueLabel.TextSize = 21
 		end
 		if closeBtn then
-			closeBtn.Size = UDim2.new(0, 30, 0, 30)
-			closeBtn.Position = UDim2.new(1, -36, 0.5, -15)
+			closeBtn.Size = UDim2.new(0, 36, 0, 36)
+			closeBtn.Position = UDim2.new(1, -44, 0.5, -18)
 			closeBtn.Text = "X"
-			closeBtn.TextSize = 16
+			closeBtn.TextSize = 20
 		end
 
 		if branchTabsContainer then
 			branchTabsContainer.Visible = true
-			branchTabsContainer.Size = UDim2.new(1, -16, 0, 32)
-			branchTabsContainer.Position = UDim2.new(0, 8, 0, 46)
+			branchTabsContainer.Size = UDim2.new(1, -16, 0, 44)
+			branchTabsContainer.Position = UDim2.new(0, 8, 0, 56)
 		end
 
 		if branchesContainer then
-			branchesContainer.Position = UDim2.new(0, 8, 0, 82)
-			branchesContainer.Size = UDim2.new(1, -16, 1, -140)
+			branchesContainer.Position = UDim2.new(0, 8, 0, 104)
+			branchesContainer.Size = UDim2.new(1, -16, 1, -182)
 		end
 
 		if bottomFrame then
-			bottomFrame.Size = UDim2.new(1, -16, 0, 52)
-			bottomFrame.Position = UDim2.new(0, 8, 1, -56)
+			bottomFrame.Size = UDim2.new(1, -16, 0, 72)
+			bottomFrame.Position = UDim2.new(0, 8, 1, -76)
+		end
+		if bottomPromptLabel then
+			bottomPromptLabel.Visible = false
+		end
+		if equippedSlotsContainer then
+			equippedSlotsContainer.Position = UDim2.new(0, 6, 0.5, -27)
+			equippedSlotsContainer.Size = UDim2.new(1, -12, 0, 54)
 		end
 	else
 		-- Desktop / Laptop layout: generous widescreen modal that fills the display beautifully
@@ -331,6 +338,16 @@ local function updateResponsiveScale()
 			bottomFrame.Size = UDim2.new(1, -24, 0, 88)
 			bottomFrame.Position = UDim2.new(0, 12, 1, -96)
 		end
+		if bottomPromptLabel then
+			bottomPromptLabel.Visible = true
+			bottomPromptLabel.Size = UDim2.new(1, -20, 0, 22)
+			bottomPromptLabel.Position = UDim2.new(0, 12, 0, 5)
+			bottomPromptLabel.TextSize = 14.5
+		end
+		if equippedSlotsContainer then
+			equippedSlotsContainer.Position = UDim2.new(0, 8, 0, 28)
+			equippedSlotsContainer.Size = UDim2.new(1, -16, 0, 54)
+		end
 	end
 end
 
@@ -341,7 +358,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	local canUnlock, lockReason = canUnlockSkill(skillId)
 	local branchStyle = BRANCH_COLORS[branchName] or BRANCH_COLORS.Juggernaut
 
-	local cardHeight = isMobile and 94 or 132
+	local cardHeight = isMobile and 138 or 148
 	local card = Instance.new("Frame")
 	card.Name = "Node_" .. skillId
 	card.Size = UDim2.new(1, 0, 0, cardHeight)
@@ -361,7 +378,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	stroke.Parent = card
 
 	-- ── Left: Skill Icon Box ────────────────────────────────────────────────
-	local iconSize = isMobile and 54 or 68
+	local iconSize = isMobile and 76 or 82
 	local iconBox = Instance.new("Frame")
 	iconBox.Size = UDim2.new(0, iconSize, 0, iconSize)
 	iconBox.Position = UDim2.new(0, isMobile and 8 or 10, 0.5, -(iconSize / 2))
@@ -387,8 +404,8 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 
 	-- Corner Tier Indicator Badge (T1, T2, T3)
 	local tierTag = Instance.new("Frame")
-	tierTag.Size = UDim2.new(0, isMobile and 24 or 26, 0, isMobile and 16 or 18)
-	tierTag.Position = UDim2.new(0, 2, 1, isMobile and -18 or -20)
+	tierTag.Size = UDim2.new(0, isMobile and 32 or 36, 0, isMobile and 24 or 26)
+	tierTag.Position = UDim2.new(0, 2, 1, isMobile and -26 or -28)
 	tierTag.BackgroundColor3 = Color3.fromRGB(12, 14, 18)
 	tierTag.BackgroundTransparency = 0.15
 	tierTag.BorderSizePixel = 0
@@ -404,14 +421,14 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	tierText.BackgroundTransparency = 1
 	tierText.TextColor3 = unlocked and Color3.fromRGB(255, 215, 80) or Color3.fromRGB(170, 175, 185)
 	tierText.Font = Enum.Font.GothamBold
-	tierText.TextSize = isMobile and 10 or 12
+	tierText.TextSize = isMobile and 14 or 15
 	tierText.Text = "T" .. tostring(skill.tier or 1)
 	tierText.ZIndex = 5
 	tierText.Parent = tierTag
 
 	-- ── Right: Action Button Area ───────────────────────────────────────────
-	local btnWidth = isMobile and 98 or 136
-	local btnHeight = isMobile and 42 or 56
+	local btnWidth = isMobile and 130 or 148
+	local btnHeight = isMobile and 62 or 66
 	local actionBtn = Instance.new("TextButton")
 	actionBtn.Name = "ActionButton"
 	actionBtn.Size = UDim2.new(0, btnWidth, 0, btnHeight)
@@ -432,20 +449,20 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 
 	local btnTitle = Instance.new("TextLabel")
 	btnTitle.Name = "BtnTitle"
-	btnTitle.Size = UDim2.new(1, 0, 0, isMobile and 20 or 26)
-	btnTitle.Position = UDim2.new(0, 0, 0, isMobile and 2 or 4)
+	btnTitle.Size = UDim2.new(1, 0, 0, isMobile and 26 or 30)
+	btnTitle.Position = UDim2.new(0, 0, 0, isMobile and 4 or 4)
 	btnTitle.BackgroundTransparency = 1
 	btnTitle.Font = Enum.Font.GothamBold
-	btnTitle.TextSize = isMobile and 12 or 16.5
+	btnTitle.TextSize = isMobile and 17 or 18
 	btnTitle.Parent = actionBtn
 
 	local btnSubtext = Instance.new("TextLabel")
 	btnSubtext.Name = "BtnSubtext"
-	btnSubtext.Size = UDim2.new(1, -4, 0, isMobile and 16 or 20)
-	btnSubtext.Position = UDim2.new(0, 2, 0, isMobile and 22 or 30)
+	btnSubtext.Size = UDim2.new(1, -4, 0, isMobile and 20 or 24)
+	btnSubtext.Position = UDim2.new(0, 2, 0, isMobile and 32 or 36)
 	btnSubtext.BackgroundTransparency = 1
 	btnSubtext.Font = Enum.Font.GothamMedium
-	btnSubtext.TextSize = isMobile and 9.5 or 13.5
+	btnSubtext.TextSize = isMobile and 14 or 15
 	btnSubtext.TextWrapped = true
 	btnSubtext.Parent = actionBtn
 
@@ -509,8 +526,8 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	local contentX = iconSize + (isMobile and 10 or 16)
 	local contentFrame = Instance.new("Frame")
 	contentFrame.Name = "ContentFrame"
-	contentFrame.Position = UDim2.new(0, contentX, 0, isMobile and 4 or 8)
-	contentFrame.Size = UDim2.new(1, -(contentX + btnWidth + (isMobile and 10 or 14)), 1, isMobile and -8 or -16)
+	contentFrame.Position = UDim2.new(0, contentX, 0, isMobile and 6 or 8)
+	contentFrame.Size = UDim2.new(1, -(contentX + btnWidth + (isMobile and 12 or 16)), 1, isMobile and -12 or -16)
 	contentFrame.BackgroundTransparency = 1
 	contentFrame.ClipsDescendants = false
 	contentFrame.Parent = card
@@ -518,7 +535,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	-- Row 1: Skill Title
 	local titleRow = Instance.new("Frame")
 	titleRow.Name = "TitleRow"
-	titleRow.Size = UDim2.new(1, 0, 0, isMobile and 20 or 28)
+	titleRow.Size = UDim2.new(1, 0, 0, isMobile and 26 or 30)
 	titleRow.BackgroundTransparency = 1
 	titleRow.Parent = contentFrame
 
@@ -527,7 +544,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.TextColor3 = unlocked and Color3.fromRGB(255, 255, 255) or (canUnlock and Color3.fromRGB(255, 220, 120) or Color3.fromRGB(175, 180, 192))
 	titleLabel.Font = Enum.Font.GothamBold
-	titleLabel.TextSize = isMobile and 13.5 or 21
+	titleLabel.TextSize = isMobile and 21 or 24
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.TextTruncate = Enum.TextTruncate.None
 	titleLabel.Text = skill.displayName or skillId
@@ -536,8 +553,8 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	-- Row 2: Stats Row (Tier Badge + Cooldown, Damage, Heal, Duration)
 	local statsRow = Instance.new("Frame")
 	statsRow.Name = "StatsRow"
-	statsRow.Size = UDim2.new(1, 0, 0, isMobile and 18 or 26)
-	statsRow.Position = UDim2.new(0, 0, 0, isMobile and 22 or 30)
+	statsRow.Size = UDim2.new(1, 0, 0, isMobile and 28 or 30)
+	statsRow.Position = UDim2.new(0, 0, 0, isMobile and 32 or 36)
 	statsRow.BackgroundTransparency = 1
 	statsRow.ClipsDescendants = true -- safety net: pills auto-size to their text now (no more
 	-- guessed fixed widths overflowing into the action button), but this still stops any
@@ -546,13 +563,13 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 
 	local sLayout = Instance.new("UIListLayout")
 	sLayout.FillDirection = Enum.FillDirection.Horizontal
-	sLayout.Padding = UDim.new(0, isMobile and 4 or 6)
+	sLayout.Padding = UDim.new(0, isMobile and 6 or 7)
 	sLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 	sLayout.Parent = statsRow
 
 	-- Tier Badge Pill (e.g. TIER I • NOVICE)
 	local tierPill = Instance.new("Frame")
-	tierPill.Size = UDim2.new(0, 0, 0, isMobile and 18 or 24)
+	tierPill.Size = UDim2.new(0, 0, 0, isMobile and 26 or 28)
 	tierPill.AutomaticSize = Enum.AutomaticSize.X
 	tierPill.BackgroundColor3 = unlocked and branchStyle.secondary or Color3.fromRGB(32, 36, 46)
 	tierPill.BorderSizePixel = 0
@@ -564,12 +581,12 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	tPad.Parent = tierPill
 
 	local tCorner = Instance.new("UICorner")
-	tCorner.CornerRadius = UDim.new(0, 4)
+	tCorner.CornerRadius = UDim.new(0, 5)
 	tCorner.Parent = tierPill
 
 	local tStroke = Instance.new("UIStroke")
 	tStroke.Color = unlocked and branchStyle.accent or Color3.fromRGB(65, 72, 85)
-	tStroke.Thickness = 1
+	tStroke.Thickness = 1.2
 	tStroke.Parent = tierPill
 
 	local tText = Instance.new("TextLabel")
@@ -578,13 +595,13 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	tText.BackgroundTransparency = 1
 	tText.TextColor3 = unlocked and Color3.fromRGB(255, 235, 170) or Color3.fromRGB(180, 188, 200)
 	tText.Font = Enum.Font.GothamBold
-	tText.TextSize = isMobile and 9.5 or 13.5
+	tText.TextSize = isMobile and 14 or 15
 	tText.Text = TIER_TITLES[skill.tier or 1] or "TIER I"
 	tText.Parent = tierPill
 
 	-- Cooldown Pill
 	local cdPill = Instance.new("Frame")
-	cdPill.Size = UDim2.new(0, 0, 0, isMobile and 18 or 24)
+	cdPill.Size = UDim2.new(0, 0, 0, isMobile and 26 or 28)
 	cdPill.AutomaticSize = Enum.AutomaticSize.X
 	cdPill.BackgroundColor3 = Color3.fromRGB(30, 38, 52)
 	cdPill.BorderSizePixel = 0
@@ -596,7 +613,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	cdPad.Parent = cdPill
 
 	local cdCorner = Instance.new("UICorner")
-	cdCorner.CornerRadius = UDim.new(0, 4)
+	cdCorner.CornerRadius = UDim.new(0, 5)
 	cdCorner.Parent = cdPill
 
 	local cdText = Instance.new("TextLabel")
@@ -605,14 +622,14 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	cdText.BackgroundTransparency = 1
 	cdText.TextColor3 = Color3.fromRGB(125, 205, 255)
 	cdText.Font = Enum.Font.GothamBold
-	cdText.TextSize = isMobile and 9.5 or 14.5
+	cdText.TextSize = isMobile and 14 or 15
 	cdText.Text = ("⏱ %ds CD"):format(skill.cooldown or 0)
 	cdText.Parent = cdPill
 
 	-- Damage Pill (if any)
 	if skill.damage and skill.damage > 0 then
 		local dmgPill = Instance.new("Frame")
-		dmgPill.Size = UDim2.new(0, 0, 0, isMobile and 18 or 24)
+		dmgPill.Size = UDim2.new(0, 0, 0, isMobile and 26 or 28)
 		dmgPill.AutomaticSize = Enum.AutomaticSize.X
 		dmgPill.BackgroundColor3 = Color3.fromRGB(52, 28, 28)
 		dmgPill.BorderSizePixel = 0
@@ -624,7 +641,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 		dmgPad.Parent = dmgPill
 
 		local dmgCorner = Instance.new("UICorner")
-		dmgCorner.CornerRadius = UDim.new(0, 4)
+		dmgCorner.CornerRadius = UDim.new(0, 5)
 		dmgCorner.Parent = dmgPill
 
 		local dmgText = Instance.new("TextLabel")
@@ -633,7 +650,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 		dmgText.BackgroundTransparency = 1
 		dmgText.TextColor3 = Color3.fromRGB(255, 135, 125)
 		dmgText.Font = Enum.Font.GothamBold
-		dmgText.TextSize = isMobile and 9.5 or 14.5
+		dmgText.TextSize = isMobile and 14 or 15
 		dmgText.Text = ("⚔ %d Dmg"):format(skill.damage)
 		dmgText.Parent = dmgPill
 	end
@@ -641,7 +658,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	-- Heal Pill (if any)
 	if skill.healAmount and skill.healAmount > 0 then
 		local healPill = Instance.new("Frame")
-		healPill.Size = UDim2.new(0, 0, 0, isMobile and 18 or 24)
+		healPill.Size = UDim2.new(0, 0, 0, isMobile and 26 or 28)
 		healPill.AutomaticSize = Enum.AutomaticSize.X
 		healPill.BackgroundColor3 = Color3.fromRGB(25, 48, 34)
 		healPill.BorderSizePixel = 0
@@ -653,7 +670,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 		healPad.Parent = healPill
 
 		local healCorner = Instance.new("UICorner")
-		healCorner.CornerRadius = UDim.new(0, 4)
+		healCorner.CornerRadius = UDim.new(0, 5)
 		healCorner.Parent = healPill
 
 		local healText = Instance.new("TextLabel")
@@ -662,7 +679,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 		healText.BackgroundTransparency = 1
 		healText.TextColor3 = Color3.fromRGB(135, 245, 165)
 		healText.Font = Enum.Font.GothamBold
-		healText.TextSize = isMobile and 9.5 or 14.5
+		healText.TextSize = isMobile and 14 or 15
 		healText.Text = ("💚 %d Heal"):format(skill.healAmount)
 		healText.Parent = healPill
 	end
@@ -670,7 +687,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	-- Duration Pill (if any)
 	if skill.duration and skill.duration > 0 then
 		local durPill = Instance.new("Frame")
-		durPill.Size = UDim2.new(0, 0, 0, isMobile and 18 or 24)
+		durPill.Size = UDim2.new(0, 0, 0, isMobile and 26 or 28)
 		durPill.AutomaticSize = Enum.AutomaticSize.X
 		durPill.BackgroundColor3 = Color3.fromRGB(44, 40, 24)
 		durPill.BorderSizePixel = 0
@@ -682,7 +699,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 		durPad.Parent = durPill
 
 		local durCorner = Instance.new("UICorner")
-		durCorner.CornerRadius = UDim.new(0, 4)
+		durCorner.CornerRadius = UDim.new(0, 5)
 		durCorner.Parent = durPill
 
 		local durText = Instance.new("TextLabel")
@@ -691,7 +708,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 		durText.BackgroundTransparency = 1
 		durText.TextColor3 = Color3.fromRGB(255, 220, 95)
 		durText.Font = Enum.Font.GothamBold
-		durText.TextSize = isMobile and 9.5 or 14.5
+		durText.TextSize = isMobile and 14 or 15
 		durText.Text = ("🛡 %ds"):format(skill.duration)
 		durText.Parent = durPill
 	end
@@ -699,12 +716,12 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	-- Row 3: Description (Clean, readable typography with generous vertical room)
 	local descLabel = Instance.new("TextLabel")
 	descLabel.Name = "DescLabel"
-	descLabel.Size = UDim2.new(1, 0, 1, isMobile and -42 or -60)
-	descLabel.Position = UDim2.new(0, 0, 0, isMobile and 42 or 58)
+	descLabel.Size = UDim2.new(1, 0, 1, isMobile and -70 or -76)
+	descLabel.Position = UDim2.new(0, 0, 0, isMobile and 66 or 72)
 	descLabel.BackgroundTransparency = 1
 	descLabel.TextColor3 = Color3.fromRGB(205, 214, 228)
 	descLabel.Font = Enum.Font.Gotham
-	descLabel.TextSize = isMobile and 11 or 16
+	descLabel.TextSize = isMobile and 16 or 17
 	descLabel.TextWrapped = true
 	descLabel.TextXAlignment = Enum.TextXAlignment.Left
 	descLabel.TextYAlignment = Enum.TextYAlignment.Top
@@ -762,11 +779,11 @@ refreshUI = function()
 				local targetSkill = Skills[isSelectingSlotForSkill]
 				local skillName = targetSkill and targetSkill.displayName or isSelectingSlotForSkill
 				bottomPromptLabel.Visible = true
-				bottomPromptLabel.Text = ("⚡ TAP A SLOT BELOW TO EQUIP [%s] (OR CANCEL)"):format(string.upper(skillName))
+				bottomPromptLabel.Text = ("⚡ TAP A SLOT BELOW TO EQUIP [%s]"):format(string.upper(skillName))
 				bottomPromptLabel.TextColor3 = Color3.fromRGB(255, 215, 80)
-				bottomPromptLabel.TextSize = 10.5
+				bottomPromptLabel.TextSize = 12.5
 				bottomPromptLabel.Position = UDim2.new(0, 8, 0, 2)
-				bottomPromptLabel.Size = UDim2.new(1, -16, 0, 14)
+				bottomPromptLabel.Size = UDim2.new(1, -16, 0, 18)
 			else
 				bottomPromptLabel.Visible = false
 			end
@@ -790,11 +807,11 @@ refreshUI = function()
 	if equippedSlotsContainer then
 		if isMobile then
 			if isSelectingSlotForSkill then
-				equippedSlotsContainer.Position = UDim2.new(0, 6, 0, 16)
-				equippedSlotsContainer.Size = UDim2.new(1, -12, 0, 32)
+				equippedSlotsContainer.Position = UDim2.new(0, 6, 0, 20)
+				equippedSlotsContainer.Size = UDim2.new(1, -12, 0, 44)
 			else
-				equippedSlotsContainer.Position = UDim2.new(0, 6, 0.5, -19)
-				equippedSlotsContainer.Size = UDim2.new(1, -12, 0, 38)
+				equippedSlotsContainer.Position = UDim2.new(0, 6, 0.5, -24)
+				equippedSlotsContainer.Size = UDim2.new(1, -12, 0, 48)
 			end
 		else
 			equippedSlotsContainer.Position = UDim2.new(0, 8, 0, 28)
@@ -836,7 +853,7 @@ refreshUI = function()
 				tabBtn.BackgroundColor3 = isSelected and colStyle.border or Color3.fromRGB(24, 28, 38)
 				tabBtn.BorderSizePixel = 0
 				tabBtn.Font = Enum.Font.GothamBold
-				tabBtn.TextSize = 13
+				tabBtn.TextSize = 16.5
 				tabBtn.TextColor3 = isSelected and Color3.new(1, 1, 1) or Color3.fromRGB(160, 170, 185)
 				tabBtn.Text = ("%s %s (%d/%d)"):format(colStyle.icon, colStyle.name, unlockedCount, totalCount)
 				tabBtn.Parent = branchTabsContainer
@@ -907,7 +924,7 @@ refreshUI = function()
 
 				-- Branch Header Banner
 				local colHeader = Instance.new("Frame")
-				colHeader.Size = UDim2.new(1, 0, 0, isMobile and 26 or 60)
+				colHeader.Size = UDim2.new(1, 0, 0, isMobile and 30 or 60)
 				colHeader.BackgroundColor3 = isMobile and Color3.fromRGB(15, 18, 25) or colStyle.border
 				colHeader.BorderSizePixel = 0
 				colHeader.Parent = column
@@ -971,7 +988,7 @@ refreshUI = function()
 					colDesc.BackgroundTransparency = 1
 					colDesc.TextColor3 = colStyle.accent
 					colDesc.Font = Enum.Font.GothamMedium
-					colDesc.TextSize = 11.5
+					colDesc.TextSize = 13.5
 					colDesc.TextXAlignment = Enum.TextXAlignment.Center
 					colDesc.Text = "✧ " .. colStyle.tagline
 					colDesc.Parent = colHeader
@@ -980,8 +997,8 @@ refreshUI = function()
 				-- ScrollingFrame for Nodes: GUARANTEED NEVER TO CUT OFF TEXT ON MOBILE OR DESKTOP
 				local nodesList = Instance.new("ScrollingFrame")
 				nodesList.Name = "NodesList"
-				nodesList.Size = UDim2.new(1, -12, 1, isMobile and -32 or -70)
-				nodesList.Position = UDim2.new(0, 6, 0, isMobile and 30 or 64)
+				nodesList.Size = UDim2.new(1, -12, 1, isMobile and -36 or -70)
+				nodesList.Position = UDim2.new(0, 6, 0, isMobile and 34 or 64)
 				nodesList.BackgroundTransparency = 1
 				nodesList.BorderSizePixel = 0
 				nodesList.ScrollBarThickness = 5
@@ -1055,8 +1072,8 @@ refreshUI = function()
 
 			-- Slot Key Number Badge [1-4]
 			local keyBadge = Instance.new("Frame")
-			keyBadge.Size = UDim2.new(0, isMobile and 18 or 24, 0, isMobile and 18 or 24)
-			keyBadge.Position = UDim2.new(0, isMobile and 4 or 6, 0.5, isMobile and -9 or -12)
+			keyBadge.Size = UDim2.new(0, isMobile and 24 or 26, 0, isMobile and 24 or 26)
+			keyBadge.Position = UDim2.new(0, isMobile and 4 or 6, 0.5, isMobile and -12 or -13)
 			keyBadge.BackgroundColor3 = Color3.fromRGB(12, 14, 18)
 			keyBadge.BorderSizePixel = 0
 			keyBadge.Parent = slotBox
@@ -1075,14 +1092,14 @@ refreshUI = function()
 			keyText.BackgroundTransparency = 1
 			keyText.TextColor3 = Color3.fromRGB(255, 225, 100)
 			keyText.Font = Enum.Font.GothamBold
-			keyText.TextSize = isMobile and 10.5 or 13.5
+			keyText.TextSize = isMobile and 14 or 15
 			keyText.Text = tostring(slotIndex)
 			keyText.Parent = keyBadge
 
 			-- Skill Icon Tile (Image Texture Only - NO RAW ASSET PATH IN TEXT)
 			local slotIconFrame = Instance.new("Frame")
-			slotIconFrame.Size = UDim2.new(0, isMobile and 28 or 38, 0, isMobile and 28 or 38)
-			slotIconFrame.Position = UDim2.new(0, isMobile and 26 or 34, 0.5, isMobile and -14 or -19)
+			slotIconFrame.Size = UDim2.new(0, isMobile and 38 or 42, 0, isMobile and 38 or 42)
+			slotIconFrame.Position = UDim2.new(0, isMobile and 30 or 36, 0.5, isMobile and -19 or -21)
 			slotIconFrame.BackgroundColor3 = Color3.fromRGB(14, 16, 22)
 			slotIconFrame.BorderSizePixel = 0
 			slotIconFrame.ClipsDescendants = true
@@ -1100,19 +1117,19 @@ refreshUI = function()
 				emptyPlus.BackgroundTransparency = 1
 				emptyPlus.TextColor3 = Color3.fromRGB(90, 96, 110)
 				emptyPlus.Font = Enum.Font.GothamBold
-				emptyPlus.TextSize = isMobile and 13 or 16
+				emptyPlus.TextSize = isMobile and 18 or 20
 				emptyPlus.Text = "+"
 				emptyPlus.Parent = slotIconFrame
 			end
 
 			-- Clean Skill Display Name (Never asset paths!)
 			local nameLabel = Instance.new("TextLabel")
-			nameLabel.Size = UDim2.new(1, isMobile and -58 or -80, 1, 0)
-			nameLabel.Position = UDim2.new(0, isMobile and 56 or 78, 0, 0)
+			nameLabel.Size = UDim2.new(1, isMobile and -74 or -88, 1, 0)
+			nameLabel.Position = UDim2.new(0, isMobile and 72 or 84, 0, 0)
 			nameLabel.BackgroundTransparency = 1
 			nameLabel.TextColor3 = isTargeted and Color3.fromRGB(255, 225, 120) or (skillData and Color3.fromRGB(240, 246, 255) or Color3.fromRGB(115, 120, 130))
 			nameLabel.Font = Enum.Font.GothamBold
-			nameLabel.TextSize = isMobile and 10 or 14.5
+			nameLabel.TextSize = isMobile and 15 or 15.5
 			nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 			nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
 			nameLabel.Text = isTargeted and "TAP EQUIP" or (skillData and (skillData.displayName or eqId) or "(Empty)")

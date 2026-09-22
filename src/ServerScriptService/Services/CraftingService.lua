@@ -51,14 +51,15 @@ end
 
 --- Syncs equipment state to client after any crafting or equipping action.
 function CraftingService.SyncEquipmentToClient(player: Player, charData: {})
+	local isMage = (charData and charData.ClassId == "Mage")
 	Net.Get("EquipmentDataChanged"):FireClient(
 		player,
 		charData.EquippedEquipment or {
-			Weapon = "StandardSword",
-			Head = "StandardHelm",
-			Body = "StandardChest",
-			Arms = "StandardArms",
-			Feet = "StandardFeet",
+			Weapon = isMage and "ApprenticeStaff" or "StandardSword",
+			Head = isMage and "ApprenticeHood" or "StandardHelm",
+			Body = isMage and "ApprenticeRobe" or "StandardChest",
+			Arms = isMage and "ApprenticeBracers" or "StandardArms",
+			Feet = isMage and "ApprenticeBoots" or "StandardFeet",
 		},
 		charData.StoredEquipment or {},
 		charData.CraftingMaterials or {}

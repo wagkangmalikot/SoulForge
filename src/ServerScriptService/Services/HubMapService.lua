@@ -1154,7 +1154,7 @@ function HubMapService.BuildHub(): Model
 
 	-- Stone Chimney with Chimney Pot & Smoke Particles
 	makePart(hub, "TavernChimney", Vector3.new(4.5, tavernH + 7, 4.5), CFrame.new(tavernPos + Vector3.new(-tavernW/2 + 1, (tavernH + 7)/2, 0)), DARK_STONE, Enum.Material.Cobblestone)
-	local chimneyPot = makeCylinder(hub, "TavernChimneyPot", 2.2, 2.4, CFrame.new(tavernPos + Vector3.new(-tavernW/2 + 1, tavernH + 8.2, 0)), Color3.fromRGB(155, 75, 60), Enum.Material.Clay)
+	local chimneyPot = makeCylinder(hub, "TavernChimneyPot", 2.2, 2.4, CFrame.new(tavernPos + Vector3.new(-tavernW/2 + 1, tavernH + 8.2, 0)), Color3.fromRGB(155, 75, 60), Enum.Material.Brick)
 	
 	local smoke = Instance.new("Smoke")
 	smoke.Color = Color3.fromRGB(215, 215, 220)
@@ -1371,12 +1371,11 @@ function HubMapService.BuildHub(): Model
 	makePart(hub, "CorbelTrim_E", Vector3.new(2.4, 1.2, plazaSize),
 		CFrame.new(halfP - 1.2, FLOOR_Y + wallH - 0.6, 0), DARK_STONE, Enum.Material.Slate)
 
-	-- South Wall (Flanking Gatehouse)
-	local southWallLen = halfP - 18
-	makePart(hub, "Wall_South_W", Vector3.new(southWallLen, wallH, wallThick),
-		CFrame.new(-halfP + southWallLen / 2, FLOOR_Y + wallH / 2, halfP), WALL_STONE, Enum.Material.Cobblestone)
-	makePart(hub, "Wall_South_E", Vector3.new(southWallLen, wallH, wallThick),
-		CFrame.new(halfP - southWallLen / 2, FLOOR_Y + wallH / 2, halfP), WALL_STONE, Enum.Material.Cobblestone)
+	-- South Wall (Continuous, Fortified & Fully Enclosing the Hub)
+	makePart(hub, "Wall_South", Vector3.new(plazaSize, wallH, wallThick),
+		CFrame.new(0, FLOOR_Y + wallH / 2, halfP), WALL_STONE, Enum.Material.Cobblestone)
+	makePart(hub, "CorbelTrim_S", Vector3.new(plazaSize, 1.2, 2.4),
+		CFrame.new(0, FLOOR_Y + wallH - 0.6, halfP - 1.2), DARK_STONE, Enum.Material.Slate)
 
 	-- Castellated Merlons & Crenels along Fortress Battlements
 	local function makeMerlonsX(startX: number, endX: number, zPos: number, step: number)
@@ -1393,8 +1392,7 @@ function HubMapService.BuildHub(): Model
 	makeMerlonsX(-halfP + 8, halfP - 8, -halfP - 1.4, 8)
 	makeMerlonsZ(-halfP + 8, halfP - 8, -halfP - 1.4, 8)
 	makeMerlonsZ(-halfP + 8, halfP - 8, halfP + 1.4, 8)
-	makeMerlonsX(-halfP + 8, -20, halfP + 1.4, 8)
-	makeMerlonsX(20, halfP - 8, halfP + 1.4, 8)
+	makeMerlonsX(-halfP + 8, halfP - 8, halfP + 1.4, 8)
 
 	-- 4 Grand Corner Bastion Towers with Octagonal Turrets & Spires
 	local corners = {
@@ -1418,7 +1416,7 @@ function HubMapService.BuildHub(): Model
 	makeBrazier(hub, Vector3.new(halfP - 2, FLOOR_Y + wallH, -25), Color3.fromRGB(255, 140, 30))
 	makeBrazier(hub, Vector3.new(halfP - 2, FLOOR_Y + wallH, 25), Color3.fromRGB(255, 140, 30))
 
-	-- ── 9. SOUTH GATEHOUSE, DRAWBRIDGE & MOUNTAIN OVERLOOK VISTA ──────────────
+	-- ── 9. SOUTH GATEHOUSE (SEALED & FORTIFIED CASTLE GATES) ───────────────────
 	local gateZ = halfP
 	-- Twin Gatehouse Guard Towers
 	makeColumn(hub, Vector3.new(-18, FLOOR_Y, gateZ), 34, 4.2, true)
@@ -1434,26 +1432,43 @@ function HubMapService.BuildHub(): Model
 
 	-- Gatehouse Archway Lintel & Sculpted Crest
 	makePart(hub, "GatehouseArch", Vector3.new(36, 6, 6), CFrame.new(0, FLOOR_Y + 23, gateZ), DARK_STONE, Enum.Material.Slate)
-	local crest = makePart(hub, "GatehouseCrest", Vector3.new(4.2, 4.2, 0.8), CFrame.new(0, FLOOR_Y + 23, gateZ + 3.1), GOLD_TRIM, Enum.Material.Metal, false)
+	local crest = makePart(hub, "GatehouseCrest", Vector3.new(4.2, 4.2, 0.8), CFrame.new(0, FLOOR_Y + 23, gateZ - 2.8), GOLD_TRIM, Enum.Material.Metal, false)
 	addMesh(crest, Enum.MeshType.Sphere, Vector3.new(1.0, 1.2, 0.5))
 
 	-- Hanging Heraldic Crimson Banners on Guard Towers
 	for _, bx in {-18, 18} do
-		local banner = makePart(hub, "GateBanner", Vector3.new(2.8, 12, 0.2), CFrame.new(bx, FLOOR_Y + 20, gateZ + 4.3), Color3.fromRGB(175, 35, 40), Enum.Material.Fabric, false)
-		makePart(hub, "BannerGoldTrim", Vector3.new(3.0, 0.6, 0.3), CFrame.new(bx, FLOOR_Y + 14.2, gateZ + 4.3), GOLD_TRIM, Enum.Material.Metal, false)
+		local banner = makePart(hub, "GateBanner", Vector3.new(2.8, 12, 0.2), CFrame.new(bx, FLOOR_Y + 20, gateZ - 3.8), Color3.fromRGB(175, 35, 40), Enum.Material.Fabric, false)
+		makePart(hub, "BannerGoldTrim", Vector3.new(3.0, 0.6, 0.3), CFrame.new(bx, FLOOR_Y + 14.2, gateZ - 3.8), GOLD_TRIM, Enum.Material.Metal, false)
 	end
 
-	-- Portcullis Grille with Pointed Diamond Spike Tips on every bar
+	-- Solid Closed & Barred Heavy Oak Fortress Gate
+	local gateDoorW, gateDoorH = 14, 18
+	makePart(hub, "ClosedGate_Left", Vector3.new(gateDoorW, gateDoorH, 1.4), CFrame.new(-gateDoorW / 2, FLOOR_Y + gateDoorH / 2, gateZ - 1.2), DARK_WOOD, Enum.Material.WoodPlanks)
+	makePart(hub, "ClosedGate_Right", Vector3.new(gateDoorW, gateDoorH, 1.4), CFrame.new(gateDoorW / 2, FLOOR_Y + gateDoorH / 2, gateZ - 1.2), DARK_WOOD, Enum.Material.WoodPlanks)
+
+	-- Iron Studs & Strapping on Closed Gates
+	for _, gx in {-11, -5, 5, 11} do
+		for _, gy in {3.5, 9.0, 14.5} do
+			local stud = makePart(hub, "GateStud", Vector3.new(0.5, 0.5, 0.3), CFrame.new(gx, FLOOR_Y + gy, gateZ - 2.0), BRASS_COLOR, Enum.Material.Metal, false)
+			addMesh(stud, Enum.MeshType.Sphere, Vector3.new(1.0, 1.0, 0.8))
+		end
+	end
+
+	-- Heavy Locking Iron Crossbar Across Gates
+	makePart(hub, "GateLockBar", Vector3.new(28, 1.4, 0.8), CFrame.new(0, FLOOR_Y + 9.0, gateZ - 2.1), IRON_COLOR, Enum.Material.Metal)
+
+	-- Fully Lowered Heavy Iron Portcullis Grille (Rests firmly on ground at FLOOR_Y, sealing the archway)
 	for barX = -12, 12, 3 do
-		local pBar = makePart(hub, "PortcullisBar_" .. barX, Vector3.new(0.8, 10, 0.8), CFrame.new(barX, FLOOR_Y + 18, gateZ - 0.5), IRON_COLOR, Enum.Material.Metal, false)
-		local pSpike = makePart(hub, "PortcullisSpike_" .. barX, Vector3.new(0.9, 1.2, 0.9), CFrame.new(barX, FLOOR_Y + 12.4, gateZ - 0.5), IRON_COLOR, Enum.Material.Metal, false)
+		local pBar = makePart(hub, "PortcullisBar_" .. barX, Vector3.new(0.8, 18, 0.8), CFrame.new(barX, FLOOR_Y + 9.0, gateZ - 0.5), IRON_COLOR, Enum.Material.Metal)
+		local pSpike = makePart(hub, "PortcullisSpike_" .. barX, Vector3.new(0.9, 1.2, 0.9), CFrame.new(barX, FLOOR_Y + 0.6, gateZ - 0.5), IRON_COLOR, Enum.Material.Metal, false)
 		addMesh(pSpike, Enum.MeshType.Pyramid, Vector3.new(1.0, 1.4, 1.0))
-		pSpike.CFrame = CFrame.new(barX, FLOOR_Y + 12.4, gateZ - 0.5) * CFrame.Angles(math.rad(180), 0, 0)
+		pSpike.CFrame = CFrame.new(barX, FLOOR_Y + 0.6, gateZ - 0.5) * CFrame.Angles(math.rad(180), 0, 0)
 	end
-	makePart(hub, "PortcullisCrossTop", Vector3.new(28, 0.8, 0.8), CFrame.new(0, FLOOR_Y + 22, gateZ - 0.5), IRON_COLOR, Enum.Material.Metal, false)
-	makePart(hub, "PortcullisCrossMid", Vector3.new(28, 0.8, 0.8), CFrame.new(0, FLOOR_Y + 15, gateZ - 0.5), IRON_COLOR, Enum.Material.Metal, false)
+	makePart(hub, "PortcullisCrossTop", Vector3.new(28, 0.8, 0.8), CFrame.new(0, FLOOR_Y + 17, gateZ - 0.5), IRON_COLOR, Enum.Material.Metal)
+	makePart(hub, "PortcullisCrossMid", Vector3.new(28, 0.8, 0.8), CFrame.new(0, FLOOR_Y + 9, gateZ - 0.5), IRON_COLOR, Enum.Material.Metal)
+	makePart(hub, "PortcullisCrossBot", Vector3.new(28, 0.8, 0.8), CFrame.new(0, FLOOR_Y + 1.5, gateZ - 0.5), IRON_COLOR, Enum.Material.Metal)
 
-	-- Heavy Forged Iron Drawbridge Suspension Chains slanting from gatehouse down to bridge
+	-- Heavy Forged Iron Drawbridge Suspension Chains
 	for _, cx in {-8.5, 8.5} do
 		local chain = makePart(hub, "DrawbridgeChain", Vector3.new(0.5, 24, 0.5), CFrame.new(cx, FLOOR_Y + 12, gateZ + 11) * CFrame.Angles(math.rad(40), 0, 0), IRON_COLOR, Enum.Material.Metal, false)
 		addMesh(chain, Enum.MeshType.Cylinder, Vector3.new(1.0, 1.0, 1.0))
@@ -1517,6 +1532,16 @@ function HubMapService.BuildHub(): Model
 		b.Anchored = true
 		b.Parent = hub
 	end
+
+	-- Airtight, Impassable 80-Stud High Hub Perimeter Collision Boundaries (All 4 Sides: North, South, East, West)
+	-- Strictly keeps the player inside the Hub courtyard at all times with zero escape
+	local hubBarrierH = 80
+	makeBarrier("HubPerimeterBarrier_North", Vector3.new(plazaSize + 30, hubBarrierH, 6), CFrame.new(0, FLOOR_Y + hubBarrierH / 2, -halfP - 2))
+	makeBarrier("HubPerimeterBarrier_South", Vector3.new(plazaSize + 30, hubBarrierH, 6), CFrame.new(0, FLOOR_Y + hubBarrierH / 2, halfP + 2))
+	makeBarrier("HubPerimeterBarrier_West",  Vector3.new(6, hubBarrierH, plazaSize + 30), CFrame.new(-halfP - 2, FLOOR_Y + hubBarrierH / 2, 0))
+	makeBarrier("HubPerimeterBarrier_East",  Vector3.new(6, hubBarrierH, plazaSize + 30), CFrame.new(halfP + 2, FLOOR_Y + hubBarrierH / 2, 0))
+
+	-- Bridge & Overlook Background Scenic Boundaries
 	makeBarrier("SafetyWall_OverlookS", Vector3.new(45, 16, 2), CFrame.new(0, FLOOR_Y + 8, overlookZ + 18))
 	makeBarrier("SafetyWall_OverlookW", Vector3.new(2, 16, 35), CFrame.new(-18, FLOOR_Y + 8, overlookZ))
 	makeBarrier("SafetyWall_OverlookE", Vector3.new(2, 16, 35), CFrame.new(18, FLOOR_Y + 8, overlookZ))

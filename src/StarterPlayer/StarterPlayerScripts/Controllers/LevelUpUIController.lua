@@ -85,7 +85,7 @@ function LevelUpUIController.Start()
 	local modalFrame = Instance.new("Frame")
 	modalFrame.Name = "ModalFrame"
 	modalFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-	modalFrame.Size = UDim2.new(0, 450, 0, 335)
+	modalFrame.Size = UDim2.new(0, 500, 0, 375)
 	modalFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 	modalFrame.BackgroundColor3 = Color3.fromRGB(16, 20, 30)
 	modalFrame.BorderSizePixel = 0
@@ -118,7 +118,7 @@ function LevelUpUIController.Start()
 		local vSize = camera.ViewportSize
 		if vSize.Y <= 0 then return end
 		-- Base reference: ~400px height. Fits mobile landscape perfectly.
-		local scale = math.clamp(math.min(vSize.X / 520, vSize.Y / 390), 0.72, 1.25)
+		local scale = math.clamp(math.min(vSize.X / 540, vSize.Y / 400), 0.72, 1.25)
 		uiScale.Scale = scale
 	end
 
@@ -137,32 +137,32 @@ function LevelUpUIController.Start()
 
 	-- ── 1. Top Header Bar ─────────────────────────────────────────────────────
 	local headerIcon = Instance.new("TextLabel")
-	headerIcon.Size = UDim2.new(0, 32, 0, 32)
-	headerIcon.Position = UDim2.new(0, 14, 0, 12)
+	headerIcon.Size = UDim2.new(0, 36, 0, 36)
+	headerIcon.Position = UDim2.new(0, 14, 0, 10)
 	headerIcon.BackgroundTransparency = 1
 	headerIcon.Font = Enum.Font.GothamBold
-	headerIcon.TextSize = 22
+	headerIcon.TextSize = 24
 	headerIcon.Text = "✨"
 	headerIcon.Parent = modalFrame
 
 	local headerTitle = Instance.new("TextLabel")
-	headerTitle.Size = UDim2.new(1, -95, 0, 22)
-	headerTitle.Position = UDim2.new(0, 50, 0, 10)
+	headerTitle.Size = UDim2.new(1, -100, 0, 24)
+	headerTitle.Position = UDim2.new(0, 54, 0, 8)
 	headerTitle.BackgroundTransparency = 1
 	headerTitle.TextColor3 = Color3.fromRGB(255, 225, 100)
 	headerTitle.Font = Enum.Font.GothamBlack
-	headerTitle.TextSize = 16
+	headerTitle.TextSize = 20
 	headerTitle.TextXAlignment = Enum.TextXAlignment.Left
 	headerTitle.Text = "SHRINE OF ASCENSION"
 	headerTitle.Parent = modalFrame
 
 	local headerSub = Instance.new("TextLabel")
-	headerSub.Size = UDim2.new(1, -95, 0, 16)
-	headerSub.Position = UDim2.new(0, 50, 0, 30)
+	headerSub.Size = UDim2.new(1, -100, 0, 18)
+	headerSub.Position = UDim2.new(0, 54, 0, 32)
 	headerSub.BackgroundTransparency = 1
 	headerSub.TextColor3 = Color3.fromRGB(175, 185, 205)
 	headerSub.Font = Enum.Font.GothamMedium
-	headerSub.TextSize = 11
+	headerSub.TextSize = 14.5
 	headerSub.TextXAlignment = Enum.TextXAlignment.Left
 	headerSub.Text = "Channel banked experience into power and talent points"
 	headerSub.Parent = modalFrame
@@ -170,12 +170,12 @@ function LevelUpUIController.Start()
 	-- Close Button [✕]
 	local closeButton = Instance.new("TextButton")
 	closeButton.Name = "CloseButton"
-	closeButton.Size = UDim2.new(0, 32, 0, 32)
-	closeButton.Position = UDim2.new(1, -44, 0, 12)
+	closeButton.Size = UDim2.new(0, 34, 0, 34)
+	closeButton.Position = UDim2.new(1, -46, 0, 10)
 	closeButton.BackgroundColor3 = Color3.fromRGB(180, 45, 45)
 	closeButton.TextColor3 = Color3.new(1, 1, 1)
 	closeButton.Font = Enum.Font.GothamBold
-	closeButton.TextSize = 16
+	closeButton.TextSize = 18
 	closeButton.Text = "✕"
 	closeButton.BorderSizePixel = 0
 	closeButton.Parent = modalFrame
@@ -192,8 +192,8 @@ function LevelUpUIController.Start()
 	-- ── 2. Hero Level Progression Banner ──────────────────────────────────────
 	local heroFrame = Instance.new("Frame")
 	heroFrame.Name = "HeroProgression"
-	heroFrame.Size = UDim2.new(1, -28, 0, 64)
-	heroFrame.Position = UDim2.new(0, 14, 0, 52)
+	heroFrame.Size = UDim2.new(1, -28, 0, 70)
+	heroFrame.Position = UDim2.new(0, 14, 0, 56)
 	heroFrame.BackgroundColor3 = Color3.fromRGB(22, 26, 38)
 	heroFrame.BorderSizePixel = 0
 	heroFrame.Parent = modalFrame
@@ -214,19 +214,19 @@ function LevelUpUIController.Start()
 	curRankSub.BackgroundTransparency = 1
 	curRankSub.TextColor3 = Color3.fromRGB(150, 165, 185)
 	curRankSub.Font = Enum.Font.GothamBold
-	curRankSub.TextSize = 10
+	curRankSub.TextSize = 13.5
 	curRankSub.TextXAlignment = Enum.TextXAlignment.Left
 	curRankSub.Text = "CURRENT RANK"
 	curRankSub.Parent = heroFrame
 
 	local curRankVal = Instance.new("TextLabel")
 	curRankVal.Name = "CurrentRankValue"
-	curRankVal.Size = UDim2.new(0.4, 0, 0, 26)
-	curRankVal.Position = UDim2.new(0, 12, 0, 26)
+	curRankVal.Size = UDim2.new(0.4, 0, 0, 28)
+	curRankVal.Position = UDim2.new(0, 12, 0, 28)
 	curRankVal.BackgroundTransparency = 1
 	curRankVal.TextColor3 = Color3.fromRGB(235, 240, 250)
 	curRankVal.Font = Enum.Font.GothamBlack
-	curRankVal.TextSize = 21
+	curRankVal.TextSize = 24
 	curRankVal.TextXAlignment = Enum.TextXAlignment.Left
 	curRankVal.Text = "LEVEL 1"
 	curRankVal.Parent = heroFrame
@@ -238,7 +238,7 @@ function LevelUpUIController.Start()
 	centerArrow.BackgroundTransparency = 1
 	centerArrow.TextColor3 = Color3.fromRGB(255, 215, 65)
 	centerArrow.Font = Enum.Font.GothamBlack
-	centerArrow.TextSize = 24
+	centerArrow.TextSize = 26
 	centerArrow.Text = "➔"
 	centerArrow.Parent = heroFrame
 
@@ -249,19 +249,19 @@ function LevelUpUIController.Start()
 	nextRankSub.BackgroundTransparency = 1
 	nextRankSub.TextColor3 = Color3.fromRGB(255, 205, 75)
 	nextRankSub.Font = Enum.Font.GothamBold
-	nextRankSub.TextSize = 10
+	nextRankSub.TextSize = 13.5
 	nextRankSub.TextXAlignment = Enum.TextXAlignment.Right
 	nextRankSub.Text = "ASCENDED RANK"
 	nextRankSub.Parent = heroFrame
 
 	local nextRankVal = Instance.new("TextLabel")
 	nextRankVal.Name = "NextRankValue"
-	nextRankVal.Size = UDim2.new(0.4, 0, 0, 26)
-	nextRankVal.Position = UDim2.new(0.6, -12, 0, 26)
+	nextRankVal.Size = UDim2.new(0.4, 0, 0, 28)
+	nextRankVal.Position = UDim2.new(0.6, -12, 0, 28)
 	nextRankVal.BackgroundTransparency = 1
 	nextRankVal.TextColor3 = Color3.fromRGB(255, 225, 80)
 	nextRankVal.Font = Enum.Font.GothamBlack
-	nextRankVal.TextSize = 21
+	nextRankVal.TextSize = 24
 	nextRankVal.TextXAlignment = Enum.TextXAlignment.Right
 	nextRankVal.Text = "LEVEL 2"
 	nextRankVal.Parent = heroFrame
@@ -269,8 +269,8 @@ function LevelUpUIController.Start()
 	-- ── 3. Ascension Rewards & Perks Preview ──────────────────────────────────
 	local perksContainer = Instance.new("Frame")
 	perksContainer.Name = "PerksContainer"
-	perksContainer.Size = UDim2.new(1, -28, 0, 28)
-	perksContainer.Position = UDim2.new(0, 14, 0, 122)
+	perksContainer.Size = UDim2.new(1, -28, 0, 32)
+	perksContainer.Position = UDim2.new(0, 14, 0, 134)
 	perksContainer.BackgroundTransparency = 1
 	perksContainer.Parent = modalFrame
 
@@ -296,7 +296,7 @@ function LevelUpUIController.Start()
 	p1Text.BackgroundTransparency = 1
 	p1Text.TextColor3 = Color3.fromRGB(255, 225, 90)
 	p1Text.Font = Enum.Font.GothamBold
-	p1Text.TextSize = 11.5
+	p1Text.TextSize = 14.5
 	p1Text.Text = "⭐ +1 Talent Skill Point"
 	p1Text.Parent = perk1
 
@@ -322,30 +322,30 @@ function LevelUpUIController.Start()
 	p2Text.BackgroundTransparency = 1
 	p2Text.TextColor3 = Color3.fromRGB(120, 240, 155)
 	p2Text.Font = Enum.Font.GothamBold
-	p2Text.TextSize = 11.5
+	p2Text.TextSize = 14.5
 	p2Text.Text = "💚 +Max Health & Power"
 	p2Text.Parent = perk2
 
 	-- ── 4. Experience Progress Gauge & Breakdown ───────────────────────────────
 	local expHeaderL = Instance.new("TextLabel")
-	expHeaderL.Size = UDim2.new(0.5, 0, 0, 16)
-	expHeaderL.Position = UDim2.new(0, 14, 0, 158)
+	expHeaderL.Size = UDim2.new(0.5, 0, 0, 18)
+	expHeaderL.Position = UDim2.new(0, 14, 0, 174)
 	expHeaderL.BackgroundTransparency = 1
 	expHeaderL.TextColor3 = Color3.fromRGB(180, 190, 205)
 	expHeaderL.Font = Enum.Font.GothamBold
-	expHeaderL.TextSize = 11
+	expHeaderL.TextSize = 14
 	expHeaderL.TextXAlignment = Enum.TextXAlignment.Left
 	expHeaderL.Text = "ASCENSION PROGRESS"
 	expHeaderL.Parent = modalFrame
 
 	local expHeaderR = Instance.new("TextLabel")
 	expHeaderR.Name = "ExpHeaderStatus"
-	expHeaderR.Size = UDim2.new(0.5, 0, 0, 16)
-	expHeaderR.Position = UDim2.new(0.5, -14, 0, 158)
+	expHeaderR.Size = UDim2.new(0.5, 0, 0, 18)
+	expHeaderR.Position = UDim2.new(0.5, -14, 0, 174)
 	expHeaderR.BackgroundTransparency = 1
 	expHeaderR.TextColor3 = Color3.fromRGB(255, 220, 80)
 	expHeaderR.Font = Enum.Font.GothamBold
-	expHeaderR.TextSize = 11.5
+	expHeaderR.TextSize = 14.5
 	expHeaderR.TextXAlignment = Enum.TextXAlignment.Right
 	expHeaderR.Text = "430 / 50 EXP (Ready!)"
 	expHeaderR.Parent = modalFrame
@@ -353,8 +353,8 @@ function LevelUpUIController.Start()
 	-- EXP Track Bar
 	local expTrack = Instance.new("Frame")
 	expTrack.Name = "ExpTrack"
-	expTrack.Size = UDim2.new(1, -28, 0, 15)
-	expTrack.Position = UDim2.new(0, 14, 0, 178)
+	expTrack.Size = UDim2.new(1, -28, 0, 18)
+	expTrack.Position = UDim2.new(0, 14, 0, 196)
 	expTrack.BackgroundColor3 = Color3.fromRGB(12, 14, 22)
 	expTrack.BorderSizePixel = 0
 	expTrack.ClipsDescendants = true
@@ -390,11 +390,11 @@ function LevelUpUIController.Start()
 	local detailsRow = Instance.new("TextLabel")
 	detailsRow.Name = "DetailsRow"
 	detailsRow.Size = UDim2.new(1, -28, 0, 18)
-	detailsRow.Position = UDim2.new(0, 14, 0, 198)
+	detailsRow.Position = UDim2.new(0, 14, 0, 220)
 	detailsRow.BackgroundTransparency = 1
 	detailsRow.TextColor3 = Color3.fromRGB(190, 200, 215)
 	detailsRow.Font = Enum.Font.GothamMedium
-	detailsRow.TextSize = 11
+	detailsRow.TextSize = 14
 	detailsRow.TextXAlignment = Enum.TextXAlignment.Center
 	detailsRow.Text = "Banked: 430 EXP  •  Cost: 50 EXP  •  Remaining: 380 EXP"
 	detailsRow.Parent = modalFrame
@@ -403,11 +403,11 @@ function LevelUpUIController.Start()
 	local multiBadge = Instance.new("TextLabel")
 	multiBadge.Name = "MultiLevelBadge"
 	multiBadge.Size = UDim2.new(1, -28, 0, 18)
-	multiBadge.Position = UDim2.new(0, 14, 0, 218)
+	multiBadge.Position = UDim2.new(0, 14, 0, 242)
 	multiBadge.BackgroundTransparency = 1
 	multiBadge.TextColor3 = Color3.fromRGB(255, 215, 90)
 	multiBadge.Font = Enum.Font.GothamBold
-	multiBadge.TextSize = 11.5
+	multiBadge.TextSize = 14
 	multiBadge.TextXAlignment = Enum.TextXAlignment.Center
 	multiBadge.Text = "🔥 Multiple levels available to claim!"
 	multiBadge.Visible = false
@@ -416,8 +416,8 @@ function LevelUpUIController.Start()
 	-- ── 5. Tactile Ascension Action Button ────────────────────────────────────
 	local confirmButton = Instance.new("TextButton")
 	confirmButton.Name = "AscendButton"
-	confirmButton.Size = UDim2.new(1, -28, 0, 52)
-	confirmButton.Position = UDim2.new(0, 14, 0, 246)
+	confirmButton.Size = UDim2.new(1, -28, 0, 56)
+	confirmButton.Position = UDim2.new(0, 14, 0, 268)
 	confirmButton.BackgroundColor3 = Color3.fromRGB(38, 155, 75)
 	confirmButton.BorderSizePixel = 0
 	confirmButton.AutoButtonColor = false
@@ -442,22 +442,22 @@ function LevelUpUIController.Start()
 	local btnTitle = Instance.new("TextLabel")
 	btnTitle.Name = "ButtonTitle"
 	btnTitle.Size = UDim2.new(1, 0, 0, 24)
-	btnTitle.Position = UDim2.new(0, 0, 0, 6)
+	btnTitle.Position = UDim2.new(0, 0, 0, 7)
 	btnTitle.BackgroundTransparency = 1
 	btnTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 	btnTitle.Font = Enum.Font.GothamBlack
-	btnTitle.TextSize = 15.5
+	btnTitle.TextSize = 18
 	btnTitle.Text = "✨ ASCEND TO LEVEL 2"
 	btnTitle.Parent = confirmButton
 
 	local btnSub = Instance.new("TextLabel")
 	btnSub.Name = "ButtonSubtitle"
-	btnSub.Size = UDim2.new(1, 0, 0, 16)
-	btnSub.Position = UDim2.new(0, 0, 0, 28)
+	btnSub.Size = UDim2.new(1, 0, 0, 18)
+	btnSub.Position = UDim2.new(0, 0, 0, 31)
 	btnSub.BackgroundTransparency = 1
 	btnSub.TextColor3 = Color3.fromRGB(220, 255, 220)
 	btnSub.Font = Enum.Font.GothamBold
-	btnSub.TextSize = 10.5
+	btnSub.TextSize = 13.5
 	btnSub.Text = "SPEND 50 EXP  •  RECEIVE +1 TALENT POINT"
 	btnSub.Parent = confirmButton
 
@@ -565,12 +565,12 @@ function LevelUpUIController.Start()
 		if currentEXP >= cost then
 			-- Tactile press bounce
 			TweenService:Create(confirmButton, TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				Size = UDim2.new(1, -38, 0, 48)
+				Size = UDim2.new(1, -38, 0, 52)
 			}):Play()
 			task.delay(0.08, function()
 				if confirmButton and confirmButton.Parent then
 					TweenService:Create(confirmButton, TweenInfo.new(0.12, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-						Size = UDim2.new(1, -28, 0, 52)
+						Size = UDim2.new(1, -28, 0, 56)
 					}):Play()
 				end
 			end)

@@ -1,5 +1,6 @@
 -- src/StarterPlayer/StarterPlayerScripts/Controllers/CharacterCreationController.lua
 -- Dark-Fantasy MMO Pre-Spawn Interface (Title Screen, Hero Selection, Creation & Reforge)
+local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TeleportService = game:GetService("TeleportService")
@@ -10,24 +11,60 @@ local Net = require(ReplicatedStorage.Shared.Net)
 
 local CharacterCreationController = {}
 
--- UI Color Palette: Dark Fantasy MMO (Obsidian, Gold, Emerald, Crimson)
+local menuBlur: BlurEffect? = nil
+
+local function setMenuBlur(enabled: boolean)
+	if enabled then
+		if not menuBlur or not menuBlur.Parent then
+			local existing = Lighting:FindFirstChild("SoulforgeMenuBlur")
+			if existing and existing:IsA("BlurEffect") then
+				menuBlur = existing
+			else
+				menuBlur = Instance.new("BlurEffect")
+				menuBlur.Name = "SoulforgeMenuBlur"
+				menuBlur.Size = 0
+				menuBlur.Parent = Lighting
+			end
+			TweenService:Create(menuBlur, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Size = 16,
+			}):Play()
+		end
+	else
+		local existing = Lighting:FindFirstChild("SoulforgeMenuBlur")
+		local blurToFade = menuBlur or (existing and existing:IsA("BlurEffect") and existing)
+		menuBlur = nil
+		if blurToFade and blurToFade.Parent then
+			local tw = TweenService:Create(blurToFade, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Size = 0,
+			})
+			tw:Play()
+			tw.Completed:Connect(function()
+				if blurToFade and blurToFade.Parent then
+					blurToFade:Destroy()
+				end
+			end)
+		end
+	end
+end
+
+-- UI Color Palette: Luminous Dark Fantasy MMO (Sapphire Slate, Radiant Gold, Emerald, Ruby)
 local COLORS = {
-	bgDark = Color3.fromRGB(10, 12, 16),
-	bgCard = Color3.fromRGB(18, 22, 30),
-	bgCardInner = Color3.fromRGB(13, 16, 22),
-	goldPrimary = Color3.fromRGB(235, 175, 55),
-	goldLight = Color3.fromRGB(255, 215, 115),
-	goldDark = Color3.fromRGB(160, 110, 25),
-	emeraldPrimary = Color3.fromRGB(46, 184, 114),
-	emeraldLight = Color3.fromRGB(72, 215, 140),
-	emeraldDark = Color3.fromRGB(26, 110, 65),
-	crimsonPrimary = Color3.fromRGB(215, 60, 60),
-	crimsonLight = Color3.fromRGB(245, 90, 90),
-	crimsonDark = Color3.fromRGB(120, 30, 30),
-	slateBorder = Color3.fromRGB(42, 50, 66),
-	slateLight = Color3.fromRGB(160, 175, 195),
-	textWhite = Color3.fromRGB(250, 250, 255),
-	textMuted = Color3.fromRGB(130, 142, 162),
+	bgDark = Color3.fromRGB(14, 18, 26),
+	bgCard = Color3.fromRGB(28, 36, 52),
+	bgCardInner = Color3.fromRGB(20, 26, 38),
+	goldPrimary = Color3.fromRGB(250, 195, 65),
+	goldLight = Color3.fromRGB(255, 230, 135),
+	goldDark = Color3.fromRGB(180, 125, 30),
+	emeraldPrimary = Color3.fromRGB(38, 192, 108),
+	emeraldLight = Color3.fromRGB(68, 230, 140),
+	emeraldDark = Color3.fromRGB(22, 145, 75),
+	crimsonPrimary = Color3.fromRGB(230, 60, 75),
+	crimsonLight = Color3.fromRGB(255, 110, 125),
+	crimsonDark = Color3.fromRGB(160, 36, 48),
+	slateBorder = Color3.fromRGB(60, 75, 105),
+	slateLight = Color3.fromRGB(185, 200, 225),
+	textWhite = Color3.fromRGB(255, 255, 255),
+	textMuted = Color3.fromRGB(185, 198, 222),
 }
 
 -- Per-class content for the character-creation picker cards. Keys must match
@@ -103,42 +140,42 @@ local function createClassCard(parent: Instance, classId: string, xScale: number
 	classTitle.Font = Enum.Font.GothamBlack
 	classTitle.Text = info.icon .. " " .. info.title
 	classTitle.TextColor3 = COLORS.goldLight
-	classTitle.TextSize = 12
+	classTitle.TextSize = 13.5
 	classTitle.TextXAlignment = Enum.TextXAlignment.Left
 	classTitle.Parent = banner
 
 	local desc = Instance.new("TextLabel")
-	desc.Size = UDim2.new(1, -20, 0, 54)
-	desc.Position = UDim2.new(0, 10, 0, 46)
+	desc.Size = UDim2.new(1, -20, 0, 56)
+	desc.Position = UDim2.new(0, 10, 0, 44)
 	desc.BackgroundTransparency = 1
 	desc.Font = Enum.Font.GothamMedium
 	desc.Text = info.description
 	desc.TextColor3 = COLORS.slateLight
-	desc.TextSize = 9.5
+	desc.TextSize = 12.5
 	desc.TextWrapped = true
 	desc.TextXAlignment = Enum.TextXAlignment.Left
 	desc.TextYAlignment = Enum.TextYAlignment.Top
 	desc.Parent = card
 
 	local traitsFrame = Instance.new("Frame")
-	traitsFrame.Size = UDim2.new(1, -20, 0, 96)
-	traitsFrame.Position = UDim2.new(0, 10, 0, 104)
+	traitsFrame.Size = UDim2.new(1, -20, 0, 100)
+	traitsFrame.Position = UDim2.new(0, 10, 0, 106)
 	traitsFrame.BackgroundTransparency = 1
 	traitsFrame.Parent = card
 
 	local traitsLayout = Instance.new("UIListLayout")
 	traitsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	traitsLayout.Padding = UDim.new(0, 6)
+	traitsLayout.Padding = UDim.new(0, 4)
 	traitsLayout.Parent = traitsFrame
 
 	for _, trait in info.traits do
 		local tLabel = Instance.new("TextLabel")
-		tLabel.Size = UDim2.new(1, 0, 0, 28)
+		tLabel.Size = UDim2.new(1, 0, 0, 26)
 		tLabel.BackgroundTransparency = 1
 		tLabel.Font = Enum.Font.GothamBold
 		tLabel.Text = trait[1] .. "  " .. trait[2]
 		tLabel.TextColor3 = COLORS.textWhite
-		tLabel.TextSize = 10
+		tLabel.TextSize = 12
 		tLabel.TextWrapped = true
 		tLabel.TextXAlignment = Enum.TextXAlignment.Left
 		tLabel.TextYAlignment = Enum.TextYAlignment.Top
@@ -206,7 +243,7 @@ local function createPillBadge(parent: Instance, text: string, bgColor: Color3, 
 	label.Font = Enum.Font.GothamBold
 	label.Text = text
 	label.TextColor3 = textColor
-	label.TextSize = 12
+	label.TextSize = 14.5
 	label.Parent = pill
 
 	return pill
@@ -234,19 +271,39 @@ local function createStyledButton(params: {
 	btn.BackgroundColor3 = params.primaryColor
 	btn.BorderSizePixel = 0
 	btn.AutoButtonColor = false
-	btn.Font = params.font or Enum.Font.GothamBlack
-	btn.Text = params.text
-	btn.TextColor3 = params.textColor
-	btn.TextSize = params.textSize or 15
+	btn.Text = "" -- Kept empty so UIGradient doesn't tint or darken the button text
 	btn.Parent = params.parent
 
 	applyCorner(btn, 10)
-	local stroke = applyStroke(btn, params.strokeColor, 1.5)
+	local stroke = applyStroke(btn, params.strokeColor, 1.8)
 
 	local grad = Instance.new("UIGradient")
 	grad.Color = ColorSequence.new(params.gradientTop, params.gradientBottom)
 	grad.Rotation = 90
 	grad.Parent = btn
+
+	-- Dedicated child TextLabel: completely immune to UIGradient color multiplication
+	local btnLabel = Instance.new("TextLabel")
+	btnLabel.Name = "ButtonText"
+	btnLabel.Size = UDim2.new(1, 0, 1, 0)
+	btnLabel.Position = UDim2.new(0, 0, 0, 0)
+	btnLabel.BackgroundTransparency = 1
+	btnLabel.Font = params.font or Enum.Font.GothamBlack
+	btnLabel.Text = params.text
+	btnLabel.TextColor3 = params.textColor or Color3.fromRGB(255, 255, 255)
+	btnLabel.TextSize = params.textSize or 15
+	btnLabel.TextStrokeColor3 = Color3.fromRGB(12, 16, 24)
+	btnLabel.TextStrokeTransparency = 0.35
+	btnLabel.ZIndex = btn.ZIndex + 2
+	btnLabel.Parent = btn
+
+	-- Allows external code doing `btn.Text = "..."` to update the displayed label cleanly
+	btn:GetPropertyChangedSignal("Text"):Connect(function()
+		if btn.Text ~= "" then
+			btnLabel.Text = btn.Text
+			btn.Text = ""
+		end
+	end)
 
 	-- Hover & Press micro-animations
 	local isPressed = false
@@ -259,7 +316,7 @@ local function createStyledButton(params: {
 		}):Play()
 		TweenService:Create(stroke, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 			Color = Color3.new(1, 1, 1),
-			Thickness = 2,
+			Thickness = 2.2,
 		}):Play()
 	end)
 
@@ -270,7 +327,7 @@ local function createStyledButton(params: {
 		}):Play()
 		TweenService:Create(stroke, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 			Color = params.strokeColor,
-			Thickness = 1.5,
+			Thickness = 1.8,
 		}):Play()
 	end)
 
@@ -323,31 +380,38 @@ function CharacterCreationController.Start()
 	screenGui.Enabled = (player.Character == nil)
 	screenGui.Parent = playerGui
 
-	-- Atmospheric Background with Radial Vignette
+	-- Soft Translucent Vignette Backdrop (Allows 3D World & Hub scene to shine through with depth-of-field blur)
 	local background = Instance.new("Frame")
+	background.Name = "AtmosphericBackdrop"
 	background.Size = UDim2.new(1, 0, 1, 0)
-	background.BackgroundColor3 = COLORS.bgDark
+	background.BackgroundColor3 = Color3.fromRGB(18, 26, 44)
+	background.BackgroundTransparency = 0.72 -- Soft and luminous, 3D world shines through brightly
 	background.BorderSizePixel = 0
 	background.Parent = screenGui
 
 	local bgGrad = Instance.new("UIGradient")
 	bgGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(18, 22, 32)),
-		ColorSequenceKeypoint.new(0.6, Color3.fromRGB(10, 12, 17)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(5, 6, 8)),
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(26, 38, 62)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(16, 24, 40)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(12, 18, 30)),
+	})
+	bgGrad.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.65),
+		NumberSequenceKeypoint.new(0.5, 0.82),
+		NumberSequenceKeypoint.new(1, 0.65),
 	})
 	bgGrad.Rotation = 45
 	bgGrad.Parent = background
 
 	-- Subtle Ambient Warm Glow Circle in Center
 	local glowDeco = Instance.new("ImageLabel")
-	glowDeco.Size = UDim2.new(0, 700, 0, 700)
+	glowDeco.Size = UDim2.new(0, 750, 0, 750)
 	glowDeco.Position = UDim2.new(0.5, 0, 0.5, 0)
 	glowDeco.AnchorPoint = Vector2.new(0.5, 0.5)
 	glowDeco.BackgroundTransparency = 1
 	glowDeco.Image = "rbxassetid://5028857084"
-	glowDeco.ImageColor3 = Color3.fromRGB(180, 120, 40)
-	glowDeco.ImageTransparency = 0.88
+	glowDeco.ImageColor3 = Color3.fromRGB(235, 175, 65)
+	glowDeco.ImageTransparency = 0.94
 	glowDeco.Parent = background
 
 	-- ══════════════════════════════════════════════════════════════════════
@@ -373,7 +437,7 @@ function CharacterCreationController.Start()
 	emblemLabel.Font = Enum.Font.GothamBold
 	emblemLabel.Text = "❖   A C T I O N   R P G   D U N G E O N   C R A W L E R   ❖"
 	emblemLabel.TextColor3 = COLORS.goldLight
-	emblemLabel.TextSize = 12
+	emblemLabel.TextSize = 14
 	emblemLabel.TextTransparency = 0.3
 	emblemLabel.Parent = titleCenter
 
@@ -408,7 +472,7 @@ function CharacterCreationController.Start()
 	subtitleLabel.Font = Enum.Font.GothamMedium
 	subtitleLabel.Text = "CHRONICLES OF THE EARTHBREAKER"
 	subtitleLabel.TextColor3 = COLORS.slateLight
-	subtitleLabel.TextSize = 14
+	subtitleLabel.TextSize = 15.5
 	subtitleLabel.TextTransparency = 0.2
 	subtitleLabel.Parent = titleCenter
 
@@ -445,7 +509,7 @@ function CharacterCreationController.Start()
 	promptLabel.Font = Enum.Font.GothamBold
 	promptLabel.Text = "TAP TO ENTER"
 	promptLabel.TextColor3 = COLORS.goldLight
-	promptLabel.TextSize = 13
+	promptLabel.TextSize = 15
 	promptLabel.Parent = promptPill
 
 	-- Breathing glow animation for prompt
@@ -484,26 +548,29 @@ function CharacterCreationController.Start()
 	choiceFrame.Visible = false
 	choiceFrame.Parent = background
 
+	local warnDesc: TextLabel? = nil
+
 	local choiceCard = Instance.new("Frame")
-	choiceCard.Size = UDim2.new(0.9, 0, 0.86, 0)
+	choiceCard.Size = UDim2.new(0.9, 0, 0.88, 0)
 	choiceCard.Position = UDim2.new(0.5, 0, 0.5, 0)
 	choiceCard.AnchorPoint = Vector2.new(0.5, 0.5)
-	choiceCard.BackgroundColor3 = COLORS.bgCard
+	choiceCard.BackgroundColor3 = Color3.fromRGB(26, 32, 48)
+	choiceCard.BackgroundTransparency = 0.05
 	choiceCard.BorderSizePixel = 0
 	choiceCard.Parent = choiceFrame
 
 	local choiceConstraint = Instance.new("UISizeConstraint")
-	choiceConstraint.MaxSize = Vector2.new(500, 520)
-	choiceConstraint.MinSize = Vector2.new(320, 440)
+	choiceConstraint.MaxSize = Vector2.new(520, 560)
+	choiceConstraint.MinSize = Vector2.new(340, 460)
 	choiceConstraint.Parent = choiceCard
 
 	applyCorner(choiceCard, 16)
-	applyStroke(choiceCard, COLORS.slateBorder, 1.8)
+	applyStroke(choiceCard, COLORS.goldPrimary, 2.0)
 
 	local choiceCardGrad = Instance.new("UIGradient")
 	choiceCardGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(24, 28, 38)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(16, 18, 26)),
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(36, 46, 68)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(22, 28, 42)),
 	})
 	choiceCardGrad.Rotation = 90
 	choiceCardGrad.Parent = choiceCard
@@ -521,8 +588,8 @@ function CharacterCreationController.Start()
 	choiceTopHeader.BackgroundTransparency = 1
 	choiceTopHeader.Font = Enum.Font.GothamBold
 	choiceTopHeader.Text = "❖   H E R O   S E L E C T I O N   ❖"
-	choiceTopHeader.TextColor3 = COLORS.goldPrimary
-	choiceTopHeader.TextSize = 11
+	choiceTopHeader.TextColor3 = COLORS.goldLight
+	choiceTopHeader.TextSize = 14
 	choiceTopHeader.Parent = choiceCard
 
 	-- Main Title Banner
@@ -533,25 +600,26 @@ function CharacterCreationController.Start()
 	welcomeTitle.Font = Enum.Font.GothamBlack
 	welcomeTitle.Text = "Welcome Back, Champion"
 	welcomeTitle.TextColor3 = COLORS.textWhite
-	welcomeTitle.TextSize = 22
+	welcomeTitle.TextSize = 24
 	welcomeTitle.Parent = choiceCard
 
 	-- Hero Showcase Inner Panel
 	local heroPanel = Instance.new("Frame")
 	heroPanel.Size = UDim2.new(1, 0, 0, 200)
 	heroPanel.Position = UDim2.new(0, 0, 0, 60)
-	heroPanel.BackgroundColor3 = COLORS.bgCardInner
+	heroPanel.BackgroundColor3 = Color3.fromRGB(18, 24, 36)
+	heroPanel.BackgroundTransparency = 0.1
 	heroPanel.BorderSizePixel = 0
 	heroPanel.Parent = choiceCard
 
 	applyCorner(heroPanel, 12)
-	applyStroke(heroPanel, Color3.fromRGB(32, 38, 52), 1.2)
+	applyStroke(heroPanel, Color3.fromRGB(56, 70, 98), 1.4)
 
 	-- Hero Avatar Crest Frame
 	local avatarFrame = Instance.new("Frame")
 	avatarFrame.Size = UDim2.new(0, 84, 0, 84)
 	avatarFrame.Position = UDim2.new(0, 16, 0, 16)
-	avatarFrame.BackgroundColor3 = Color3.fromRGB(24, 28, 40)
+	avatarFrame.BackgroundColor3 = Color3.fromRGB(30, 38, 56)
 	avatarFrame.BorderSizePixel = 0
 	avatarFrame.Parent = heroPanel
 
@@ -588,13 +656,13 @@ function CharacterCreationController.Start()
 	heroNameLabel.Parent = heroPanel
 
 	local heroHandleLabel = Instance.new("TextLabel")
-	heroHandleLabel.Size = UDim2.new(1, -124, 0, 16)
+	heroHandleLabel.Size = UDim2.new(1, -124, 0, 18)
 	heroHandleLabel.Position = UDim2.new(0, 114, 0, 44)
 	heroHandleLabel.BackgroundTransparency = 1
 	heroHandleLabel.Font = Enum.Font.GothamMedium
 	heroHandleLabel.Text = "@" .. player.Name
-	heroHandleLabel.TextColor3 = COLORS.textMuted
-	heroHandleLabel.TextSize = 12
+	heroHandleLabel.TextColor3 = Color3.fromRGB(185, 200, 225)
+	heroHandleLabel.TextSize = 14.5
 	heroHandleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	heroHandleLabel.Parent = heroPanel
 
@@ -614,24 +682,24 @@ function CharacterCreationController.Start()
 	local levelBadge = createPillBadge(
 		badgesContainer,
 		"⭐ LEVEL 1",
-		Color3.fromRGB(48, 36, 12),
-		COLORS.goldPrimary,
-		COLORS.goldLight
+		Color3.fromRGB(68, 50, 18),
+		Color3.fromRGB(255, 195, 60),
+		Color3.fromRGB(255, 230, 130)
 	)
 
-	createPillBadge(
+	local classBadge = createPillBadge(
 		badgesContainer,
-		"🛡️ TANK",
-		Color3.fromRGB(18, 32, 54),
-		Color3.fromRGB(56, 125, 230),
-		Color3.fromRGB(120, 180, 255)
+		"🔮 MAGE",
+		Color3.fromRGB(60, 30, 90),
+		Color3.fromRGB(190, 120, 255),
+		Color3.fromRGB(240, 210, 255)
 	)
 
 	-- Inner Divider Line
 	local heroDivider = Instance.new("Frame")
 	heroDivider.Size = UDim2.new(1, -32, 0, 1)
 	heroDivider.Position = UDim2.new(0, 16, 0, 114)
-	heroDivider.BackgroundColor3 = Color3.fromRGB(36, 42, 58)
+	heroDivider.BackgroundColor3 = Color3.fromRGB(48, 60, 84)
 	heroDivider.BorderSizePixel = 0
 	heroDivider.Parent = heroPanel
 
@@ -648,44 +716,87 @@ function CharacterCreationController.Start()
 	attrLayout.Padding = UDim.new(0, 8)
 	attrLayout.Parent = attrContainer
 
-	local function createPerkChip(icon: string, title: string, subtitle: string)
+	local function createPerkChip(icon: string, title: string, subtitle: string): (TextLabel, TextLabel)
 		local chip = Instance.new("Frame")
 		chip.Size = UDim2.new(0.31, 0, 1, 0)
-		chip.BackgroundColor3 = Color3.fromRGB(18, 22, 32)
+		chip.BackgroundColor3 = Color3.fromRGB(26, 34, 50)
+		chip.BackgroundTransparency = 0.08
 		chip.BorderSizePixel = 0
 		chip.Parent = attrContainer
 
 		applyCorner(chip, 8)
-		applyStroke(chip, Color3.fromRGB(34, 40, 56), 1)
+		applyStroke(chip, Color3.fromRGB(56, 72, 102), 1.2)
 
 		local cTitle = Instance.new("TextLabel")
 		cTitle.Size = UDim2.new(1, 0, 0, 18)
-		cTitle.Position = UDim2.new(0, 0, 0, 10)
+		cTitle.Position = UDim2.new(0, 0, 0, 8)
 		cTitle.BackgroundTransparency = 1
 		cTitle.Font = Enum.Font.GothamBold
 		cTitle.Text = icon .. " " .. title
-		cTitle.TextColor3 = COLORS.textWhite
-		cTitle.TextSize = 11
+		cTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+		cTitle.TextSize = 14
 		cTitle.Parent = chip
 
 		local cSub = Instance.new("TextLabel")
-		cSub.Size = UDim2.new(1, 0, 0, 14)
-		cSub.Position = UDim2.new(0, 0, 0, 28)
+		cSub.Size = UDim2.new(1, 0, 0, 16)
+		cSub.Position = UDim2.new(0, 0, 0, 26)
 		cSub.BackgroundTransparency = 1
-		cSub.Font = Enum.Font.Gotham
+		cSub.Font = Enum.Font.GothamMedium
 		cSub.Text = subtitle
-		cSub.TextColor3 = COLORS.textMuted
-		cSub.TextSize = 10
+		cSub.TextColor3 = Color3.fromRGB(190, 208, 235)
+		cSub.TextSize = 13
 		cSub.Parent = chip
+
+		return cTitle, cSub
 	end
 
-	createPerkChip("❤️", "250 HP", "Base Health")
-	createPerkChip("🛡️", "Taunt", "Threat Lock")
-	createPerkChip("⚔️", "Blade & Shield", "Melee Defender")
+	local chip1Title, chip1Sub = createPerkChip("❤️", "80 HP", "Base Health")
+	local chip2Title, chip2Sub = createPerkChip("🔮", "Arcane Bolt", "Ranged Focus")
+	local chip3Title, chip3Sub = createPerkChip("🔥", "Spellweaver", "Fire & Frost")
+
+	local function updateHeroChoiceCard(classId: string, level: number)
+		local levelText = ("⭐ LEVEL %d"):format(level)
+		local lvlChild = levelBadge:FindFirstChildOfClass("TextLabel")
+		if lvlChild then
+			lvlChild.Text = levelText
+		end
+
+		local isMage = (classId == "Mage")
+		local badgeLabel = classBadge:FindFirstChildOfClass("TextLabel")
+		local badgeStroke = classBadge:FindFirstChildOfClass("UIStroke")
+		if badgeLabel then
+			badgeLabel.Text = isMage and "🔮 MAGE" or "🛡️ TANK"
+			badgeLabel.TextColor3 = isMage and Color3.fromRGB(240, 210, 255) or Color3.fromRGB(150, 210, 255)
+		end
+		if badgeStroke then
+			badgeStroke.Color = isMage and Color3.fromRGB(190, 120, 255) or Color3.fromRGB(75, 150, 255)
+		end
+		classBadge.BackgroundColor3 = isMage and Color3.fromRGB(60, 30, 90) or Color3.fromRGB(24, 45, 80)
+
+		if isMage then
+			chip1Title.Text = "❤️ 80 HP"
+			chip1Sub.Text = "Base Health"
+			chip2Title.Text = "🔮 Arcane Bolt"
+			chip2Sub.Text = "Ranged Focus"
+			chip3Title.Text = "🔥 Spellweaver"
+			chip3Sub.Text = "Fire & Frost"
+		else
+			chip1Title.Text = "❤️ 150 HP"
+			chip1Sub.Text = "Base Health"
+			chip2Title.Text = "🛡️ Taunt"
+			chip2Sub.Text = "Threat Lock"
+			chip3Title.Text = "⚔️ Blade & Shield"
+			chip3Sub.Text = "Melee Defender"
+		end
+
+		if warnDesc then
+			warnDesc.Text = ("This will permanently delete your Level %d %s and reset all skill points, unlocked abilities, and level progression."):format(level, isMage and "Mage" or "Tank")
+		end
+	end
 
 	-- Action Buttons Area
 	local actionArea = Instance.new("Frame")
-	actionArea.Size = UDim2.new(1, 0, 0, 110)
+	actionArea.Size = UDim2.new(1, 0, 0, 116)
 	actionArea.Position = UDim2.new(0, 0, 0, 276)
 	actionArea.BackgroundTransparency = 1
 	actionArea.Parent = choiceCard
@@ -698,36 +809,37 @@ function CharacterCreationController.Start()
 		text = "⚔️   ENTER REALM",
 		size = UDim2.new(1, 0, 0, 52),
 		position = UDim2.new(0, 0, 0, 0),
-		primaryColor = COLORS.emeraldPrimary,
-		gradientTop = COLORS.emeraldLight,
-		gradientBottom = COLORS.emeraldDark,
-		strokeColor = Color3.fromRGB(90, 235, 150),
-		textColor = COLORS.textWhite,
+		primaryColor = Color3.fromRGB(36, 185, 104),
+		gradientTop = Color3.fromRGB(56, 225, 132),
+		gradientBottom = Color3.fromRGB(24, 150, 78),
+		strokeColor = Color3.fromRGB(135, 255, 185),
+		textColor = Color3.fromRGB(255, 255, 255),
 		textSize = 16,
 		font = Enum.Font.GothamBlack,
 		onClick = function()
 			continueBtn.Active = false
 			createNewBtn.Active = false
 			continueBtn.Text = "ENTERING REALM..."
+			setMenuBlur(false)
 			Net.Get("RequestLoadCharacter"):FireServer()
 		end,
 	})
 
 	createNewBtn = createStyledButton({
 		parent = actionArea,
-		text = "🔄   Reforge Hero (Start Anew)",
-		size = UDim2.new(1, 0, 0, 42),
-		position = UDim2.new(0, 0, 0, 62),
-		primaryColor = Color3.fromRGB(28, 22, 26),
-		gradientTop = Color3.fromRGB(38, 28, 34),
-		gradientBottom = Color3.fromRGB(22, 16, 20),
-		strokeColor = Color3.fromRGB(110, 45, 52),
-		textColor = Color3.fromRGB(225, 140, 140),
-		textSize = 13,
+		text = "🔄   REFORGE HERO (START ANEW)",
+		size = UDim2.new(1, 0, 0, 46),
+		position = UDim2.new(0, 0, 0, 60),
+		primaryColor = Color3.fromRGB(120, 34, 48),
+		gradientTop = Color3.fromRGB(165, 52, 70),
+		gradientBottom = Color3.fromRGB(95, 26, 38),
+		strokeColor = Color3.fromRGB(255, 120, 135),
+		textColor = Color3.fromRGB(255, 255, 255),
+		textSize = 15,
 		font = Enum.Font.GothamBold,
-		onClick = function()
-			-- Will open confirmation modal
-		end,
+		-- Actual click behavior is wired below via createNewBtn.Activated,
+		-- once confirmFrame (Screen 4) exists to be shown.
+		onClick = function() end,
 	})
 
 	-- ══════════════════════════════════════════════════════════════════════
@@ -757,8 +869,8 @@ function CharacterCreationController.Start()
 
 	local createCardGrad = Instance.new("UIGradient")
 	createCardGrad.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(24, 28, 38)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(16, 18, 26)),
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(36, 46, 68)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(22, 28, 42)),
 	})
 	createCardGrad.Rotation = 90
 	createCardGrad.Parent = createCard
@@ -775,8 +887,8 @@ function CharacterCreationController.Start()
 	createTopHeader.BackgroundTransparency = 1
 	createTopHeader.Font = Enum.Font.GothamBold
 	createTopHeader.Text = "❖   C H O O S E   Y O U R   P A T H   ❖"
-	createTopHeader.TextColor3 = COLORS.goldPrimary
-	createTopHeader.TextSize = 11
+	createTopHeader.TextColor3 = COLORS.goldLight
+	createTopHeader.TextSize = 14
 	createTopHeader.Parent = createCard
 
 	local createTitle = Instance.new("TextLabel")
@@ -786,20 +898,20 @@ function CharacterCreationController.Start()
 	createTitle.Font = Enum.Font.GothamBlack
 	createTitle.Text = "Forge Your Destiny"
 	createTitle.TextColor3 = COLORS.textWhite
-	createTitle.TextSize = 22
+	createTitle.TextSize = 24
 	createTitle.Parent = createCard
 
 	-- Class Picker: two selectable cards
 	local classCardsRow = Instance.new("Frame")
-	classCardsRow.Size = UDim2.new(1, 0, 0, 210)
-	classCardsRow.Position = UDim2.new(0, 0, 0, 58)
+	classCardsRow.Size = UDim2.new(1, 0, 0, 220)
+	classCardsRow.Position = UDim2.new(0, 0, 0, 56)
 	classCardsRow.BackgroundTransparency = 1
 	classCardsRow.Parent = createCard
 
 	local tankCard, tankCardStroke, tankCardHitbox = createClassCard(classCardsRow, "Tank", 0, 0.485)
 	local mageCard, mageCardStroke, mageCardHitbox = createClassCard(classCardsRow, "Mage", 0.515, 0.485)
 
-	local selectedClassId = "Tank"
+	local selectedClassId = "Mage"
 
 	local function refreshClassCardSelection()
 		tankCardStroke.Color = (selectedClassId == "Tank") and COLORS.goldPrimary or COLORS.slateBorder
@@ -821,12 +933,12 @@ function CharacterCreationController.Start()
 	-- Playing As Indicator
 	local playingAsText = Instance.new("TextLabel")
 	playingAsText.Size = UDim2.new(1, 0, 0, 20)
-	playingAsText.Position = UDim2.new(0, 0, 0, 280)
+	playingAsText.Position = UDim2.new(0, 0, 0, 286)
 	playingAsText.BackgroundTransparency = 1
 	playingAsText.Font = Enum.Font.GothamMedium
 	playingAsText.Text = ("Champion: %s (@%s)"):format(player.DisplayName, player.Name)
-	playingAsText.TextColor3 = COLORS.textMuted
-	playingAsText.TextSize = 12
+	playingAsText.TextColor3 = Color3.fromRGB(190, 205, 230)
+	playingAsText.TextSize = 14.5
 	playingAsText.Parent = createCard
 
 	local beginBtn: TextButton
@@ -834,17 +946,18 @@ function CharacterCreationController.Start()
 		parent = createCard,
 		text = "⚔️   EMBARK ON JOURNEY",
 		size = UDim2.new(1, 0, 0, 52),
-		position = UDim2.new(0, 0, 0, 308),
-		primaryColor = COLORS.emeraldPrimary,
-		gradientTop = COLORS.emeraldLight,
-		gradientBottom = COLORS.emeraldDark,
-		strokeColor = Color3.fromRGB(90, 235, 150),
-		textColor = COLORS.textWhite,
+		position = UDim2.new(0, 0, 0, 314),
+		primaryColor = Color3.fromRGB(36, 185, 104),
+		gradientTop = Color3.fromRGB(56, 225, 132),
+		gradientBottom = Color3.fromRGB(24, 150, 78),
+		strokeColor = Color3.fromRGB(135, 255, 185),
+		textColor = Color3.fromRGB(255, 255, 255),
 		textSize = 16,
 		font = Enum.Font.GothamBlack,
 		onClick = function()
 			beginBtn.Active = false
 			beginBtn.Text = "FORGING HERO..."
+			setMenuBlur(false)
 			if creationFlowMode == "reforge" then
 				Net.Get("RequestCreateNewCharacter"):FireServer(selectedClassId)
 			else
@@ -867,7 +980,7 @@ function CharacterCreationController.Start()
 	confirmCard.Size = UDim2.new(0.9, 0, 0.55, 0)
 	confirmCard.Position = UDim2.new(0.5, 0, 0.5, 0)
 	confirmCard.AnchorPoint = Vector2.new(0.5, 0.5)
-	confirmCard.BackgroundColor3 = Color3.fromRGB(24, 18, 20)
+	confirmCard.BackgroundColor3 = Color3.fromRGB(34, 26, 32)
 	confirmCard.BorderSizePixel = 0
 	confirmCard.Parent = confirmFrame
 
@@ -900,18 +1013,18 @@ function CharacterCreationController.Start()
 	warnTitle.BackgroundTransparency = 1
 	warnTitle.Font = Enum.Font.GothamBlack
 	warnTitle.Text = "REFORGE HERO?"
-	warnTitle.TextColor3 = COLORS.crimsonLight
+	warnTitle.TextColor3 = Color3.fromRGB(255, 110, 125)
 	warnTitle.TextSize = 20
 	warnTitle.Parent = confirmCard
 
-	local warnDesc = Instance.new("TextLabel")
+	warnDesc = Instance.new("TextLabel")
 	warnDesc.Size = UDim2.new(1, 0, 0, 70)
 	warnDesc.Position = UDim2.new(0, 0, 0, 80)
 	warnDesc.BackgroundTransparency = 1
 	warnDesc.Font = Enum.Font.GothamMedium
 	warnDesc.Text = "This will permanently delete your character and reset all skill points, unlocked abilities, and level progression."
-	warnDesc.TextColor3 = Color3.fromRGB(220, 180, 180)
-	warnDesc.TextSize = 13
+	warnDesc.TextColor3 = Color3.fromRGB(235, 205, 215)
+	warnDesc.TextSize = 14.5
 	warnDesc.TextWrapped = true
 	warnDesc.Parent = confirmCard
 
@@ -929,11 +1042,11 @@ function CharacterCreationController.Start()
 		text = "🛡️   KEEP EXISTING HERO",
 		size = UDim2.new(1, 0, 0, 44),
 		position = UDim2.new(0, 0, 0, 0),
-		primaryColor = Color3.fromRGB(36, 44, 58),
-		gradientTop = Color3.fromRGB(48, 58, 76),
-		gradientBottom = Color3.fromRGB(28, 34, 46),
-		strokeColor = Color3.fromRGB(80, 100, 130),
-		textColor = COLORS.textWhite,
+		primaryColor = Color3.fromRGB(48, 60, 82),
+		gradientTop = Color3.fromRGB(64, 80, 110),
+		gradientBottom = Color3.fromRGB(38, 48, 66),
+		strokeColor = Color3.fromRGB(120, 150, 195),
+		textColor = Color3.fromRGB(255, 255, 255),
 		textSize = 14,
 		font = Enum.Font.GothamBold,
 		onClick = function()
@@ -947,12 +1060,12 @@ function CharacterCreationController.Start()
 		text = "💥   DELETE & RESTART",
 		size = UDim2.new(1, 0, 0, 40),
 		position = UDim2.new(0, 0, 0, 52),
-		primaryColor = COLORS.crimsonDark,
-		gradientTop = COLORS.crimsonPrimary,
-		gradientBottom = COLORS.crimsonDark,
-		strokeColor = COLORS.crimsonLight,
-		textColor = Color3.fromRGB(255, 220, 220),
-		textSize = 13,
+		primaryColor = Color3.fromRGB(160, 36, 48),
+		gradientTop = Color3.fromRGB(200, 52, 68),
+		gradientBottom = Color3.fromRGB(130, 28, 38),
+		strokeColor = Color3.fromRGB(255, 120, 135),
+		textColor = Color3.fromRGB(255, 255, 255),
+		textSize = 14,
 		font = Enum.Font.GothamBlack,
 		onClick = function()
 			creationFlowMode = "reforge"
@@ -971,7 +1084,7 @@ function CharacterCreationController.Start()
 	-- SCREEN 5: LOADING STATE
 	-- ══════════════════════════════════════════════════════════════════════
 	local loadingCard = Instance.new("Frame")
-	loadingCard.Size = UDim2.new(0, 340, 0, 80)
+	loadingCard.Size = UDim2.new(0, 360, 0, 84)
 	loadingCard.Position = UDim2.new(0.5, 0, 0.5, 0)
 	loadingCard.AnchorPoint = Vector2.new(0.5, 0.5)
 	loadingCard.BackgroundColor3 = COLORS.bgCard
@@ -988,7 +1101,7 @@ function CharacterCreationController.Start()
 	loadingLabel.Font = Enum.Font.GothamBold
 	loadingLabel.Text = "❖   COMMUNING WITH THE FORGE...   ❖"
 	loadingLabel.TextColor3 = COLORS.goldLight
-	loadingLabel.TextSize = 13
+	loadingLabel.TextSize = 14.5
 	loadingLabel.Parent = loadingCard
 
 	-- ══════════════════════════════════════════════════════════════════════
@@ -997,6 +1110,7 @@ function CharacterCreationController.Start()
 	local introDismissed = false
 	local pendingScreen: "creation" | "choice" | nil = nil
 	local pendingLevel = 1
+	local pendingClassId = "Mage"
 
 	local function showPendingScreen()
 		if not introDismissed or not pendingScreen then
@@ -1006,13 +1120,7 @@ function CharacterCreationController.Start()
 		if pendingScreen == "creation" then
 			createFrame.Visible = true
 		elseif pendingScreen == "choice" then
-			-- Update Level badge text
-			local levelText = ("⭐ LEVEL %d"):format(pendingLevel)
-			local lvlChild = levelBadge:FindFirstChildOfClass("TextLabel")
-			if lvlChild then
-				lvlChild.Text = levelText
-			end
-			warnDesc.Text = ("This will permanently delete your Level %d Tank and reset all skill points, unlocked abilities, and level progression."):format(pendingLevel)
+			updateHeroChoiceCard(pendingClassId, pendingLevel)
 			choiceFrame.Visible = true
 		end
 	end
@@ -1064,35 +1172,62 @@ function CharacterCreationController.Start()
 		end
 	end)
 
+	local function setHudVisible(visible: boolean)
+		local hud = playerGui:FindFirstChild("HUD")
+		if hud and hud:IsA("ScreenGui") then
+			hud.Enabled = visible
+		end
+		local party = playerGui:FindFirstChild("PartyUI")
+		if party and party:IsA("ScreenGui") then
+			party.Enabled = visible
+		end
+	end
+
 	Net.Get("ShowCharacterCreation").OnClientEvent:Connect(function()
 		if player.Character and player.Character.Parent then
 			screenGui.Enabled = false
+			setMenuBlur(false)
+			setHudVisible(true)
 			return
 		end
+		setHudVisible(false)
 		screenGui.Enabled = true
+		setMenuBlur(true)
 		pendingScreen = "creation"
 		showPendingScreen()
 	end)
 
-	Net.Get("ShowCharacterChoice").OnClientEvent:Connect(function(level: number)
+	Net.Get("ShowCharacterChoice").OnClientEvent:Connect(function(level: number, classId: string?)
 		if player.Character and player.Character.Parent then
 			screenGui.Enabled = false
+			setMenuBlur(false)
+			setHudVisible(true)
 			return
 		end
+		setHudVisible(false)
 		screenGui.Enabled = true
+		setMenuBlur(true)
 		pendingScreen = "choice"
-		pendingLevel = level
+		pendingLevel = level or 1
+		pendingClassId = classId or "Mage"
 		showPendingScreen()
 	end)
 
 	-- Clean exit when character spawns in game
 	player.CharacterAdded:Connect(function()
 		screenGui.Enabled = false
+		setMenuBlur(false)
+		setHudVisible(true)
 	end)
 
 	if player.Character and player.Character.Parent then
 		screenGui.Enabled = false
+		setMenuBlur(false)
+		setHudVisible(true)
 	else
+		setHudVisible(false)
+		screenGui.Enabled = true
+		setMenuBlur(true)
 		-- Request initial character state in case event arrived before script initialized
 		Net.Get("RequestCharacterState"):FireServer()
 	end

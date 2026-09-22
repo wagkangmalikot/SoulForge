@@ -31,17 +31,23 @@ function DungeonPortalController.Start()
 	-- delay here doesn't delay Main.client.lua's synchronous calls into the
 	-- controllers that run after this one.
 	task.spawn(function()
-		local portalPart = workspace:WaitForChild("RockhidePortal", 5)
-		if not portalPart then
-			-- Shouldn't happen on a real hub server, but guard against a
-			-- still-replicating Part rather than erroring on a nil Parent below.
-			warn("DungeonPortalController: RockhidePortal not found on hub server within 5s")
-			return
-		end
+		-- No timeout: the checks above already confirm this is a hub server, where
+		-- HubMapService.BuildHub() unconditionally creates RockhidePortal, so it will
+		-- always eventually exist -- a 5s cutoff here was observed to sometimes lose
+		-- that race against BuildHub()'s replication, silently leaving this player
+		-- with no way to ever enter the dungeon. This thread doesn't block anything
+		-- else, so waiting indefinitely is safe.
+		local portalPart = workspace:WaitForChild("RockhidePortal")
 
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.ActionText = "Enter Rockhide's Dungeon"
 		prompt.HoldDuration = 0.5
+		-- The portal's own decorative rings/runes sit directly between the camera
+		-- and this prompt's part from a normal over-the-shoulder angle, and Roblox's
+		-- line-of-sight raycast doesn't exclude sibling decoration (only the
+		-- character and the prompt's own parent) -- so with the default
+		-- RequiresLineOfSight = true, the prompt never shows and never triggers.
+		prompt.RequiresLineOfSight = false
 		prompt.Parent = portalPart
 
 		prompt.Triggered:Connect(function()

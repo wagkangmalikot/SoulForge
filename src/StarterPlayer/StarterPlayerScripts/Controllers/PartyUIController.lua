@@ -18,6 +18,7 @@ function PartyUIController.Start()
 	screenGui.ResetOnSpawn = false
 	screenGui.IgnoreGuiInset = false -- Respects Roblox topbar safely across all screen resolutions
 	screenGui.DisplayOrder = 10
+	screenGui.Enabled = false
 	screenGui.Parent = playerGui
 
 	-- Find HUD TopLeftContainer so Party UI elements scale and position harmoniously below PlayerUnitFrame
@@ -30,15 +31,32 @@ function PartyUIController.Start()
 		end
 	end
 
+	-- ── State tracking & Visibility Logic ──────────────────────────────────────
+	local currentPartyId: number? = nil
+	local currentLeaderId: number? = nil
+	local currentMemberUserIds: {number} = {}
+
+	local function hasCurrentParty(): boolean
+		if currentPartyId and #currentMemberUserIds > 0 then
+			local myId = player.UserId
+			for _, mId in currentMemberUserIds do
+				if mId == myId then
+					return true
+				end
+			end
+		end
+		return false
+	end
+
 	-- ── Create Party button ────────────────────────────────────────────────────
-	-- Positioned at Y = 102 (safely below PlayerUnitFrame which ends at Y = 94, with 8px margin)
+	-- Positioned at Y = 114 (safely below PlayerUnitFrame which ends at Y = 106, with 8px margin)
 	local createButton = Instance.new("TextButton")
 	createButton.Name = "CreatePartyButton"
 	createButton.Text = "🛡️  Create Party"
-	createButton.Size = UDim2.new(0, 140, 0, 34)
-	createButton.Position = UDim2.new(0, 16, 0, 102)
+	createButton.Size = UDim2.new(0, 168, 0, 40)
+	createButton.Position = UDim2.new(0, 16, 0, 114)
 	createButton.Font = Enum.Font.GothamBold
-	createButton.TextSize = 12
+	createButton.TextSize = 15
 	createButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 	createButton.TextStrokeColor3 = Color3.fromRGB(10, 15, 25)
 	createButton.TextStrokeTransparency = 0.3
@@ -61,26 +79,30 @@ function PartyUIController.Start()
 	cs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 	cs.Parent = createButton
 
+	local createDebounce = false
 	createButton.Activated:Connect(function()
+		if createDebounce or hasCurrentParty() then return end
+		createDebounce = true
 		TweenService:Create(createButton, TweenInfo.new(0.06, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Size = UDim2.new(0, 134, 0, 31)
+			Size = UDim2.new(0, 160, 0, 36)
 		}):Play()
 		task.delay(0.08, function()
 			if createButton and createButton.Parent then
 				TweenService:Create(createButton, TweenInfo.new(0.12, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-					Size = UDim2.new(0, 140, 0, 34)
+					Size = UDim2.new(0, 168, 0, 40)
 				}):Play()
 			end
 		end)
 		Net.Get("PartyCreate"):FireServer()
+		task.delay(1, function() createDebounce = false end)
 	end)
 
 	-- ── Party status card (Active when in a party) ─────────────────────────────
-	-- Positioned at Y = 102 with width 240 (matching PlayerUnitFrame width)
+	-- Positioned at Y = 114 with width 280 (matching PlayerUnitFrame width)
 	local partyCard = Instance.new("Frame")
 	partyCard.Name = "PartyCard"
-	partyCard.Size = UDim2.new(0, 240, 0, 42)
-	partyCard.Position = UDim2.new(0, 16, 0, 102)
+	partyCard.Size = UDim2.new(0, 280, 0, 52)
+	partyCard.Position = UDim2.new(0, 16, 0, 114)
 	partyCard.BackgroundColor3 = Color3.fromRGB(18, 22, 32)
 	partyCard.BackgroundTransparency = 0.15
 	partyCard.BorderSizePixel = 0
@@ -103,37 +125,37 @@ function PartyUIController.Start()
 
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Name = "PartyTitle"
-	titleLabel.Size = UDim2.new(1, -72, 0, 20)
-	titleLabel.Position = UDim2.new(0, 10, 0, 3)
+	titleLabel.Size = UDim2.new(1, -84, 0, 22)
+	titleLabel.Position = UDim2.new(0, 10, 0, 4)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.TextColor3 = Color3.fromRGB(255, 220, 100)
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.Font = Enum.Font.GothamBold
-	titleLabel.TextSize = 12
+	titleLabel.TextSize = 14.5
 	titleLabel.Text = "🛡️ PARTY (1/4)"
 	titleLabel.Parent = partyCard
 
 	local statusLabel = Instance.new("TextLabel")
 	statusLabel.Name = "StatusLabel"
-	statusLabel.Size = UDim2.new(1, -72, 0, 16)
-	statusLabel.Position = UDim2.new(0, 10, 0, 22)
+	statusLabel.Size = UDim2.new(1, -84, 0, 20)
+	statusLabel.Position = UDim2.new(0, 10, 0, 26)
 	statusLabel.BackgroundTransparency = 1
 	statusLabel.TextColor3 = Color3.fromRGB(195, 205, 220)
 	statusLabel.TextXAlignment = Enum.TextXAlignment.Left
 	statusLabel.TextTruncate = Enum.TextTruncate.AtEnd
-	statusLabel.TextSize = 11
+	statusLabel.TextSize = 13.5
 	statusLabel.Font = Enum.Font.Gotham
 	statusLabel.Text = ""
 	statusLabel.Parent = partyCard
 
 	local leaveBtn = Instance.new("TextButton")
 	leaveBtn.Name = "LeavePartyButton"
-	leaveBtn.Size = UDim2.new(0, 56, 0, 26)
-	leaveBtn.Position = UDim2.new(1, -64, 0.5, -13)
+	leaveBtn.Size = UDim2.new(0, 72, 0, 32)
+	leaveBtn.Position = UDim2.new(1, -80, 0.5, -16)
 	leaveBtn.BackgroundColor3 = Color3.fromRGB(170, 45, 45)
 	leaveBtn.BorderSizePixel = 0
 	leaveBtn.Font = Enum.Font.GothamBold
-	leaveBtn.TextSize = 11
+	leaveBtn.TextSize = 13.5
 	leaveBtn.TextColor3 = Color3.new(1, 1, 1)
 	leaveBtn.Text = "Leave"
 	leaveBtn.Parent = partyCard
@@ -151,29 +173,12 @@ function PartyUIController.Start()
 		Net.Get("PartyLeave"):FireServer()
 	end)
 
-	-- ── State tracking & Visibility Logic ──────────────────────────────────────
-	local currentPartyId: number? = nil
-	local currentLeaderId: number? = nil
-	local currentMemberUserIds: {number} = {}
-
 	local function isInsideDungeon(): boolean
 		if ReplicatedStorage:GetAttribute("IsDungeon") == true then
 			return true
 		end
 		if workspace:FindFirstChild("RockhideArena") then
 			return true
-		end
-		return false
-	end
-
-	local function hasCurrentParty(): boolean
-		if currentPartyId and #currentMemberUserIds > 0 then
-			local myId = player.UserId
-			for _, mId in currentMemberUserIds do
-				if mId == myId then
-					return true
-				end
-			end
 		end
 		return false
 	end
@@ -362,6 +367,42 @@ function PartyUIController.Start()
 		local displayName = ok and name or tostring(inviterUserId)
 		inviteText.Text = displayName .. " invited you to their party!"
 		inviteModal.Visible = true
+	end)
+
+	-- ── Character Lifecycle and Login/PartyUI Visibility Sync ────────────────
+	local function checkVisibility()
+		local charCreationGui = playerGui:FindFirstChild("CharacterCreation")
+		local isCreating = charCreationGui and charCreationGui:IsA("ScreenGui") and charCreationGui.Enabled
+		local hasChar = player.Character and player.Character.Parent ~= nil
+		screenGui.Enabled = (hasChar and not isCreating) == true
+	end
+
+	player.CharacterAdded:Connect(function()
+		local charCreationGui = playerGui:FindFirstChild("CharacterCreation")
+		local isCreating = charCreationGui and charCreationGui:IsA("ScreenGui") and charCreationGui.Enabled
+		screenGui.Enabled = not isCreating
+	end)
+
+	player.CharacterRemoving:Connect(function()
+		screenGui.Enabled = false
+	end)
+
+	checkVisibility()
+
+	task.spawn(function()
+		local charCreationGui = playerGui:WaitForChild("CharacterCreation", 5)
+		if charCreationGui and charCreationGui:IsA("ScreenGui") then
+			charCreationGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+				if charCreationGui.Enabled then
+					screenGui.Enabled = false
+				else
+					if player.Character and player.Character.Parent then
+						screenGui.Enabled = true
+					end
+				end
+			end)
+			checkVisibility()
+		end
 	end)
 end
 
