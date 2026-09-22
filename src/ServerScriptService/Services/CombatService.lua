@@ -254,7 +254,7 @@ local function onCastSkill(player: Player, skillId: string, targetId: string?)
 		end
 	elseif skill.effectType == "healTarget" then
 		local targetPlayer = resolvePlayerTarget(targetId)
-		if targetPlayer then
+		if targetPlayer and not RespawnService.IsPlayerDowned(targetPlayer.UserId) then
 			local isSelf = (targetPlayer == player)
 			local isPartyMember = false
 			local party = PartyService.GetParty(player)
@@ -285,16 +285,18 @@ local function onCastSkill(player: Player, skillId: string, targetId: string?)
 		local memberUserIds = party and party.members or {player.UserId}
 		local aoeRadius = skill.range > 0 and skill.range or 16
 		for _, memberUserId in memberUserIds do
-			local member = Players:GetPlayerByUserId(memberUserId)
-			local memberCharacter = member and member.Character
-			local memberHumanoid = memberCharacter and memberCharacter:FindFirstChildOfClass("Humanoid")
-			local memberRoot = memberCharacter and memberCharacter:FindFirstChild("HumanoidRootPart")
-			if memberHumanoid and memberRoot then
-				local dist = (memberRoot.Position - rootPart.Position).Magnitude
-				if dist <= aoeRadius then
-					local heal = getPlayerHealAmount(player, memberHumanoid, skill.healAmount or 0)
-					memberHumanoid.Health = math.min(memberHumanoid.MaxHealth, memberHumanoid.Health + heal)
-					Net.Get("HealthChanged"):FireAllClients(member.UserId, memberHumanoid.Health, memberHumanoid.MaxHealth)
+			if not RespawnService.IsPlayerDowned(memberUserId) then
+				local member = Players:GetPlayerByUserId(memberUserId)
+				local memberCharacter = member and member.Character
+				local memberHumanoid = memberCharacter and memberCharacter:FindFirstChildOfClass("Humanoid")
+				local memberRoot = memberCharacter and memberCharacter:FindFirstChild("HumanoidRootPart")
+				if memberHumanoid and memberRoot then
+					local dist = (memberRoot.Position - rootPart.Position).Magnitude
+					if dist <= aoeRadius then
+						local heal = getPlayerHealAmount(player, memberHumanoid, skill.healAmount or 0)
+						memberHumanoid.Health = math.min(memberHumanoid.MaxHealth, memberHumanoid.Health + heal)
+						Net.Get("HealthChanged"):FireAllClients(member.UserId, memberHumanoid.Health, memberHumanoid.MaxHealth)
+					end
 				end
 			end
 		end
