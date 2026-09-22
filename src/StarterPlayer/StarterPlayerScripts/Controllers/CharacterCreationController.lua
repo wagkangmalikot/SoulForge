@@ -68,7 +68,7 @@ local COLORS = {
 }
 
 -- Per-class content for the character-creation picker cards. Keys must match
--- ReplicatedStorage.Shared.Data.Classes's own keys ("Tank", "Mage").
+-- ReplicatedStorage.Shared.Data.Classes's own keys ("Tank", "Mage", "Healer").
 local CLASS_CARD_INFO = {
 	Tank = {
 		icon = "🛡️",
@@ -154,8 +154,15 @@ local function createClassCard(parent: Instance, classId: string, xScale: number
 	classTitle.TextXAlignment = Enum.TextXAlignment.Left
 	classTitle.Parent = banner
 
+	-- desc gets extra height (56 -> 84) because at the narrower 3-card width
+	-- (~86-142px card, ~66-122px text area after padding) the 100+ char class
+	-- descriptions wrap to more lines than the old 2-card layout needed room
+	-- for. traitsFrame is shifted down and shrunk by the same 28px so the
+	-- combined block still ends at the same y (206) inside this card's fixed
+	-- 220px height (see classCardsRow.Size) -- no net growth, just a
+	-- different split of the same space.
 	local desc = Instance.new("TextLabel")
-	desc.Size = UDim2.new(1, -20, 0, 56)
+	desc.Size = UDim2.new(1, -20, 0, 84)
 	desc.Position = UDim2.new(0, 10, 0, 44)
 	desc.BackgroundTransparency = 1
 	desc.Font = Enum.Font.GothamMedium
@@ -168,8 +175,8 @@ local function createClassCard(parent: Instance, classId: string, xScale: number
 	desc.Parent = card
 
 	local traitsFrame = Instance.new("Frame")
-	traitsFrame.Size = UDim2.new(1, -20, 0, 100)
-	traitsFrame.Position = UDim2.new(0, 10, 0, 106)
+	traitsFrame.Size = UDim2.new(1, -20, 0, 72)
+	traitsFrame.Position = UDim2.new(0, 10, 0, 134)
 	traitsFrame.BackgroundTransparency = 1
 	traitsFrame.Parent = card
 
@@ -935,7 +942,7 @@ function CharacterCreationController.Start()
 	createTitle.TextSize = 24
 	createTitle.Parent = createCard
 
-	-- Class Picker: two selectable cards
+	-- Class Picker: three selectable cards
 	local classCardsRow = Instance.new("Frame")
 	classCardsRow.Size = UDim2.new(1, 0, 0, 220)
 	classCardsRow.Position = UDim2.new(0, 0, 0, 56)
