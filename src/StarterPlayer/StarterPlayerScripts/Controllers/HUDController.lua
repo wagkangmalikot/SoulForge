@@ -60,19 +60,24 @@ local attackIconLabel: TextLabel? = nil
 local classBadgeIcon: TextLabel? = nil
 local playerNameLabel: TextLabel? = nil
 
+local HUD_CLASS_VISUALS = {
+	Tank = { attackIcon = "⚔️", badgeIcon = "🛡️", title = "WARRIOR TANK" },
+	Mage = { attackIcon = "🔮", badgeIcon = "🔮", title = "ARCANE MAGE" },
+	Healer = { attackIcon = "✨", badgeIcon = "✨", title = "SANCTUM HEALER" },
+}
+
 local function updateClassVisuals()
-	local isMage = (currentClassId == "Mage")
+	local visuals = HUD_CLASS_VISUALS[currentClassId] or HUD_CLASS_VISUALS.Tank
 	if attackIconLabel then
-		attackIconLabel.Text = isMage and "🔮" or "⚔️"
+		attackIconLabel.Text = visuals.attackIcon
 	end
 	if classBadgeIcon then
-		classBadgeIcon.Text = isMage and "🔮" or "🛡️"
+		classBadgeIcon.Text = visuals.badgeIcon
 	end
 	if playerNameLabel then
-		local classTitle = isMage and "ARCANE MAGE" or "WARRIOR TANK"
 		local player = Players.LocalPlayer
 		local dName = (player and player.DisplayName) or "Hero"
-		playerNameLabel.Text = dName .. "  •  [" .. classTitle .. "]"
+		playerNameLabel.Text = dName .. "  •  [" .. visuals.title .. "]"
 	end
 end
 
