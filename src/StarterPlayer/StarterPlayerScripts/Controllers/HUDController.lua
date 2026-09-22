@@ -138,6 +138,26 @@ local function findTaggedEnemyAncestor(instance: Instance): Model?
 	return nil
 end
 
+-- Walks up from a raycast-hit instance to find a Player's character Model, if any.
+-- Unlike findTaggedEnemyAncestor's CollectionService tag lookup, any other player's
+-- character can be a heal target -- no tagging needed, Players:GetPlayerFromCharacter
+-- already tells us definitively. (The LOCAL player's own character is excluded from
+-- this raycast already -- see the RaycastParams FilterDescendantsInstances below --
+-- so self-targeting goes through a separate path: clicking your own PlayerUnitFrame.)
+local function findPlayerCharacterAncestor(instance: Instance): (Model?, Player?)
+	local current: Instance? = instance
+	while current do
+		if current:IsA("Model") then
+			local hitPlayer = Players:GetPlayerFromCharacter(current)
+			if hitPlayer then
+				return current, hitPlayer
+			end
+		end
+		current = current.Parent
+	end
+	return nil, nil
+end
+
 local function getNearestEnemy(maxDistance: number): (Model?, string?)
 	local localPlayer = Players.LocalPlayer
 	local character = localPlayer and localPlayer.Character
@@ -447,6 +467,23 @@ function HUDController.Start()
 	playerFrameGradient.Rotation = 45
 	playerFrameGradient.Color = ColorSequence.new(Color3.fromRGB(24, 28, 38), Color3.fromRGB(14, 16, 22))
 	playerFrameGradient.Parent = playerFrame
+
+	-- Clicking your own unit frame self-targets (heals aimed at yourself). The 3D-world
+	-- click-to-target raycast above excludes the local player's own character
+	-- (RaycastParams.FilterDescendantsInstances), so this is the only way to target self.
+	playerFrame.InputBegan:Connect(function(input)
+		if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+		local localPlayer = Players.LocalPlayer
+		local character = localPlayer and localPlayer.Character
+		if character then
+			local targetId = "player:" .. tostring(localPlayer.UserId)
+			if targetId ~= selectedTargetId then
+				selectTarget(character, targetId)
+			end
+		end
+	end)
 
 	-- Level / Class Shield Badge (Left)
 	local levelBadge = Instance.new("Frame")
@@ -1813,6 +1850,14 @@ function HUDController.Start()
 				local hitEnemy = result and findTaggedEnemyAncestor(result.Instance)
 				if hitEnemy and hitEnemy.Name ~= selectedTargetId then
 					selectTarget(hitEnemy, hitEnemy.Name)
+				elseif result then
+					local hitCharacter, hitPlayer = findPlayerCharacterAncestor(result.Instance)
+					if hitCharacter and hitPlayer then
+						local targetId = "player:" .. tostring(hitPlayer.UserId)
+						if targetId ~= selectedTargetId then
+							selectTarget(hitCharacter, targetId)
+						end
+					end
 				end
 			end
 		end
