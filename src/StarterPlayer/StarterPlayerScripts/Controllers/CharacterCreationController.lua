@@ -90,6 +90,16 @@ local CLASS_CARD_INFO = {
 			{ "🌳", "Trees: Pyromancy & Frostweave" },
 		},
 	},
+	Healer = {
+		icon = "✨",
+		title = "HEALER ARCHETYPE",
+		description = "Pure support caster who mends allies from a distance -- no damage skills, just keeping the party alive.",
+		traits = {
+			{ "✨", "Starter Skill: Mend" },
+			{ "❤️", "Base Health: 90" },
+			{ "🌳", "Trees: Mending & Sanctuary" },
+		},
+	},
 }
 
 local function applyCorner(parent: Instance, radius: number): UICorner
@@ -754,6 +764,39 @@ function CharacterCreationController.Start()
 	local chip2Title, chip2Sub = createPerkChip("🔮", "Arcane Bolt", "Ranged Focus")
 	local chip3Title, chip3Sub = createPerkChip("🔥", "Spellweaver", "Fire & Frost")
 
+	local HERO_CHOICE_INFO = {
+		Tank = {
+			className = "Tank",
+			badgeText = "🛡️ TANK",
+			badgeTextColor = Color3.fromRGB(150, 210, 255),
+			badgeStrokeColor = Color3.fromRGB(75, 150, 255),
+			badgeBgColor = Color3.fromRGB(24, 45, 80),
+			hpChip = { "❤️ 150 HP", "Base Health" },
+			skillChip = { "🛡️ Taunt", "Threat Lock" },
+			flavorChip = { "⚔️ Blade & Shield", "Melee Defender" },
+		},
+		Mage = {
+			className = "Mage",
+			badgeText = "🔮 MAGE",
+			badgeTextColor = Color3.fromRGB(240, 210, 255),
+			badgeStrokeColor = Color3.fromRGB(190, 120, 255),
+			badgeBgColor = Color3.fromRGB(60, 30, 90),
+			hpChip = { "❤️ 80 HP", "Base Health" },
+			skillChip = { "🔮 Arcane Bolt", "Ranged Focus" },
+			flavorChip = { "🔥 Spellweaver", "Fire & Frost" },
+		},
+		Healer = {
+			className = "Healer",
+			badgeText = "✨ HEALER",
+			badgeTextColor = Color3.fromRGB(255, 240, 200),
+			badgeStrokeColor = Color3.fromRGB(255, 215, 130),
+			badgeBgColor = Color3.fromRGB(70, 55, 20),
+			hpChip = { "❤️ 90 HP", "Base Health" },
+			skillChip = { "✨ Mend", "Ally Restore" },
+			flavorChip = { "🌿 Sanctuary", "Mending & Support" },
+		},
+	}
+
 	local function updateHeroChoiceCard(classId: string, level: number)
 		local levelText = ("⭐ LEVEL %d"):format(level)
 		local lvlChild = levelBadge:FindFirstChildOfClass("TextLabel")
@@ -761,36 +804,27 @@ function CharacterCreationController.Start()
 			lvlChild.Text = levelText
 		end
 
-		local isMage = (classId == "Mage")
+		local info = HERO_CHOICE_INFO[classId] or HERO_CHOICE_INFO.Mage
 		local badgeLabel = classBadge:FindFirstChildOfClass("TextLabel")
 		local badgeStroke = classBadge:FindFirstChildOfClass("UIStroke")
 		if badgeLabel then
-			badgeLabel.Text = isMage and "🔮 MAGE" or "🛡️ TANK"
-			badgeLabel.TextColor3 = isMage and Color3.fromRGB(240, 210, 255) or Color3.fromRGB(150, 210, 255)
+			badgeLabel.Text = info.badgeText
+			badgeLabel.TextColor3 = info.badgeTextColor
 		end
 		if badgeStroke then
-			badgeStroke.Color = isMage and Color3.fromRGB(190, 120, 255) or Color3.fromRGB(75, 150, 255)
+			badgeStroke.Color = info.badgeStrokeColor
 		end
-		classBadge.BackgroundColor3 = isMage and Color3.fromRGB(60, 30, 90) or Color3.fromRGB(24, 45, 80)
+		classBadge.BackgroundColor3 = info.badgeBgColor
 
-		if isMage then
-			chip1Title.Text = "❤️ 80 HP"
-			chip1Sub.Text = "Base Health"
-			chip2Title.Text = "🔮 Arcane Bolt"
-			chip2Sub.Text = "Ranged Focus"
-			chip3Title.Text = "🔥 Spellweaver"
-			chip3Sub.Text = "Fire & Frost"
-		else
-			chip1Title.Text = "❤️ 150 HP"
-			chip1Sub.Text = "Base Health"
-			chip2Title.Text = "🛡️ Taunt"
-			chip2Sub.Text = "Threat Lock"
-			chip3Title.Text = "⚔️ Blade & Shield"
-			chip3Sub.Text = "Melee Defender"
-		end
+		chip1Title.Text = info.hpChip[1]
+		chip1Sub.Text = info.hpChip[2]
+		chip2Title.Text = info.skillChip[1]
+		chip2Sub.Text = info.skillChip[2]
+		chip3Title.Text = info.flavorChip[1]
+		chip3Sub.Text = info.flavorChip[2]
 
 		if warnDesc then
-			warnDesc.Text = ("This will permanently delete your Level %d %s and reset all skill points, unlocked abilities, and level progression."):format(level, isMage and "Mage" or "Tank")
+			warnDesc.Text = ("This will permanently delete your Level %d %s and reset all skill points, unlocked abilities, and level progression."):format(level, info.className)
 		end
 	end
 
@@ -908,8 +942,9 @@ function CharacterCreationController.Start()
 	classCardsRow.BackgroundTransparency = 1
 	classCardsRow.Parent = createCard
 
-	local tankCard, tankCardStroke, tankCardHitbox = createClassCard(classCardsRow, "Tank", 0, 0.485)
-	local mageCard, mageCardStroke, mageCardHitbox = createClassCard(classCardsRow, "Mage", 0.515, 0.485)
+	local tankCard, tankCardStroke, tankCardHitbox = createClassCard(classCardsRow, "Tank", 0, 0.315)
+	local mageCard, mageCardStroke, mageCardHitbox = createClassCard(classCardsRow, "Mage", 0.3425, 0.315)
+	local healerCard, healerCardStroke, healerCardHitbox = createClassCard(classCardsRow, "Healer", 0.685, 0.315)
 
 	local selectedClassId = "Mage"
 
@@ -918,6 +953,8 @@ function CharacterCreationController.Start()
 		tankCardStroke.Thickness = (selectedClassId == "Tank") and 2.4 or 1.6
 		mageCardStroke.Color = (selectedClassId == "Mage") and COLORS.goldPrimary or COLORS.slateBorder
 		mageCardStroke.Thickness = (selectedClassId == "Mage") and 2.4 or 1.6
+		healerCardStroke.Color = (selectedClassId == "Healer") and COLORS.goldPrimary or COLORS.slateBorder
+		healerCardStroke.Thickness = (selectedClassId == "Healer") and 2.4 or 1.6
 	end
 	refreshClassCardSelection()
 
@@ -927,6 +964,10 @@ function CharacterCreationController.Start()
 	end)
 	mageCardHitbox.Activated:Connect(function()
 		selectedClassId = "Mage"
+		refreshClassCardSelection()
+	end)
+	healerCardHitbox.Activated:Connect(function()
+		selectedClassId = "Healer"
 		refreshClassCardSelection()
 	end)
 
