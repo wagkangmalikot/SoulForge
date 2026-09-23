@@ -527,7 +527,7 @@ local Equipment = {
 		Standard = {
 			id          = "Standard",
 			displayName = "Adventurer's Standard Set",
-			classId     = "Tank",
+			classId     = {"Tank", "Warrior"},
 			tier        = 1,
 			bossOrigin  = nil,
 			stashed     = false,
@@ -547,7 +547,7 @@ local Equipment = {
 		Rockhide = {
 			id          = "Rockhide",
 			displayName = "Rockhide Warlord Set",
-			classId     = "Tank",
+			classId     = {"Tank", "Warrior"},
 			tier        = 2,
 			rarity      = "Rare",
 			bossOrigin  = "Rockhide",
@@ -593,8 +593,9 @@ function Equipment.GetSetForItem(itemId: string)
 	return Equipment.Sets[item.setId]
 end
 
---- Returns the class required to equip an item ("Tank", "Mage"), or nil if unrestricted.
-function Equipment.GetItemClass(itemId: string): string?
+--- Returns the class(es) required to equip an item ("Tank", "Mage", {"Tank", "Warrior"}), or nil if unrestricted.
+--- @return (string | {string})?
+function Equipment.GetItemClass(itemId: string): string | {string} | nil
 	local item = Equipment.Items[itemId]
 	if not item then return nil end
 	if item.classId then return item.classId end
