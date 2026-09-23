@@ -1,5 +1,5 @@
 -- src/ReplicatedStorage/Shared/Data/Skills.lua
--- Definitive skills registry for all classes (Tank: Juggernaut/Bulwark; Mage: Pyromancy/Frostweave/ArcaneMastery).
+-- Definitive skills registry for all classes (Tank: Bulwark/Sentinel; Mage: Pyromancy/Frostweave/ArcaneMastery; Warrior: Juggernaut/Bloodlust).
 --
 -- effectType drives how CombatService.onCastSkill resolves what a skill actually does:
 --   tauntAoe      - taunts every enemy within range (Taunt)
@@ -46,8 +46,7 @@ return {
 		range = 14,
 		damage = 14,
 		effectType = "damage",
-		tauntsOnHit = true,
-		description = "A vicious heavy slash that inflicts 14 damage and generates 3x bonus threat.",
+		description = "A vicious heavy slash that inflicts 14 damage.",
 	},
 
 	ShieldBash = {
@@ -294,5 +293,111 @@ return {
 		effectType = "aoeDamage",
 		slowPercent = 35,
 		description = "Detonate a nova of raw arcane energy, dealing 38 AoE damage to all nearby enemies and slowing them by 35% as the shockwave tears through reality.",
+	},
+
+	-- ── BASE STARTING SKILL (Warrior) ────────────────────────────────────────
+	Cleave = {
+		id = "Cleave",
+		displayName = "Cleave",
+		branch = "Base",
+		tier = 0,
+		prerequisite = nil,
+		icon = "rbxasset://textures/Soulforge/cleave_icon.png",
+		cooldown = 4,
+		range = 12,
+		damage = 12,
+		effectType = "damage",
+		description = "A basic but forceful sword strike, dealing 12 damage.",
+	},
+
+	-- ── SENTINEL BRANCH (Tank — Pure Threat & Mitigation) ────────────────────
+	ShieldSlam = {
+		id = "ShieldSlam",
+		displayName = "Shield Slam",
+		branch = "Sentinel",
+		tier = 1,
+		prerequisite = nil,
+		icon = "rbxasset://textures/Soulforge/shield_slam_icon.png",
+		cooldown = 5,
+		range = 14,
+		damage = 10,
+		effectType = "damage",
+		tauntsOnHit = true,
+		description = "Slam your shield into a single enemy, dealing 10 damage and forcing their aggro onto you.",
+	},
+
+	AegisSlam = {
+		id = "AegisSlam",
+		displayName = "Aegis Slam",
+		branch = "Sentinel",
+		tier = 2,
+		prerequisite = "ShieldSlam",
+		icon = "rbxasset://textures/Soulforge/aegis_slam_icon.png",
+		cooldown = 12,
+		range = 16,
+		damage = 14,
+		effectType = "aoeDamage",
+		description = "Drive your shield into the ground, dealing 14 AoE damage and forcing every nearby enemy's aggro onto you.",
+	},
+
+	GuardiansWrath = {
+		id = "GuardiansWrath",
+		displayName = "Guardian's Wrath",
+		branch = "Sentinel",
+		tier = 3,
+		prerequisite = "AegisSlam",
+		icon = "rbxasset://textures/Soulforge/guardians_wrath_icon.png",
+		cooldown = 18,
+		range = 20,
+		damage = 22,
+		effectType = "damage",
+		tauntsOnHit = true,
+		description = "Unleash a defender's full fury on a single enemy, dealing 22 damage and locking their aggro onto you.",
+	},
+
+	-- ── BLOODLUST BRANCH (Warrior — Escalating Melee DPS) ────────────────────
+	ReapingSlash = {
+		id = "ReapingSlash",
+		displayName = "Reaping Slash",
+		branch = "Bloodlust",
+		tier = 1,
+		prerequisite = nil,
+		icon = "rbxasset://textures/Soulforge/reaping_slash_icon.png",
+		cooldown = 4,
+		range = 12,
+		damage = 16,
+		effectType = "damage",
+		description = "A sweeping slash that opens a deep wound, dealing 16 damage.",
+	},
+
+	RagingCleave = {
+		id = "RagingCleave",
+		displayName = "Raging Cleave",
+		branch = "Bloodlust",
+		tier = 2,
+		prerequisite = "ReapingSlash",
+		icon = "rbxasset://textures/Soulforge/raging_cleave_icon.png",
+		cooldown = 9,
+		range = 14,
+		damage = 20,
+		effectType = "aoeDamage",
+		description = "A wide, furious cleave, dealing 20 AoE damage to all nearby enemies.",
+	},
+
+	Bloodbath = {
+		id = "Bloodbath",
+		displayName = "Bloodbath",
+		branch = "Bloodlust",
+		tier = 3,
+		prerequisite = "RagingCleave",
+		icon = "rbxasset://textures/Soulforge/bloodbath_icon.png",
+		cooldown = 16,
+		range = 16,
+		damage = 18,
+		effectType = "aoeDotDamage",
+		dotTickDamage = 5,
+		dotTicks = 3,
+		dotInterval = 1.5,
+		description = "A frenzied whirlwind of strikes, dealing 18 AoE damage and opening bleeding wounds for 5 damage per tick over 3 ticks (4.5s).",
 	},
 }
