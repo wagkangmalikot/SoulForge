@@ -34,8 +34,8 @@ SkillTreeService.Start()
 -- own services. This is the single place that decision gets made -- don't
 -- duplicate this cleanup inside DungeonSessionService or the hub services
 -- themselves.
-local HUB_ONLY_SCENERY = {"RockhidePortal", "LevelUpShrine", "SpawnLocation", "SoulforgeHub"}
-local DUNGEON_ONLY_SCENERY = {"RockhideArena"}
+local HUB_ONLY_SCENERY = {"RockhidePortal", "SunforgedPortal", "LevelUpShrine", "SpawnLocation", "SoulforgeHub"}
+local DUNGEON_ONLY_SCENERY = {"RockhideArena", "SunforgedCitadel"}
 
 local function destroyScenery(names: {string})
 	for _, desc in workspace:GetDescendants() do

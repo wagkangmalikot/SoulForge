@@ -927,6 +927,99 @@ local function createBossModel(bossId: string, spawnCFrame: CFrame): Model
 	if template then
 		model = template:Clone()
 		model.Name = bossId
+	elseif bossId == "Solarius" then
+		-- ── SOLARIUS, THE SUNFORGED COLOSSUS (Tier 2 Boss Model) ────────────
+		model = Instance.new("Model")
+		model.Name = "Solarius"
+
+		local torso = Instance.new("Part")
+		torso.Name = "Torso"
+		torso.Size = Vector3.new(7, 11, 5)
+		torso.Color = Color3.fromRGB(215, 175, 55)
+		torso.Material = Enum.Material.Metal
+		torso.Parent = model
+		model.PrimaryPart = torso
+
+		-- Solar Chestplate Inlay
+		local chestSun = Instance.new("Part")
+		chestSun.Name = "ChestSun"
+		chestSun.Size = Vector3.new(4.5, 4.5, 1)
+		chestSun.CFrame = torso.CFrame * CFrame.new(0, 1.5, -2.6)
+		chestSun.Color = Color3.fromRGB(255, 140, 30)
+		chestSun.Material = Enum.Material.Neon
+		chestSun.Parent = model
+		local wChest = Instance.new("WeldConstraint")
+		wChest.Part0 = torso
+		wChest.Part1 = chestSun
+		wChest.Parent = torso
+
+		-- Radiant Head with Solar Halo
+		local head = Instance.new("Part")
+		head.Name = "Head"
+		head.Size = Vector3.new(4, 4.5, 4)
+		head.CFrame = torso.CFrame * CFrame.new(0, 7.8, 0)
+		head.Color = Color3.fromRGB(235, 195, 75)
+		head.Material = Enum.Material.Metal
+		head.Parent = model
+
+		local halo = Instance.new("Part")
+		halo.Name = "SolarHalo"
+		halo.Size = Vector3.new(7, 7, 0.4)
+		halo.CFrame = head.CFrame * CFrame.new(0, 1.5, 1.5)
+		halo.Color = Color3.fromRGB(255, 160, 40)
+		halo.Material = Enum.Material.Neon
+		halo.Parent = model
+		local wHalo = Instance.new("WeldConstraint")
+		wHalo.Part0 = head
+		wHalo.Part1 = halo
+		wHalo.Parent = head
+
+		-- Massive Pauldron Limbs & Arms
+		local lArm = Instance.new("Part")
+		lArm.Name = "LeftUpperArm"
+		lArm.Size = Vector3.new(3.5, 10, 3.5)
+		lArm.CFrame = torso.CFrame * CFrame.new(-5.5, 0, 0)
+		lArm.Color = Color3.fromRGB(180, 140, 40)
+		lArm.Material = Enum.Material.Metal
+		lArm.Parent = model
+
+		local rArm = Instance.new("Part")
+		rArm.Name = "RightUpperArm"
+		rArm.Size = Vector3.new(3.5, 10, 3.5)
+		rArm.CFrame = torso.CFrame * CFrame.new(5.5, 0, 0)
+		rArm.Color = Color3.fromRGB(180, 140, 40)
+		rArm.Material = Enum.Material.Metal
+		rArm.Parent = model
+
+		-- Sunforged Greatsword in Right Arm
+		local sword = Instance.new("Part")
+		sword.Name = "SunforgedGreatsword"
+		sword.Size = Vector3.new(1.8, 16, 0.8)
+		sword.CFrame = rArm.CFrame * CFrame.new(0, -6, -2) * CFrame.Angles(math.rad(45), 0, 0)
+		sword.Color = Color3.fromRGB(255, 205, 80)
+		sword.Material = Enum.Material.Neon
+		sword.Parent = model
+		local wSword = Instance.new("WeldConstraint")
+		wSword.Part0 = rArm
+		wSword.Part1 = sword
+		wSword.Parent = rArm
+
+		-- Heavy Armored Legs
+		local lLeg = Instance.new("Part")
+		lLeg.Name = "LeftUpperLeg"
+		lLeg.Size = Vector3.new(3.2, 9, 3.2)
+		lLeg.CFrame = torso.CFrame * CFrame.new(-2, -9.5, 0)
+		lLeg.Color = Color3.fromRGB(160, 120, 35)
+		lLeg.Material = Enum.Material.Metal
+		lLeg.Parent = model
+
+		local rLeg = Instance.new("Part")
+		rLeg.Name = "RightUpperLeg"
+		rLeg.Size = Vector3.new(3.2, 9, 3.2)
+		rLeg.CFrame = torso.CFrame * CFrame.new(2, -9.5, 0)
+		rLeg.Color = Color3.fromRGB(160, 120, 35)
+		rLeg.Material = Enum.Material.Metal
+		rLeg.Parent = model
 	else
 		model = Instance.new("Model")
 		model.Name = bossId
@@ -1826,6 +1919,45 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 					task.wait(0.50)
 					resetAllJoints(joints, 0.50)
 					task.wait(0.25)
+
+				elseif attackId == "Solarius_Supernova" then
+					-- ── 6. SUPERNOVA ENRAGE (Room-Wide Solar Flare) ───────────
+					local windupDur = math.max(0.5, telegraphDur - 0.4)
+
+					-- Ascend slightly & hover arms outward channeling radiant power
+					poseArms(joints, CFrame.Angles(0, 0, math.rad(-85)), CFrame.Angles(0, 0, math.rad(85)), 0.6)
+					poseTorso(joints, CFrame.Angles(math.rad(-15), 0, 0), 0.6)
+					poseNeck(joints, CFrame.Angles(math.rad(-40), 0, 0), 0.6)
+
+					Net.Get("BossEffect"):FireAllClients("heavyShake", telegraphPos, { intensity = 1.4, duration = windupDur })
+					playSound("SupernovaCharge", "rbxasset://sounds/action_explode.mp3", model.PrimaryPart, 2.5, 0.6)
+
+					-- Solar charge visual orbs
+					for i = 1, 8 do
+						local angle = (i / 8) * 2 * math.pi
+						local orbPos = telegraphPos + Vector3.new(math.cos(angle) * 12, 12, math.sin(angle) * 12)
+						spawnBurstOrb(orbPos, 6, Color3.fromRGB(255, 180, 50), windupDur)
+					end
+
+					task.wait(windupDur)
+					if not alive then break end
+
+					-- Cataclysmic Solar Explosion
+					playSound("SupernovaBlast", "rbxasset://sounds/action_explode.mp3", model.PrimaryPart, 3.0, 0.4)
+					Net.Get("BossEffect"):FireAllClients("heavyShake", telegraphPos, { intensity = 1.8, duration = 1.5 })
+
+					local impactFloor = getGroundY(telegraphPos) + 0.12
+					spawnShockwaveRing(Vector3.new(telegraphPos.X, impactFloor + 0.2, telegraphPos.Z), 4, attack.radius, Color3.fromRGB(255, 220, 80), 1.2, 0.9)
+					spawnGroundScorch(Vector3.new(telegraphPos.X, impactFloor + 0.1, telegraphPos.Z), attack.radius * 0.9, Color3.fromRGB(255, 120, 30), 6.0)
+
+					for _, player in CombatService.PlayersInRadius(telegraphPos, attack.radius) do
+						CombatService.ApplyDamageToPlayer(player, attack.damage)
+						applyKnockback(player, telegraphPos, 50, 25)
+					end
+
+					task.wait(0.60)
+					resetAllJoints(joints, 0.50)
+					task.wait(0.30)
 				end
 
 				isAttacking = false

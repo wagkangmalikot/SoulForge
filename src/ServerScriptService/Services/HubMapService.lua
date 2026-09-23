@@ -955,6 +955,94 @@ function HubMapService.BuildHub(): Model
 	makeColumn(hub, portalPos + Vector3.new(-16, 2, 8), 13, 1.8)
 	makeColumn(hub, portalPos + Vector3.new(16, 2, 8), 13, 1.8)
 
+	-- ── 3B. TIER 2 SUNFORGED CITADEL PORTAL (SunforgedPortal) ───────────────
+	-- Grand solar archway on the East Avenue (Z = -58, X = 45)
+	local sunPortalPos = Vector3.new(48, FLOOR_Y, -58)
+
+	-- Raised solar stone dais
+	makePart(hub, "SunPortalDais", Vector3.new(32, 2, 22), CFrame.new(sunPortalPos + Vector3.new(0, 1, 0)), DARK_STONE, Enum.Material.Cobblestone)
+	makePart(hub, "SunPortalSteps", Vector3.new(24, 1, 6), CFrame.new(sunPortalPos + Vector3.new(0, 0.5, 12)), GOLD_TRIM, Enum.Material.Metal)
+
+	-- Golden Fluted Portal Arch Columns
+	makeColumn(hub, sunPortalPos + Vector3.new(-7.5, 2, 0), 20, 2.4, true)
+	makeColumn(hub, sunPortalPos + Vector3.new(7.5, 2, 0), 20, 2.4, true)
+
+	-- Golden Arch Head & Sunburst Keystone
+	makePart(hub, "SunArchLintel", Vector3.new(18, 3.5, 4.8), CFrame.new(sunPortalPos + Vector3.new(0, 22.5, 0)), GOLD_TRIM, Enum.Material.Metal)
+
+	-- Active SunforgedPortal Part (Target of ProximityPrompt)
+	local existingSunPortal = workspace:FindFirstChild("SunforgedPortal")
+	if existingSunPortal then existingSunPortal:Destroy() end
+
+	local sunPortalCore = Instance.new("Part")
+	sunPortalCore.Name = "SunforgedPortal"
+	sunPortalCore.Size = Vector3.new(14, 18, 1.6)
+	sunPortalCore.CFrame = CFrame.new(sunPortalPos + Vector3.new(0, 11, 0))
+	sunPortalCore.Color = Color3.fromRGB(255, 150, 40)
+	sunPortalCore.Material = Enum.Material.Neon
+	sunPortalCore.Transparency = 0.30
+	sunPortalCore.Anchored = true
+	sunPortalCore.CanCollide = false
+	sunPortalCore.Parent = workspace
+
+	-- Golden Solar Particle Vortex
+	local sunParticles = Instance.new("ParticleEmitter")
+	sunParticles.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 230, 120)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 140, 30)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 60, 20)),
+	})
+	sunParticles.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1.5),
+		NumberSequenceKeypoint.new(1, 0.2),
+	})
+	sunParticles.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.2),
+		NumberSequenceKeypoint.new(1, 1.0),
+	})
+	sunParticles.Lifetime = NumberRange.new(1.0, 2.0)
+	sunParticles.Rate = 45
+	sunParticles.Speed = NumberRange.new(3, 8)
+	sunParticles.SpreadAngle = Vector2.new(45, 45)
+	sunParticles.Parent = sunPortalCore
+
+	local sunLight = Instance.new("PointLight")
+	sunLight.Color = Color3.fromRGB(255, 160, 40)
+	sunLight.Brightness = 4.0
+	sunLight.Range = 36
+	sunLight.Shadows = true
+	sunLight.Parent = sunPortalCore
+
+	-- Sunforged Portal Title Banner
+	local sunBb = Instance.new("BillboardGui")
+	sunBb.Name = "SunPortalTitle"
+	sunBb.Size = UDim2.new(0, 280, 0, 56)
+	sunBb.StudsOffset = Vector3.new(0, 12.5, 0)
+	sunBb.AlwaysOnTop = true
+	sunBb.Parent = sunPortalCore
+
+	local sTitle = Instance.new("TextLabel")
+	sTitle.Size = UDim2.new(1, 0, 0.6, 0)
+	sTitle.BackgroundTransparency = 1
+	sTitle.TextColor3 = Color3.fromRGB(255, 215, 110)
+	sTitle.Font = Enum.Font.GothamBlack
+	sTitle.TextScaled = true
+	sTitle.Text = "SUNFORGED CITADEL"
+	sTitle.Parent = sunBb
+
+	local sSub = Instance.new("TextLabel")
+	sSub.Size = UDim2.new(1, 0, 0.38, 0)
+	sSub.Position = UDim2.new(0, 0, 0.62, 0)
+	sSub.BackgroundTransparency = 1
+	sSub.TextColor3 = Color3.fromRGB(255, 175, 60)
+	sSub.Font = Enum.Font.GothamBold
+	sSub.TextScaled = true
+	sSub.Text = "[Tier 2 Dungeon | Level 5-10]"
+	sSub.Parent = sunBb
+
+	makeBrazier(hub, sunPortalPos + Vector3.new(-12, 2, 4), Color3.fromRGB(255, 130, 30))
+	makeBrazier(hub, sunPortalPos + Vector3.new(12, 2, 4), Color3.fromRGB(255, 130, 30))
+
 	-- ── 4. ANCIENT CELESTIAL LEVEL-UP SHRINE (LevelUpShrine) ───────────────────
 	local shrinePos = Vector3.new(58, FLOOR_Y, 0)
 

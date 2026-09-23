@@ -8,11 +8,13 @@ local Classes = require(ReplicatedStorage.Shared.Data.Classes)
 local BossAIService = require(script.Parent.BossAIService)
 local MonsterAIService = require(script.Parent.MonsterAIService)
 local DungeonMapService = require(script.Parent.DungeonMapService)
+local SunforgedCitadelMapService = require(script.Parent.SunforgedCitadelMapService)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 local RespawnService = require(script.Parent.RespawnService)
 local WeaponService = require(script.Parent.WeaponService)
 
 local DungeonSessionService = {}
+local currentDungeonId = "Rockhide"
 
 -- Flat values for this slice; real formulas (dungeon tier, player level, party
 -- size, etc.) are a later plan. Wipe rewards are 20% of the victory reward for
@@ -35,6 +37,31 @@ local BOSS_SPAWN_CFRAME = CFrame.new(0, 1, 45) * CFrame.Angles(0, math.pi, 0)
 
 -- Staging Antechamber safe entrance platform (Z = -285)
 local ENTRANCE_POSITION = Vector3.new(0, 5, -285)
+local SUNFORGED_ENTRANCE_POSITION = Vector3.new(0, 5, -420)
+local SUNFORGED_BOSS_SPAWN_CFRAME = CFrame.new(0, 50, 20) * CFrame.Angles(0, math.pi, 0)
+
+local SUNFORGED_ZONE_MOB_COORDINATES = {
+	-- Zone 1: Maze Entrance Ambush
+	{ Vector3.new(-6, 3, -375), Vector3.new(6, 3, -375), Vector3.new(-4, 3, -380), Vector3.new(4, 3, -380) },
+	-- Zone 2: West Canyon Detour
+	{ Vector3.new(-25, 3, -355), Vector3.new(-15, 3, -355), Vector3.new(-22, 3, -360), Vector3.new(-18, 3, -350) },
+	-- Zone 3: Central Maze Junction
+	{ Vector3.new(5, 3, -330), Vector3.new(-5, 3, -330), Vector3.new(0, 3, -335), Vector3.new(2, 3, -325) },
+	-- Zone 4: East Maze Fork
+	{ Vector3.new(35, 3, -345), Vector3.new(25, 3, -345), Vector3.new(30, 3, -350), Vector3.new(28, 3, -340) },
+	-- Zone 5: Maze Exit Guard
+	{ Vector3.new(-20, 3, -285), Vector3.new(0, 3, -285), Vector3.new(-10, 3, -280), Vector3.new(-5, 3, -290) },
+	-- Zone 6: Cathedral Threshold Sentinels
+	{ Vector3.new(-15, 3, -255), Vector3.new(15, 3, -255), Vector3.new(-10, 3, -250), Vector3.new(10, 3, -250) },
+	-- Zone 7: Cathedral Nave Guardians
+	{ Vector3.new(-12, 3, -210), Vector3.new(12, 3, -210), Vector3.new(-8, 3, -215), Vector3.new(8, 3, -215) },
+	-- Zone 8: Cathedral Altar Vanguard
+	{ Vector3.new(-15, 3, -165), Vector3.new(15, 3, -165), Vector3.new(0, 3, -160), Vector3.new(0, 3, -170) },
+	-- Zone 9: Spire Ascent Ramps
+	{ Vector3.new(-6, 25, -120), Vector3.new(6, 25, -120), Vector3.new(0, 30, -110), Vector3.new(0, 20, -130) },
+	-- Zone 10: Solar Sanctum Gate Praetorians
+	{ Vector3.new(-10, 50, -65), Vector3.new(10, 50, -65), Vector3.new(-6, 50, -60), Vector3.new(6, 50, -60) },
+}
 
 -- Trash mob placement definitions: 10 strategic zones across the dungeon
 -- Scales dynamically to (20 * partyMemberCount) monsters total.
@@ -148,7 +175,7 @@ local function moveCharacterToEntrance(character: Model)
 	task.defer(function()
 		local rootPart = character:WaitForChild("HumanoidRootPart", 5)
 		if rootPart then
-			rootPart.CFrame = CFrame.new(ENTRANCE_POSITION)
+			rootPart.CFrame = CFrame.new(currentDungeonId == "Sunforged" and SUNFORGED_ENTRANCE_POSITION or ENTRANCE_POSITION)
 		end
 	end)
 end

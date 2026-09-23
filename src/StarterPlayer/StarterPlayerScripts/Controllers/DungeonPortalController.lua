@@ -30,23 +30,13 @@ function DungeonPortalController.Start()
 	-- Run the (possibly blocking) portal lookup on its own thread so that a
 	-- delay here doesn't delay Main.client.lua's synchronous calls into the
 	-- controllers that run after this one.
+	-- Connect Rockhide Portal (Tier 1)
 	task.spawn(function()
-		-- No timeout: the checks above already confirm this is a hub server, where
-		-- HubMapService.BuildHub() unconditionally creates RockhidePortal, so it will
-		-- always eventually exist -- a 5s cutoff here was observed to sometimes lose
-		-- that race against BuildHub()'s replication, silently leaving this player
-		-- with no way to ever enter the dungeon. This thread doesn't block anything
-		-- else, so waiting indefinitely is safe.
 		local portalPart = workspace:WaitForChild("RockhidePortal")
-
 		local prompt = Instance.new("ProximityPrompt")
-		prompt.ActionText = "Enter Rockhide's Dungeon"
+		prompt.ActionText = "Enter Rockhide's Dungeon (Tier 1)"
+		prompt.ObjectText = "Dungeon Portal"
 		prompt.HoldDuration = 0.5
-		-- The portal's own decorative rings/runes sit directly between the camera
-		-- and this prompt's part from a normal over-the-shoulder angle, and Roblox's
-		-- line-of-sight raycast doesn't exclude sibling decoration (only the
-		-- character and the prompt's own parent) -- so with the default
-		-- RequiresLineOfSight = true, the prompt never shows and never triggers.
 		prompt.RequiresLineOfSight = false
 		prompt.Parent = portalPart
 
@@ -54,6 +44,22 @@ function DungeonPortalController.Start()
 			Net.Get("RequestEnterDungeon"):FireServer("Rockhide")
 		end)
 	end)
+
+	-- Connect Sunforged Citadel Portal (Tier 2)
+	task.spawn(function()
+		local sunPortalPart = workspace:WaitForChild("SunforgedPortal")
+		local sunPrompt = Instance.new("ProximityPrompt")
+		sunPrompt.ActionText = "Enter Sunforged Citadel (Tier 2)"
+		sunPrompt.ObjectText = "Solar Portal"
+		sunPrompt.HoldDuration = 0.5
+		sunPrompt.RequiresLineOfSight = false
+		sunPrompt.Parent = sunPortalPart
+
+		sunPrompt.Triggered:Connect(function()
+			Net.Get("RequestEnterDungeon"):FireServer("Sunforged")
+		end)
+	end)
 end
+
 
 return DungeonPortalController

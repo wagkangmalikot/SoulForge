@@ -9,8 +9,8 @@ local PartyService = require(script.Parent.PartyService)
 local DungeonEntryService = {}
 
 local function enterDungeon(player: Player, dungeonId: string)
-	if dungeonId ~= "Rockhide" then
-		return -- only Rockhide's dungeon exists in this slice
+	if dungeonId ~= "Rockhide" and dungeonId ~= "Sunforged" then
+		return
 	end
 
 	local party = PartyService.GetParty(player)
@@ -35,7 +35,7 @@ local function enterDungeon(player: Player, dungeonId: string)
 		-- Directly transition the server into the dungeon session for seamless testing:
 		ReplicatedStorage:SetAttribute("IsDungeon", true)
 		local DungeonSessionService = require(script.Parent.DungeonSessionService)
-		local HUB_ONLY_SCENERY = {"RockhidePortal", "LevelUpShrine", "SpawnLocation", "SoulforgeHub"}
+		local HUB_ONLY_SCENERY = {"RockhidePortal", "SunforgedPortal", "LevelUpShrine", "SpawnLocation", "SoulforgeHub"}
 		for _, name in HUB_ONLY_SCENERY do
 			local instance = workspace:FindFirstChild(name)
 			if instance then

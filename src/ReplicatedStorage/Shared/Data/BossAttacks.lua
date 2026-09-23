@@ -46,4 +46,45 @@ return {
 		type = "TargetedAoe", -- rapid multi-hit on random players
 		hitCount = 3, -- fires 3 individual impact waves
 	},
+
+	-- ── SOLARIUS, SUNFORGED COLOSSUS (Tier 2 Boss) ──────────────────────────
+	Solarius_RadiantSlash = {
+		telegraphTime = 1.2,
+		radius = 16,
+		damage = 22,
+		type = "Cleave", -- sweeping golden arc
+	},
+	Solarius_SweepingCleave = {
+		telegraphTime = 1.6,
+		radius = 18,
+		damage = 25,
+		type = "Sweep",
+	},
+	Solarius_SolarSmite = {
+		telegraphTime = 1.9,
+		radius = 15,
+		damage = 32,
+		type = "TargetedAoe", -- solar pillar from above
+	},
+	Solarius_Sunburst = {
+		telegraphTime = 2.4,
+		radius = 12,
+		damage = 26,
+		type = "TargetedAoe", -- multi-target tracking sun rays
+		hitCount = 3,
+	},
+	Solarius_BlindingAura = {
+		telegraphTime = 2.0,
+		radius = 28,
+		damage = 30,
+		type = "Pound", -- massive radial solar shockwave
+	},
+	Solarius_Supernova = {
+		telegraphTime = 4.0,
+		radius = 55,
+		damage = 65,
+		type = "Pound", -- room-wide lethal blast, must take cover or be at extreme edge
+		isEnrage = true,
+	},
 }
+
