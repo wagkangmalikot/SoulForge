@@ -263,7 +263,6 @@ local function onCastSkill(player: Player, skillId: string, targetId: string?)
 				applySlowToEnemy(enemy, player, skill.slowPercent)
 			end
 		end
-	end
 	elseif skill.effectType == "buffSelf" then
 		-- ArcaneBarrier: register an absorb shield that intercepts incoming damage.
 		-- GuardStance (no shieldAmount) remains a no-op -- same pre-existing behavior.
