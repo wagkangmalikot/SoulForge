@@ -20,18 +20,23 @@ return {
 
 	Mage = {
 		name = "Mage",
-		baseHealth = 80,
+		baseHealth = 90,
 		startingSkills = {"ArcaneBolt"},
 		branches = {
 			Pyromancy = {
 				name = "Pyromancy",
-				description = "Explosive single-target and area fire damage, high risk-reward burst.",
+				description = "Explosive single-target and area fire damage with burning DoTs — high risk, devastating reward.",
 				skills = {"Firebolt", "Fireball", "Meteor"},
 			},
 			Frostweave = {
 				name = "Frostweave",
-				description = "Sustained frost damage that lingers on enemies after the initial strike.",
+				description = "Sustained frost damage that slows and shreds enemy armour, lingering long after the initial strike.",
 				skills = {"Frostbolt", "IceLance", "Blizzard"},
+			},
+			ArcaneMastery = {
+				name = "Arcane Mastery",
+				description = "Defensive barriers, arcane burst damage, and reality-warping AoE control — the scholar's ultimate toolkit.",
+				skills = {"ArcaneBarrier", "ArcaneSurge", "ArcaneNova"},
 			},
 		},
 	},

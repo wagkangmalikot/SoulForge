@@ -43,7 +43,7 @@ local currentClassId: string = "Tank"
 
 local BRANCH_ORDER_BY_CLASS = {
 	Tank = {"Bulwark", "Juggernaut"},
-	Mage = {"Pyromancy", "Frostweave"},
+	Mage = {"Pyromancy", "Frostweave", "ArcaneMastery"},
 }
 
 local activeMobileBranch: string = BRANCH_ORDER_BY_CLASS.Tank[1]
@@ -110,6 +110,18 @@ local BRANCH_COLORS = {
 		name = "FROSTWEAVE",
 		displayName = "FROSTWEAVE SPECIALIZATION",
 		tagline = "Sustained frost damage that lingers on enemies",
+	},
+	ArcaneMastery = {
+		primary = Color3.fromRGB(145, 80, 255),
+		secondary = Color3.fromRGB(75, 32, 145),
+		bg = Color3.fromRGB(20, 14, 36),
+		cardBg = Color3.fromRGB(30, 20, 52),
+		border = Color3.fromRGB(120, 65, 215),
+		accent = Color3.fromRGB(210, 170, 255),
+		icon = "✨",
+		name = "ARCANE MASTERY",
+		displayName = "ARCANE MASTERY SPECIALIZATION",
+		tagline = "Barriers, burst damage & arcane control",
 	},
 }
 
@@ -711,6 +723,84 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 		durText.TextSize = isMobile and 14 or 15
 		durText.Text = ("🛡 %ds"):format(skill.duration)
 		durText.Parent = durPill
+	end
+
+	-- Slow Pill (slowPercent) — purple/violet tint
+	if skill.slowPercent and skill.slowPercent > 0 then
+		local slowPill = Instance.new("Frame")
+		slowPill.Size = UDim2.new(0, 0, 0, isMobile and 26 or 28)
+		slowPill.AutomaticSize = Enum.AutomaticSize.X
+		slowPill.BackgroundColor3 = Color3.fromRGB(40, 22, 62)
+		slowPill.BorderSizePixel = 0
+		slowPill.Parent = statsRow
+		local slowPad = Instance.new("UIPadding")
+		slowPad.PaddingLeft = UDim.new(0, 10)
+		slowPad.PaddingRight = UDim.new(0, 10)
+		slowPad.Parent = slowPill
+		local slowCorner = Instance.new("UICorner")
+		slowCorner.CornerRadius = UDim.new(0, 5)
+		slowCorner.Parent = slowPill
+		local slowText = Instance.new("TextLabel")
+		slowText.Size = UDim2.new(0, 0, 1, 0)
+		slowText.AutomaticSize = Enum.AutomaticSize.X
+		slowText.BackgroundTransparency = 1
+		slowText.TextColor3 = Color3.fromRGB(210, 170, 255)
+		slowText.Font = Enum.Font.GothamBold
+		slowText.TextSize = isMobile and 14 or 15
+		slowText.Text = ("🔮 Slow %d%%"):format(skill.slowPercent)
+		slowText.Parent = slowPill
+	end
+
+	-- Burn Pill (burnTicks) — fire DoT indicator
+	if skill.burnTicks and skill.burnTicks > 0 then
+		local burnPill = Instance.new("Frame")
+		burnPill.Size = UDim2.new(0, 0, 0, isMobile and 26 or 28)
+		burnPill.AutomaticSize = Enum.AutomaticSize.X
+		burnPill.BackgroundColor3 = Color3.fromRGB(62, 28, 14)
+		burnPill.BorderSizePixel = 0
+		burnPill.Parent = statsRow
+		local burnPad = Instance.new("UIPadding")
+		burnPad.PaddingLeft = UDim.new(0, 10)
+		burnPad.PaddingRight = UDim.new(0, 10)
+		burnPad.Parent = burnPill
+		local burnCorner = Instance.new("UICorner")
+		burnCorner.CornerRadius = UDim.new(0, 5)
+		burnCorner.Parent = burnPill
+		local burnText = Instance.new("TextLabel")
+		burnText.Size = UDim2.new(0, 0, 1, 0)
+		burnText.AutomaticSize = Enum.AutomaticSize.X
+		burnText.BackgroundTransparency = 1
+		burnText.TextColor3 = Color3.fromRGB(255, 140, 60)
+		burnText.Font = Enum.Font.GothamBold
+		burnText.TextSize = isMobile and 14 or 15
+		burnText.Text = ("🔥 Burn %d×%d"):format(skill.burnTickDamage or 0, skill.burnTicks)
+		burnText.Parent = burnPill
+	end
+
+	-- Shield Pill (shieldAmount) — arcane absorb indicator
+	if skill.shieldAmount and skill.shieldAmount > 0 then
+		local shieldPill = Instance.new("Frame")
+		shieldPill.Size = UDim2.new(0, 0, 0, isMobile and 26 or 28)
+		shieldPill.AutomaticSize = Enum.AutomaticSize.X
+		shieldPill.BackgroundColor3 = Color3.fromRGB(36, 22, 58)
+		shieldPill.BorderSizePixel = 0
+		shieldPill.Parent = statsRow
+		local shieldPad = Instance.new("UIPadding")
+		shieldPad.PaddingLeft = UDim.new(0, 10)
+		shieldPad.PaddingRight = UDim.new(0, 10)
+		shieldPad.Parent = shieldPill
+		local shieldCorner = Instance.new("UICorner")
+		shieldCorner.CornerRadius = UDim.new(0, 5)
+		shieldCorner.Parent = shieldPill
+		local shieldText = Instance.new("TextLabel")
+		shieldText.Size = UDim2.new(0, 0, 1, 0)
+		shieldText.AutomaticSize = Enum.AutomaticSize.X
+		shieldText.BackgroundTransparency = 1
+		shieldText.TextColor3 = Color3.fromRGB(200, 160, 255)
+		shieldText.Font = Enum.Font.GothamBold
+		shieldText.TextSize = isMobile and 14 or 15
+		shieldText.Text = ("🛡 %d Shield"):format(skill.shieldAmount)
+		shieldText.Parent = shieldPill
 	end
 
 	-- Row 3: Description (Clean, readable typography with generous vertical room)

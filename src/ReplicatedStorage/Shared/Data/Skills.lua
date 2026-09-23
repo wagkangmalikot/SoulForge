@@ -1,18 +1,23 @@
 -- src/ReplicatedStorage/Shared/Data/Skills.lua
--- Definitive skills registry for all classes (Tank: Juggernaut/Bulwark; Mage: Pyromancy/Frostweave).
+-- Definitive skills registry for all classes (Tank: Juggernaut/Bulwark; Mage: Pyromancy/Frostweave/ArcaneMastery).
 --
 -- effectType drives how CombatService.onCastSkill resolves what a skill actually does:
 --   tauntAoe      - taunts every enemy within range (Taunt)
---   damage        - single-target instant damage (ProvokingStrike, ShieldBash, ArcaneBolt, Firebolt, Fireball)
---   aoeDamage     - instant damage to every enemy within range (Earthshaker, Meteor)
+--   damage        - single-target instant damage
+--   aoeDamage     - instant damage to every enemy within range
 --   selfHeal      - restores the caster's own health (IronWill)
---   dotDamage     - single-target instant damage + follow-up damage-over-time ticks (Frostbolt, IceLance)
---   aoeDotDamage  - aoeDamage + follow-up damage-over-time ticks on every enemy hit (Blizzard)
--- GuardStance/FortressAura are buffSelf/buffParty -- intentionally unhandled by any dispatch
+--   dotDamage     - single-target instant damage + follow-up damage-over-time ticks
+--   aoeDotDamage  - aoeDamage + follow-up damage-over-time ticks on every enemy hit
+-- GuardStance/FortressAura/ArcaneBarrier are buffSelf/buffParty -- intentionally unhandled by any dispatch
 -- branch in CombatService (see that file's comment); they were already no-ops before this
 -- effectType field existed, this just labels the gap instead of hiding it in a name check.
 --
 -- tauntsOnHit = true marks a single-target damage skill that also taunts on hit (ProvokingStrike).
+-- slowPercent   = N  requests a slow of N% on the hit enemy (broadcast via enemy.onSlowed if supported).
+-- burnTicks / burnTickDamage — fire DoT fields (reuses dotTicks / dotTickDamage under the hood).
+-- armorShred    = N  reduces the target's effective armour by N% for the next hit.
+-- shieldAmount  = N  the HP-absorption shield granted by ArcaneBarrier.
+-- consumesShield = true  ArcaneSurge: adds bonus damage if caster's ArcaneBarrier shield is active.
 return {
 	-- ── BASE STARTING SKILL (Tank) ───────────────────────────────────────────
 	Taunt = {
@@ -21,7 +26,7 @@ return {
 		branch = "Base",
 		tier = 0,
 		prerequisite = nil,
-		icon = "rbxasset://textures/Soulforge/taunt_icon.png", -- Realistic dark-fantasy warcry icon (or rbxassetid://<id>)
+		icon = "rbxasset://textures/Soulforge/taunt_icon.png",
 		cooldown = 12,
 		range = 30,
 		damage = 0,
@@ -127,11 +132,12 @@ return {
 		tier = 0,
 		prerequisite = nil,
 		icon = "rbxasset://textures/Soulforge/arcane_bolt_icon.png",
-		cooldown = 3,
-		range = 30,
-		damage = 10,
+		cooldown = 2.5,
+		range = 35,
+		damage = 14,
 		effectType = "damage",
-		description = "A basic bolt of raw arcane energy, dealing 10 damage.",
+		slowPercent = 15,
+		description = "A crackling bolt of raw arcane energy that deals 14 damage and briefly slows the target by 15%.",
 	},
 
 	-- ── PYROMANCY BRANCH (Explosive Single-Target & Area Fire Damage) ────────
@@ -142,11 +148,16 @@ return {
 		tier = 1,
 		prerequisite = nil,
 		icon = "rbxasset://textures/Soulforge/firebolt_icon.png",
-		cooldown = 5,
-		range = 25,
-		damage = 18,
-		effectType = "damage",
-		description = "Hurl a searing bolt of flame, dealing 18 burst damage.",
+		cooldown = 4,
+		range = 28,
+		damage = 22,
+		effectType = "dotDamage",
+		dotTickDamage = 4,
+		dotTicks = 2,
+		dotInterval = 1.5,
+		burnTicks = 2,
+		burnTickDamage = 4,
+		description = "Hurl a searing bolt of flame, dealing 22 burst damage then burning the target for 4 damage over 2 ticks (3s).",
 	},
 
 	Fireball = {
@@ -156,11 +167,11 @@ return {
 		tier = 2,
 		prerequisite = "Firebolt",
 		icon = "rbxasset://textures/Soulforge/fireball_icon.png",
-		cooldown = 9,
-		range = 25,
-		damage = 26,
+		cooldown = 8,
+		range = 28,
+		damage = 34,
 		effectType = "damage",
-		description = "Launch a roaring ball of fire, dealing 26 burst damage.",
+		description = "Launch a roaring ball of fire that explodes on impact, dealing 34 burst damage to a single target.",
 	},
 
 	Meteor = {
@@ -170,14 +181,19 @@ return {
 		tier = 3,
 		prerequisite = "Fireball",
 		icon = "rbxasset://textures/Soulforge/meteor_icon.png",
-		cooldown = 16,
-		range = 20,
-		damage = 30,
-		effectType = "aoeDamage",
-		description = "Call down a blazing meteor, dealing 30 AoE damage to all nearby enemies.",
+		cooldown = 14,
+		range = 22,
+		damage = 42,
+		effectType = "aoeDotDamage",
+		dotTickDamage = 6,
+		dotTicks = 3,
+		dotInterval = 1.5,
+		burnTicks = 3,
+		burnTickDamage = 6,
+		description = "Call down a blazing meteor, dealing 42 AoE damage to all nearby enemies, then scorching each for 6 damage over 3 ticks (4.5s).",
 	},
 
-	-- ── FROSTWEAVE BRANCH (Sustained Frost Damage-Over-Time) ─────────────────
+	-- ── FROSTWEAVE BRANCH (Sustained Frost Damage-Over-Time & Slows) ─────────
 	Frostbolt = {
 		id = "Frostbolt",
 		displayName = "Frostbolt",
@@ -186,13 +202,14 @@ return {
 		prerequisite = nil,
 		icon = "rbxasset://textures/Soulforge/frostbolt_icon.png",
 		cooldown = 5,
-		range = 25,
-		damage = 10,
+		range = 28,
+		damage = 13,
 		effectType = "dotDamage",
-		dotTickDamage = 3,
+		dotTickDamage = 4,
 		dotTicks = 3,
 		dotInterval = 1.5,
-		description = "A shard of ice that deals 10 damage on impact, then 3 damage per tick over the next 3 ticks (4.5s).",
+		slowPercent = 20,
+		description = "A shard of ice that deals 13 damage on impact and slows the target 20%, then 4 damage per tick over the next 3 ticks (4.5s).",
 	},
 
 	IceLance = {
@@ -203,13 +220,15 @@ return {
 		prerequisite = "Frostbolt",
 		icon = "rbxasset://textures/Soulforge/ice_lance_icon.png",
 		cooldown = 9,
-		range = 25,
-		damage = 14,
+		range = 28,
+		damage = 18,
 		effectType = "dotDamage",
-		dotTickDamage = 4,
+		dotTickDamage = 5,
 		dotTicks = 3,
 		dotInterval = 1.5,
-		description = "A piercing lance of ice that deals 14 damage on impact, then 4 damage per tick over the next 3 ticks (4.5s).",
+		slowPercent = 30,
+		armorShred = 10,
+		description = "A piercing lance of ice that deals 18 damage, slows 30%, shreds 10% armour, then 5 damage per tick over the next 3 ticks (4.5s).",
 	},
 
 	Blizzard = {
@@ -220,12 +239,60 @@ return {
 		prerequisite = "IceLance",
 		icon = "rbxasset://textures/Soulforge/blizzard_icon.png",
 		cooldown = 16,
-		range = 20,
-		damage = 16,
+		range = 22,
+		damage = 22,
 		effectType = "aoeDotDamage",
-		dotTickDamage = 4,
-		dotTicks = 3,
+		dotTickDamage = 5,
+		dotTicks = 4,
 		dotInterval = 1.5,
-		description = "Summon a raging blizzard, dealing 16 AoE damage to all nearby enemies, then 4 damage per tick over the next 3 ticks (4.5s) to each.",
+		slowPercent = 40,
+		description = "Summon a raging blizzard, dealing 22 AoE damage and slowing all nearby enemies by 40%, then 5 damage per tick over 4 ticks (6s) to each.",
+	},
+
+	-- ── ARCANE MASTERY BRANCH (Barriers, Burst Damage & Arcane Control) ──────
+	ArcaneBarrier = {
+		id = "ArcaneBarrier",
+		displayName = "Arcane Barrier",
+		branch = "ArcaneMastery",
+		tier = 1,
+		prerequisite = nil,
+		icon = "rbxasset://textures/Soulforge/arcane_barrier_icon.png",
+		cooldown = 20,
+		range = 0,
+		damage = 0,
+		duration = 6,
+		shieldAmount = 40,
+		effectType = "buffSelf",
+		description = "Crystallize arcane energy into a protective barrier, absorbing up to 40 damage for 6 seconds. Empowers your next Arcane Surge.",
+	},
+
+	ArcaneSurge = {
+		id = "ArcaneSurge",
+		displayName = "Arcane Surge",
+		branch = "ArcaneMastery",
+		tier = 2,
+		prerequisite = "ArcaneBarrier",
+		icon = "rbxasset://textures/Soulforge/arcane_surge_icon.png",
+		cooldown = 10,
+		range = 32,
+		damage = 28,
+		effectType = "damage",
+		consumesShield = true,
+		description = "Release a focused surge of arcane force dealing 28 damage. If Arcane Barrier is active, it is consumed for +8 bonus damage and a devastating knockback.",
+	},
+
+	ArcaneNova = {
+		id = "ArcaneNova",
+		displayName = "Arcane Nova",
+		branch = "ArcaneMastery",
+		tier = 3,
+		prerequisite = "ArcaneSurge",
+		icon = "rbxasset://textures/Soulforge/arcane_nova_icon.png",
+		cooldown = 18,
+		range = 22,
+		damage = 38,
+		effectType = "aoeDamage",
+		slowPercent = 35,
+		description = "Detonate a nova of raw arcane energy, dealing 38 AoE damage to all nearby enemies and slowing them by 35% as the shockwave tears through reality.",
 	},
 }

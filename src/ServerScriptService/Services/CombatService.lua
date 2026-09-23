@@ -27,6 +27,15 @@ local lastNormalAttackAt = {}
 -- through one code path instead of only ever being able to hit "the boss".
 local enemies = {}
 
+-- userId -> {amount: number, expiresAt: number}
+-- ArcaneBarrier shield state: absorbs incoming damage until depleted or expired.
+local arcaneShields = {}
+
+-- userId -> {[targetId]: shredPercent}
+-- IceLance armorShred: next damage event against that target gains +shredPercent multiplier.
+local shredStacks = {}
+
+
 function CombatService.RegisterEnemy(targetId: string, handle)
 	enemies[targetId] = handle
 end
@@ -71,9 +80,26 @@ local function getPlayerNormalAttackDamage(player: Player): number
 	return math.floor(baseDamage * mult)
 end
 
-local function getPlayerSkillDamage(player: Player, baseDamage: number): number
+local function getPlayerSkillDamage(player: Player, baseDamage: number, targetId: string?): number
 	local mult = getDamageMultiplier(player)
+	-- Consume an armour-shred stack for this target if one exists
+	if targetId then
+		local perPlayer = shredStacks[player.UserId]
+		if perPlayer and perPlayer[targetId] then
+			mult = mult * (1 + perPlayer[targetId] / 100)
+			perPlayer[targetId] = nil -- consumed on hit
+		end
+	end
 	return math.floor(baseDamage * mult)
+end
+
+-- Broadcast a slow to a single enemy handle. MonsterAIService / BossAIService
+-- can optionally expose onSlowed(percent, player) on their handle to act on it.
+-- If they don't, this is a safe no-op.
+local function applySlowToEnemy(enemy, player: Player, slowPercent: number)
+	if enemy and enemy.onSlowed then
+		pcall(enemy.onSlowed, slowPercent, player)
+	end
 end
 
 -- Schedules tickCount follow-up hits of tickDamage against enemy, interval seconds
@@ -93,6 +119,7 @@ local function applyDotTicks(enemy, player: Player, tickDamage: number, tickCoun
 		end)
 	end
 end
+
 
 
 local function isOnCooldown(userId: number, skillId: string, cooldown: number): boolean
@@ -183,15 +210,18 @@ local function onCastSkill(player: Player, skillId: string, targetId: string?)
 			end
 		end
 	elseif skill.effectType == "aoeDamage" or skill.effectType == "aoeDotDamage" then
-		-- AoE slam: damage all registered enemies within range, plus follow-up DoT ticks if this skill has them
+		-- AoE slam: damage all registered enemies within range, plus follow-up DoT ticks and optional slow
 		local aoeRadius = skill.range > 0 and skill.range or 16
-		for _, e in pairs(enemies) do
+		for eId, e in pairs(enemies) do
 			if e and e.model and e.model.PrimaryPart and e.model.Parent then
 				local dist = (e.model.PrimaryPart.Position - rootPart.Position).Magnitude
 				if dist <= aoeRadius then
-					e.onDamaged(getPlayerSkillDamage(player, skill.damage), player)
+					e.onDamaged(getPlayerSkillDamage(player, skill.damage, eId), player)
 					if skill.effectType == "aoeDotDamage" and skill.dotTicks then
 						applyDotTicks(e, player, skill.dotTickDamage, skill.dotTicks, skill.dotInterval)
+					end
+					if skill.slowPercent then
+						applySlowToEnemy(e, player, skill.slowPercent)
 					end
 				end
 			end
@@ -210,17 +240,45 @@ local function onCastSkill(player: Player, skillId: string, targetId: string?)
 				enemy.onTaunted(player)
 			end
 			if skill.damage > 0 then
-				enemy.onDamaged(getPlayerSkillDamage(player, skill.damage), player)
+				-- consumesShield (ArcaneSurge): burn ArcaneBarrier for bonus damage
+				local bonusDmg = 0
+				if skill.consumesShield then
+					local shield = arcaneShields[player.UserId]
+					if shield and os.clock() < shield.expiresAt then
+						bonusDmg = 8
+						arcaneShields[player.UserId] = nil
+					end
+				end
+				-- armorShred: register shred stack amplifying the caster's NEXT hit on this target
+				if skill.armorShred and targetId then
+					shredStacks[player.UserId] = shredStacks[player.UserId] or {}
+					shredStacks[player.UserId][targetId] = skill.armorShred
+				end
+				enemy.onDamaged(getPlayerSkillDamage(player, skill.damage + bonusDmg, targetId), player)
 			end
 			if skill.effectType == "dotDamage" and skill.dotTicks then
 				applyDotTicks(enemy, player, skill.dotTickDamage, skill.dotTicks, skill.dotInterval)
 			end
+			if skill.slowPercent then
+				applySlowToEnemy(enemy, player, skill.slowPercent)
+			end
 		end
 	end
-	-- Any other effectType (buffSelf, buffParty) is intentionally unhandled here --
-	-- GuardStance/FortressAura already did nothing when cast before this refactor;
-	-- this keeps that exact (pre-existing, out of scope) behavior while making the
-	-- gap explicit and labeled instead of hidden inside a name check.
+	elseif skill.effectType == "buffSelf" then
+		-- ArcaneBarrier: register an absorb shield that intercepts incoming damage.
+		-- GuardStance (no shieldAmount) remains a no-op -- same pre-existing behavior.
+		if skill.shieldAmount and skill.shieldAmount > 0 then
+			local expiry = os.clock() + (skill.duration or 6)
+			arcaneShields[player.UserId] = { amount = skill.shieldAmount, expiresAt = expiry }
+			task.delay(skill.duration or 6, function()
+				local s = arcaneShields[player.UserId]
+				if s and s.expiresAt == expiry then
+					arcaneShields[player.UserId] = nil
+				end
+			end)
+		end
+	end
+	-- buffParty (FortressAura) is intentionally unhandled -- same pre-existing no-op as before.
 end
 
 local function onCastNormalAttack(player: Player, targetId: string?)
@@ -299,7 +357,19 @@ function CombatService.ApplyDamageToPlayer(player: Player, amount: number)
 	if not humanoid then
 		return
 	end
-	humanoid.Health = math.max(0, humanoid.Health - amount)
+	-- ArcaneBarrier shield: absorb as much damage as possible before hitting health
+	local shield = arcaneShields[player.UserId]
+	if shield and os.clock() < shield.expiresAt and shield.amount > 0 then
+		local absorbed = math.min(shield.amount, amount)
+		shield.amount -= absorbed
+		amount -= absorbed
+		if shield.amount <= 0 then
+			arcaneShields[player.UserId] = nil
+		end
+	end
+	if amount > 0 then
+		humanoid.Health = math.max(0, humanoid.Health - amount)
+	end
 	Net.Get("HealthChanged"):FireAllClients(player.UserId, humanoid.Health, humanoid.MaxHealth)
 end
 
@@ -338,6 +408,8 @@ function CombatService.Start()
 	Players.PlayerRemoving:Connect(function(player)
 		lastCastAt[player.UserId] = nil
 		lastNormalAttackAt[player.UserId] = nil
+		arcaneShields[player.UserId] = nil
+		shredStacks[player.UserId] = nil
 	end)
 end
 

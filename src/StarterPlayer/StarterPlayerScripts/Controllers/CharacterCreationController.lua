@@ -83,11 +83,11 @@ local CLASS_CARD_INFO = {
 	Mage = {
 		icon = "🔮",
 		title = "MAGE ARCHETYPE",
-		description = "Fragile spellcaster who strikes from range with arcane bolts, then specializes into explosive fire or lingering frost damage.",
+		description = "Elusive arcane scholar who commands fire, frost, and raw arcane energy from range. Specialize into explosive Pyromancy, lingering Frostweave, or defensive Arcane Mastery.",
 		traits = {
-			{ "🔥", "Attack: Arcane Bolt (Ranged)" },
-			{ "❤️", "Base Health: 80 (Fragile)" },
-			{ "🌳", "Trees: Pyromancy & Frostweave" },
+			{ "🔮", "Attack: Arcane Bolt (Ranged, Slows)" },
+			{ "💙", "Base Health: 90 (Moderate)" },
+			{ "🌳", "Trees: Pyromancy, Frostweave & Arcane Mastery" },
 		},
 	},
 }
