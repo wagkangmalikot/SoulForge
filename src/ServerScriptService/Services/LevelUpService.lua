@@ -77,6 +77,9 @@ function LevelUpService.Start()
 						char.CraftingMaterials
 					)
 				end
+			elseif cmd == "/reskill" or cmd == "/respec" then
+				local SkillTreeService = require(script.Parent.SkillTreeService)
+				SkillTreeService.ResetSkills(player)
 			elseif cmd == "/rockhide" or cmd == "/testrockhide" then
 				local profile = PlayerDataService.GetProfile(player)
 				if profile and profile.Data.Character then

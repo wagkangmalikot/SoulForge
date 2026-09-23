@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local SoundService = game:GetService("SoundService")
 local UserInputService = game:GetService("UserInputService")
+local TeleportService = game:GetService("TeleportService")
 
 local Net = require(ReplicatedStorage.Shared.Net)
 local Skills = require(ReplicatedStorage.Shared.Data.Skills)
@@ -28,6 +29,10 @@ local titleLabel: TextLabel? = nil
 local pointsPill: Frame? = nil
 local pillLabel: TextLabel? = nil
 local pointsValueLabel: TextLabel? = nil
+local reskillBtn: TextButton? = nil
+local reskillBtnText: TextLabel? = nil
+local dungeonStatusBadge: Frame? = nil
+local dungeonStatusLabel: TextLabel? = nil
 local closeBtn: TextButton? = nil
 local branchTabsContainer: Frame? = nil
 local branchesContainer: Frame? = nil
@@ -40,6 +45,21 @@ local unlockedSkills: {string} = {"Taunt"}
 local equippedSkills: {string} = {"Taunt"}
 local isSelectingSlotForSkill: string? = nil
 local currentClassId: string = "Tank"
+local isConfirmingReset = false
+local resetConfirmThread: thread? = nil
+
+local function isInDungeon(): boolean
+	if ReplicatedStorage:GetAttribute("IsDungeon") == true then
+		return true
+	end
+	local ok, td = pcall(function()
+		return TeleportService:GetLocalPlayerTeleportData()
+	end)
+	if ok and td and td.isDungeon then
+		return true
+	end
+	return false
+end
 
 local BRANCH_ORDER_BY_CLASS = {
 	Tank = {"Bulwark", "Juggernaut"},
@@ -222,6 +242,34 @@ end
 
 local refreshUI: () -> ()
 
+local function updateResetButton()
+	if not reskillBtn or not reskillBtnText then
+		return
+	end
+	local inDungeon = isInDungeon()
+	if inDungeon then
+		reskillBtn.Visible = false
+		if dungeonStatusBadge then
+			dungeonStatusBadge.Visible = true
+		end
+		return
+	end
+	reskillBtn.Visible = true
+	if dungeonStatusBadge then
+		dungeonStatusBadge.Visible = false
+	end
+	local isMob = isMobileViewport()
+	if isConfirmingReset then
+		reskillBtn.BackgroundColor3 = Color3.fromRGB(190, 45, 35)
+		reskillBtnText.Text = "CONFIRM?"
+		reskillBtnText.TextColor3 = Color3.fromRGB(255, 240, 200)
+	else
+		reskillBtn.BackgroundColor3 = Color3.fromRGB(42, 48, 62)
+		reskillBtnText.Text = isMob and "↺ RESET" or "↺ RESPEC"
+		reskillBtnText.TextColor3 = Color3.fromRGB(220, 235, 255)
+	end
+end
+
 local function updateResponsiveScale()
 	if not modalScale or not modalFrame then
 		return
@@ -232,6 +280,7 @@ local function updateResponsiveScale()
 	end
 	local vp = camera.ViewportSize
 	local isMob = isMobileViewport()
+	local inDungeon = isInDungeon()
 
 	if isMob then
 		-- Mobile layout: full-screen touch fit respecting Roblox topbar insets
@@ -243,25 +292,35 @@ local function updateResponsiveScale()
 			headerBar.Size = UDim2.new(1, 0, 0, 52)
 		end
 		if titleLabel then
-			titleLabel.Size = UDim2.new(0.52, 0, 1, 0)
-			titleLabel.Position = UDim2.new(0, 16, 0, 0)
-			titleLabel.TextSize = 20
+			titleLabel.Size = UDim2.new(0.40, 0, 1, 0)
+			titleLabel.Position = UDim2.new(0, 12, 0, 0)
+			titleLabel.TextSize = 18
 			titleLabel.Text = getClassTitleText(true)
 		end
 		if pointsPill then
-			pointsPill.Size = UDim2.new(0, 156, 0, 36)
-			pointsPill.Position = UDim2.new(1, -206, 0.5, -18)
+			pointsPill.Size = UDim2.new(0, 130, 0, 34)
+			pointsPill.Position = UDim2.new(1, -182, 0.5, -17)
 		end
 		if pillLabel then
-			pillLabel.Size = UDim2.new(0.60, 0, 1, 0)
-			pillLabel.Position = UDim2.new(0, 8, 0, 0)
-			pillLabel.TextSize = 14.5
+			pillLabel.Size = UDim2.new(0.55, 0, 1, 0)
+			pillLabel.Position = UDim2.new(0, 6, 0, 0)
+			pillLabel.TextSize = 13
 			pillLabel.Text = "POINTS:"
 		end
 		if pointsValueLabel then
-			pointsValueLabel.Size = UDim2.new(0.40, 0, 1, 0)
-			pointsValueLabel.Position = UDim2.new(0.60, 0, 0, 0)
-			pointsValueLabel.TextSize = 21
+			pointsValueLabel.Size = UDim2.new(0.45, 0, 1, 0)
+			pointsValueLabel.Position = UDim2.new(0.55, 0, 0, 0)
+			pointsValueLabel.TextSize = 19
+		end
+		if reskillBtn then
+			reskillBtn.Size = UDim2.new(0, 80, 0, 34)
+			reskillBtn.Position = UDim2.new(1, -268, 0.5, -17)
+			reskillBtn.Visible = not inDungeon
+		end
+		if dungeonStatusBadge then
+			dungeonStatusBadge.Size = UDim2.new(0, 140, 0, 32)
+			dungeonStatusBadge.Position = UDim2.new(1, -190, 0.5, -16)
+			dungeonStatusBadge.Visible = inDungeon
 		end
 		if closeBtn then
 			closeBtn.Size = UDim2.new(0, 36, 0, 36)
@@ -308,25 +367,35 @@ local function updateResponsiveScale()
 			headerBar.Size = UDim2.new(1, 0, 0, 60)
 		end
 		if titleLabel then
-			titleLabel.Size = UDim2.new(0.55, 0, 1, 0)
+			titleLabel.Size = UDim2.new(0.46, 0, 1, 0)
 			titleLabel.Position = UDim2.new(0, 18, 0, 0)
 			titleLabel.TextSize = 24
 			titleLabel.Text = getClassTitleText(false)
 		end
 		if pointsPill then
-			pointsPill.Size = UDim2.new(0, 205, 0, 38)
-			pointsPill.Position = UDim2.new(1, -265, 0.5, -19)
+			pointsPill.Size = UDim2.new(0, 190, 0, 38)
+			pointsPill.Position = UDim2.new(1, -250, 0.5, -19)
 		end
 		if pillLabel then
-			pillLabel.Size = UDim2.new(0.68, 0, 1, 0)
+			pillLabel.Size = UDim2.new(0.66, 0, 1, 0)
 			pillLabel.Position = UDim2.new(0, 10, 0, 0)
-			pillLabel.TextSize = 15
+			pillLabel.TextSize = 14.5
 			pillLabel.Text = "SKILL POINTS:"
 		end
 		if pointsValueLabel then
-			pointsValueLabel.Size = UDim2.new(0.32, 0, 1, 0)
-			pointsValueLabel.Position = UDim2.new(0.68, 0, 0, 0)
+			pointsValueLabel.Size = UDim2.new(0.34, 0, 1, 0)
+			pointsValueLabel.Position = UDim2.new(0.66, 0, 0, 0)
 			pointsValueLabel.TextSize = 22
+		end
+		if reskillBtn then
+			reskillBtn.Size = UDim2.new(0, 110, 0, 38)
+			reskillBtn.Position = UDim2.new(1, -370, 0.5, -19)
+			reskillBtn.Visible = not inDungeon
+		end
+		if dungeonStatusBadge then
+			dungeonStatusBadge.Size = UDim2.new(0, 190, 0, 36)
+			dungeonStatusBadge.Position = UDim2.new(1, -450, 0.5, -18)
+			dungeonStatusBadge.Visible = inDungeon
 		end
 		if closeBtn then
 			closeBtn.Size = UDim2.new(0, 40, 0, 40)
@@ -478,6 +547,8 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	btnSubtext.TextWrapped = true
 	btnSubtext.Parent = actionBtn
 
+	local inDungeon = isInDungeon()
+
 	if unlocked then
 		if equippedSlot then
 			actionBtn.BackgroundColor3 = Color3.fromRGB(24, 88, 50)
@@ -486,6 +557,14 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 			btnTitle.Text = "✓ EQUIPPED"
 			btnSubtext.TextColor3 = Color3.fromRGB(165, 240, 190)
 			btnSubtext.Text = ("[ Slot %d ]"):format(equippedSlot)
+			actionBtn.AutoButtonColor = false
+		elseif inDungeon then
+			actionBtn.BackgroundColor3 = Color3.fromRGB(28, 30, 36)
+			btnStroke.Color = Color3.fromRGB(50, 54, 64)
+			btnTitle.TextColor3 = Color3.fromRGB(135, 140, 150)
+			btnTitle.Text = "🔒 LOCKED"
+			btnSubtext.TextColor3 = Color3.fromRGB(220, 100, 100)
+			btnSubtext.Text = "Locked in Dungeon"
 			actionBtn.AutoButtonColor = false
 		else
 			if isSelectingSlotForSkill == skillId then
@@ -514,16 +593,26 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 			end
 		end
 	elseif canUnlock then
-		actionBtn.BackgroundColor3 = Color3.fromRGB(32, 140, 72)
-		btnStroke.Color = Color3.fromRGB(255, 215, 80)
-		btnTitle.TextColor3 = Color3.new(1, 1, 1)
-		btnTitle.Text = "✨ UNLOCK"
-		btnSubtext.TextColor3 = Color3.fromRGB(255, 235, 150)
-		btnSubtext.Text = "Cost: 1 Skill Point"
-		actionBtn.Activated:Connect(function()
-			playUISound("rbxasset://sounds/electronicpingshort.wav", 1.1, 0.6)
-			Net.Get("RequestUnlockSkill"):FireServer(skillId)
-		end)
+		if inDungeon then
+			actionBtn.BackgroundColor3 = Color3.fromRGB(28, 30, 36)
+			btnStroke.Color = Color3.fromRGB(50, 54, 64)
+			btnTitle.TextColor3 = Color3.fromRGB(135, 140, 150)
+			btnTitle.Text = "🔒 LOCKED"
+			btnSubtext.TextColor3 = Color3.fromRGB(220, 100, 100)
+			btnSubtext.Text = "Locked in Dungeon"
+			actionBtn.AutoButtonColor = false
+		else
+			actionBtn.BackgroundColor3 = Color3.fromRGB(32, 140, 72)
+			btnStroke.Color = Color3.fromRGB(255, 215, 80)
+			btnTitle.TextColor3 = Color3.new(1, 1, 1)
+			btnTitle.Text = "✨ UNLOCK"
+			btnSubtext.TextColor3 = Color3.fromRGB(255, 235, 150)
+			btnSubtext.Text = "Cost: 1 Skill Point"
+			actionBtn.Activated:Connect(function()
+				playUISound("rbxasset://sounds/electronicpingshort.wav", 1.1, 0.6)
+				Net.Get("RequestUnlockSkill"):FireServer(skillId)
+			end)
+		end
 	else
 		actionBtn.BackgroundColor3 = Color3.fromRGB(30, 32, 38)
 		btnStroke.Color = Color3.fromRGB(52, 56, 66)
@@ -858,13 +947,28 @@ refreshUI = function()
 	end
 
 	local isMobile = isMobileViewport()
+	local inDungeon = isInDungeon()
+
+	if inDungeon then
+		isSelectingSlotForSkill = nil
+	end
+
+	updateResetButton()
+	updateResponsiveScale()
 
 	if pointsValueLabel then
 		pointsValueLabel.Text = tostring(skillPoints)
 	end
 
 	if bottomPromptLabel then
-		if isMobile then
+		if inDungeon then
+			bottomPromptLabel.Visible = true
+			bottomPromptLabel.Position = UDim2.new(0, 12, 0, isMobile and 2 or 5)
+			bottomPromptLabel.Size = UDim2.new(1, -20, 0, isMobile and 18 or 22)
+			bottomPromptLabel.TextSize = isMobile and 12 or 14
+			bottomPromptLabel.Text = "🔒 DUNGEON ACTIVE: Reskilling and skill equipping are disabled. Prepare your build at the Hub!"
+			bottomPromptLabel.TextColor3 = Color3.fromRGB(255, 115, 115)
+		elseif isMobile then
 			if isSelectingSlotForSkill then
 				local targetSkill = Skills[isSelectingSlotForSkill]
 				local skillName = targetSkill and targetSkill.displayName or isSelectingSlotForSkill
@@ -1233,6 +1337,9 @@ refreshUI = function()
 			slotBtn.Parent = slotBox
 
 			slotBtn.Activated:Connect(function()
+				if isInDungeon() then
+					return
+				end
 				if isSelectingSlotForSkill then
 					playUISound("rbxasset://sounds/electronicpingshort.wav", 1.3, 0.5)
 					Net.Get("RequestEquipSkill"):FireServer(isSelectingSlotForSkill, slotIndex)
@@ -1406,6 +1513,89 @@ function SkillTreeUIController.Start()
 	pointsValueLabel.Text = "0"
 	pointsValueLabel.Parent = pointsPill
 
+	-- Reset / Respec Skills Button (Hub Only)
+	reskillBtn = Instance.new("TextButton")
+	reskillBtn.Name = "ReskillBtn"
+	reskillBtn.Size = UDim2.new(0, 110, 0, 38)
+	reskillBtn.Position = UDim2.new(1, -370, 0.5, -19)
+	reskillBtn.BackgroundColor3 = Color3.fromRGB(42, 48, 62)
+	reskillBtn.BorderSizePixel = 0
+	reskillBtn.AutoButtonColor = true
+	reskillBtn.Parent = headerBar
+
+	local reskillCorner = Instance.new("UICorner")
+	reskillCorner.CornerRadius = UDim.new(0, 8)
+	reskillCorner.Parent = reskillBtn
+
+	local reskillStroke = Instance.new("UIStroke")
+	reskillStroke.Color = Color3.fromRGB(80, 110, 160)
+	reskillStroke.Thickness = 1.2
+	reskillStroke.Parent = reskillBtn
+
+	reskillBtnText = Instance.new("TextLabel")
+	reskillBtnText.Size = UDim2.new(1, 0, 1, 0)
+	reskillBtnText.BackgroundTransparency = 1
+	reskillBtnText.TextColor3 = Color3.fromRGB(220, 235, 255)
+	reskillBtnText.Font = Enum.Font.GothamBold
+	reskillBtnText.TextSize = 14
+	reskillBtnText.Text = "↺ RESPEC"
+	reskillBtnText.Parent = reskillBtn
+
+	reskillBtn.Activated:Connect(function()
+		if isInDungeon() then
+			return
+		end
+		if not isConfirmingReset then
+			isConfirmingReset = true
+			updateResetButton()
+			if resetConfirmThread then
+				task.cancel(resetConfirmThread)
+			end
+			resetConfirmThread = task.delay(3, function()
+				isConfirmingReset = false
+				updateResetButton()
+			end)
+		else
+			isConfirmingReset = false
+			if resetConfirmThread then
+				task.cancel(resetConfirmThread)
+				resetConfirmThread = nil
+			end
+			updateResetButton()
+			playUISound("rbxasset://sounds/electronicpingshort.wav", 1.2, 0.6)
+			Net.Get("RequestResetSkills"):FireServer()
+			isSelectingSlotForSkill = nil
+		end
+	end)
+
+	-- Dungeon Status Locked Badge (Dungeon Only)
+	dungeonStatusBadge = Instance.new("Frame")
+	dungeonStatusBadge.Name = "DungeonStatusBadge"
+	dungeonStatusBadge.Size = UDim2.new(0, 190, 0, 36)
+	dungeonStatusBadge.Position = UDim2.new(1, -450, 0.5, -18)
+	dungeonStatusBadge.BackgroundColor3 = Color3.fromRGB(56, 18, 18)
+	dungeonStatusBadge.BorderSizePixel = 0
+	dungeonStatusBadge.Visible = false
+	dungeonStatusBadge.Parent = headerBar
+
+	local dsbCorner = Instance.new("UICorner")
+	dsbCorner.CornerRadius = UDim.new(0, 8)
+	dsbCorner.Parent = dungeonStatusBadge
+
+	local dsbStroke = Instance.new("UIStroke")
+	dsbStroke.Color = Color3.fromRGB(215, 65, 65)
+	dsbStroke.Thickness = 1.2
+	dsbStroke.Parent = dungeonStatusBadge
+
+	dungeonStatusLabel = Instance.new("TextLabel")
+	dungeonStatusLabel.Size = UDim2.new(1, 0, 1, 0)
+	dungeonStatusLabel.BackgroundTransparency = 1
+	dungeonStatusLabel.TextColor3 = Color3.fromRGB(255, 180, 180)
+	dungeonStatusLabel.Font = Enum.Font.GothamBold
+	dungeonStatusLabel.TextSize = 13.5
+	dungeonStatusLabel.Text = "🔒 LOADOUT LOCKED"
+	dungeonStatusLabel.Parent = dungeonStatusBadge
+
 	-- Close Button [X]
 	closeBtn = Instance.new("TextButton")
 	closeBtn.Size = UDim2.new(0, 40, 0, 40)
@@ -1524,6 +1714,13 @@ function SkillTreeUIController.Start()
 		unlockedSkills = unlocked or {"Taunt"}
 		equippedSkills = equipped or {"Taunt"}
 		refreshUI()
+	end)
+
+	ReplicatedStorage:GetAttributeChangedSignal("IsDungeon"):Connect(function()
+		updateResponsiveScale()
+		if screenGui and screenGui.Enabled then
+			refreshUI()
+		end
 	end)
 end
 
