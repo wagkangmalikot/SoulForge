@@ -11,6 +11,7 @@ local Net = require(ReplicatedStorage.Shared.Net)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 local HubMapService = require(script.Parent.HubMapService)
 local Classes = require(ReplicatedStorage.Shared.Data.Classes)
+local SkillTreeService = require(script.Parent.SkillTreeService)
 
 local CharacterCreationService = {}
 
@@ -72,6 +73,13 @@ local function loadCharacterAndNotify(player: Player, profile, context: string)
 	local loadOk, loadErr = pcall(function()
 		player:LoadCharacter()
 		fireCharacterDataChanged(player, profile)
+		-- Without this, the client's action bar/skill tree keep showing whatever
+		-- SkillTreeService synced at this player's original PlayerAdded (before
+		-- character creation/reforge ever ran), since nothing else re-pushes
+		-- skill data on this path -- e.g. a Mage reforged into a Healer would
+		-- still show their old Arcane Bolt in the action bar until they opened
+		-- the skill tree UI or unlocked/equipped a skill.
+		SkillTreeService.SyncSkills(player)
 	end)
 	if not loadOk then
 		warn(("CharacterCreationService: LoadCharacter failed for %s %s: %s"):format(player.Name, context, tostring(loadErr)))
