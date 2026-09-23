@@ -388,7 +388,26 @@ local function renderDetailView(itemId: string?)
 	if equipActionButton and equipActionLabel then
 		equipActionButton.Visible = true
 		local itemClass = EquipmentData.GetItemClass(itemId)
-		local isClassMismatch = itemClass and (itemClass ~= cachedClassId)
+
+		-- Check if player's class matches the item's allowed class(es)
+		local isClassMismatch
+		if type(itemClass) == "table" then
+			isClassMismatch = not table.find(itemClass, cachedClassId)
+		else
+			isClassMismatch = itemClass and (itemClass ~= cachedClassId)
+		end
+
+		-- Build a displayable label for the item's class requirement(s)
+		local itemClassLabel
+		if type(itemClass) == "table" then
+			local upper = {}
+			for i, c in itemClass do
+				upper[i] = string.upper(c)
+			end
+			itemClassLabel = table.concat(upper, " / ")
+		elseif itemClass then
+			itemClassLabel = string.upper(itemClass)
+		end
 
 		if equipped then
 			equipActionButton.Active = false
@@ -398,7 +417,7 @@ local function renderDetailView(itemId: string?)
 		elseif isClassMismatch then
 			equipActionButton.Active = false
 			equipActionButton.BackgroundColor3 = THEME.panelInner
-			equipActionLabel.Text = string.format("REQUIRES %s CLASS", string.upper(itemClass))
+			equipActionLabel.Text = string.format("REQUIRES %s CLASS", itemClassLabel)
 			equipActionLabel.TextColor3 = THEME.red
 		else
 			equipActionButton.Active = true
