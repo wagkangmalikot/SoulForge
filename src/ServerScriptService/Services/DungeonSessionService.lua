@@ -174,10 +174,31 @@ end
 -- technique RespawnService.respawnAtEntrance already uses for repositioning
 -- after a respawn -- this is the same fix, just for the very first spawn.
 local function moveCharacterToEntrance(character: Model)
-	task.defer(function()
-		local rootPart = character:WaitForChild("HumanoidRootPart", 5)
+	local targetPos = (currentDungeonId == "Sunforged") and SUNFORGED_ENTRANCE_POSITION or ENTRANCE_POSITION
+	local targetCF = CFrame.new(targetPos)
+
+	local function doReposition()
+		if not character or not character.Parent then return end
+		character:PivotTo(targetCF)
+		local rootPart = character:FindFirstChild("HumanoidRootPart")
 		if rootPart then
-			rootPart.CFrame = CFrame.new(currentDungeonId == "Sunforged" and SUNFORGED_ENTRANCE_POSITION or ENTRANCE_POSITION)
+			rootPart.AssemblyLinearVelocity = Vector3.zero
+			rootPart.AssemblyAngularVelocity = Vector3.zero
+		end
+		local player = Players:GetPlayerFromCharacter(character)
+		if player then
+			Net.Get("TeleportClient"):FireClient(player, targetCF)
+		end
+	end
+
+	doReposition()
+	task.defer(doReposition)
+	task.delay(0.12, function()
+		if character and character.Parent then
+			local root = character:FindFirstChild("HumanoidRootPart")
+			if root and (root.Position - targetPos).Magnitude > 30 then
+				doReposition()
+			end
 		end
 	end)
 end

@@ -247,6 +247,17 @@ function DungeonMapService.BuildDungeon(): Model
 	makeFloor(dungeon, "Antechamber", -24, 24, -312, -260)
 	makeCeiling(dungeon, "Antechamber", -24, 24, -312, -260)
 
+	-- Native Dungeon SpawnLocation pad
+	local spawnPad = Instance.new("SpawnLocation")
+	spawnPad.Name = "RockhideDungeonSpawn"
+	spawnPad.Size = Vector3.new(16, 1, 16)
+	spawnPad.CFrame = CFrame.new(0, FLOOR_Y + 0.5, -285)
+	spawnPad.Transparency = 1
+	spawnPad.CanCollide = true
+	spawnPad.Anchored = true
+	spawnPad.Duration = 0
+	spawnPad.Parent = dungeon
+
 	-- Back Wall (North)
 	makeWallX(dungeon, "Antechamber_BackWall", -24, 24, -310, 4)
 	-- Side Walls

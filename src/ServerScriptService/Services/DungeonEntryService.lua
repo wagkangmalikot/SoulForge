@@ -42,6 +42,21 @@ local function enterDungeon(player: Player, dungeonId: string)
 				instance:Destroy()
 			end
 		end
+
+		local entranceTarget = (dungeonId == "Sunforged") and Vector3.new(0, 5, -420) or Vector3.new(0, 5, -285)
+		local targetCF = CFrame.new(entranceTarget)
+		for _, p in players do
+			if p.Character then
+				p.Character:PivotTo(targetCF)
+				local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+				if hrp then
+					hrp.AssemblyLinearVelocity = Vector3.zero
+					hrp.AssemblyAngularVelocity = Vector3.zero
+				end
+				Net.Get("TeleportClient"):FireClient(p, targetCF)
+			end
+		end
+
 		DungeonSessionService.Start(dungeonId, memberUserIds)
 		return
 	end

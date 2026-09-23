@@ -48,9 +48,15 @@ local function respawnAtEntrance(player: Player)
 	player:LoadCharacter()
 	task.defer(function()
 		local character = player.Character or player.CharacterAdded:Wait()
-		local rootPart = character:WaitForChild("HumanoidRootPart", 5)
-		if rootPart then
-			rootPart.CFrame = CFrame.new(entrancePosition)
+		if character then
+			local targetCF = CFrame.new(entrancePosition)
+			character:PivotTo(targetCF)
+			local rootPart = character:WaitForChild("HumanoidRootPart", 5)
+			if rootPart then
+				rootPart.AssemblyLinearVelocity = Vector3.zero
+				rootPart.AssemblyAngularVelocity = Vector3.zero
+			end
+			Net.Get("TeleportClient"):FireClient(player, targetCF)
 		end
 	end)
 end

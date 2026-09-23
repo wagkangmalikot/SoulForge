@@ -45,3 +45,17 @@ for _, entry in controllers do
 	end)
 end
 
+
+local Net = require(game:GetService("ReplicatedStorage").Shared.Net)
+Net.Get("TeleportClient").OnClientEvent:Connect(function(targetCF)
+	local player = game:GetService("Players").LocalPlayer
+	local character = player and player.Character
+	if character then
+		character:PivotTo(targetCF)
+		local hrp = character:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			hrp.AssemblyLinearVelocity = Vector3.zero
+			hrp.AssemblyAngularVelocity = Vector3.zero
+		end
+	end
+end)

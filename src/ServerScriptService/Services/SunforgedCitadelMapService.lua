@@ -360,6 +360,17 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 	makeFloor(dungeon, "Antechamber", -35, 35, -450, -390)
 	makeCeiling(dungeon, "Antechamber", -35, 35, -450, -390)
 
+	-- Native Dungeon SpawnLocation pad
+	local spawnPad = Instance.new("SpawnLocation")
+	spawnPad.Name = "SunforgedDungeonSpawn"
+	spawnPad.Size = Vector3.new(16, 1, 16)
+	spawnPad.CFrame = CFrame.new(0, FLOOR_Y + 0.5, -420)
+	spawnPad.Transparency = 1
+	spawnPad.CanCollide = true
+	spawnPad.Anchored = true
+	spawnPad.Duration = 0
+	spawnPad.Parent = dungeon
+
 	-- Back & side walls
 	makeWallX(dungeon, "Antechamber_BackWall", -35, 35, -450, 4)
 	makeWallZ(dungeon, "Antechamber_WestWall", -35, -450, -390, 4)

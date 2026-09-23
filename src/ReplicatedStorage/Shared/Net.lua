@@ -43,6 +43,7 @@ local REMOTE_NAMES = {
 	"RequestCraftItem",       -- client -> server: {setId} -- request to craft a gear set
 	"CraftingResult",         -- server -> client: {success, message, storedEquipment, craftingMaterials}
 	"OpenCraftingUI",         -- server -> client: triggers crafting panel (fired from ProximityPrompt)
+	"TeleportClient",         -- server -> client: {targetCFrame} -- instantly syncs client character transform
 }
 
 
