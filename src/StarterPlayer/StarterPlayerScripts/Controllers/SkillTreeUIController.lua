@@ -35,7 +35,7 @@ local dungeonStatusBadge: Frame? = nil
 local dungeonStatusLabel: TextLabel? = nil
 local closeBtn: TextButton? = nil
 local branchTabsContainer: Frame? = nil
-local branchesContainer: Frame? = nil
+local branchesContainer: ScrollingFrame? = nil
 local bottomFrame: Frame? = nil
 local equippedSlotsContainer: Frame? = nil
 local bottomPromptLabel: TextLabel? = nil
@@ -66,7 +66,7 @@ local BRANCH_ORDER_BY_CLASS = {
 	Mage = {"Pyromancy", "Frostweave", "ArcaneMastery"},
 }
 
-local activeMobileBranch: string = BRANCH_ORDER_BY_CLASS.Tank[1]
+local activeBranch: string = "ALL"
 
 -- Icon + display name shown in the modal's title bar, keyed by ReplicatedStorage.Shared.Data.Classes's own keys.
 local CLASS_TITLE_INFO = {
@@ -92,6 +92,7 @@ local BRANCH_COLORS = {
 		accent = Color3.fromRGB(110, 190, 255),
 		icon = "🛡️",
 		name = "BULWARK",
+		shortName = "Bulwark",
 		displayName = "BULWARK SPECIALIZATION",
 		tagline = "Damage mitigation, sustain & party barriers",
 	},
@@ -104,6 +105,7 @@ local BRANCH_COLORS = {
 		accent = Color3.fromRGB(255, 120, 100),
 		icon = "⚔️",
 		name = "JUGGERNAUT",
+		shortName = "Juggernaut",
 		displayName = "JUGGERNAUT SPECIALIZATION",
 		tagline = "Offense, heavy threat generation & stagger",
 	},
@@ -116,6 +118,7 @@ local BRANCH_COLORS = {
 		accent = Color3.fromRGB(255, 150, 70),
 		icon = "🔥",
 		name = "PYROMANCY",
+		shortName = "Pyro",
 		displayName = "PYROMANCY SPECIALIZATION",
 		tagline = "Explosive single-target and area fire damage",
 	},
@@ -128,6 +131,7 @@ local BRANCH_COLORS = {
 		accent = Color3.fromRGB(140, 220, 255),
 		icon = "❄️",
 		name = "FROSTWEAVE",
+		shortName = "Frost",
 		displayName = "FROSTWEAVE SPECIALIZATION",
 		tagline = "Sustained frost damage that lingers on enemies",
 	},
@@ -138,8 +142,9 @@ local BRANCH_COLORS = {
 		cardBg = Color3.fromRGB(30, 20, 52),
 		border = Color3.fromRGB(120, 65, 215),
 		accent = Color3.fromRGB(210, 170, 255),
-		icon = "✨",
+		icon = "🔮",
 		name = "ARCANE MASTERY",
+		shortName = "Arcane",
 		displayName = "ARCANE MASTERY SPECIALIZATION",
 		tagline = "Barriers, burst damage & arcane control",
 	},
@@ -405,14 +410,14 @@ local function updateResponsiveScale()
 		end
 
 		if branchTabsContainer then
-			branchTabsContainer.Visible = false
-			branchTabsContainer.Size = UDim2.new(1, -24, 0, 38)
-			branchTabsContainer.Position = UDim2.new(0, 12, 0, 64)
+			branchTabsContainer.Visible = true
+			branchTabsContainer.Size = UDim2.new(1, -24, 0, 40)
+			branchTabsContainer.Position = UDim2.new(0, 12, 0, 66)
 		end
 
 		if branchesContainer then
-			branchesContainer.Position = UDim2.new(0, 12, 0, 68)
-			branchesContainer.Size = UDim2.new(1, -24, 1, -172)
+			branchesContainer.Position = UDim2.new(0, 12, 0, 112)
+			branchesContainer.Size = UDim2.new(1, -24, 1, -216)
 		end
 
 		if bottomFrame then
@@ -1013,220 +1018,289 @@ refreshUI = function()
 		end
 	end
 
-	-- ── Branch Tabs (Visible on Mobile to give 100% width and zero cut-off) ───
-	if branchTabsContainer then
-		branchTabsContainer.Visible = isMobile
-		branchTabsContainer:ClearAllChildren()
+	-- ── Branch Tabs (Rendered on BOTH Mobile and Desktop) ───────────────────
+	local classData = Classes[currentClassId] or Classes.Tank
+	local branchList = BRANCH_ORDER_BY_CLASS[currentClassId] or BRANCH_ORDER_BY_CLASS.Tank
+	local numBranches = #branchList
 
-		if isMobile then
-			local tabLayout = Instance.new("UIListLayout")
-			tabLayout.FillDirection = Enum.FillDirection.Horizontal
-			tabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-			tabLayout.Padding = UDim.new(0, 8)
-			tabLayout.Parent = branchTabsContainer
-
-			local classData = Classes[currentClassId] or Classes.Tank
-			for _, branchName in ipairs(BRANCH_ORDER_BY_CLASS[currentClassId] or BRANCH_ORDER_BY_CLASS.Tank) do
-				local colStyle = BRANCH_COLORS[branchName] or BRANCH_COLORS.Juggernaut
-				local isSelected = (activeMobileBranch == branchName)
-				local branchInfo = classData and classData.branches and classData.branches[branchName]
-				local unlockedCount = 0
-				local totalCount = 3
-				if branchInfo then
-					totalCount = #branchInfo.skills
-					for _, sId in ipairs(branchInfo.skills) do
-						if isSkillUnlocked(sId) then
-							unlockedCount += 1
-						end
-					end
-				end
-
-				local tabBtn = Instance.new("TextButton")
-				tabBtn.Name = "Tab_" .. branchName
-				tabBtn.Size = UDim2.new(0.485, 0, 1, 0)
-				tabBtn.BackgroundColor3 = isSelected and colStyle.border or Color3.fromRGB(24, 28, 38)
-				tabBtn.BorderSizePixel = 0
-				tabBtn.Font = Enum.Font.GothamBold
-				tabBtn.TextSize = 16.5
-				tabBtn.TextColor3 = isSelected and Color3.new(1, 1, 1) or Color3.fromRGB(160, 170, 185)
-				tabBtn.Text = ("%s %s (%d/%d)"):format(colStyle.icon, colStyle.name, unlockedCount, totalCount)
-				tabBtn.Parent = branchTabsContainer
-
-				local tCorner = Instance.new("UICorner")
-				tCorner.CornerRadius = UDim.new(0, 8)
-				tCorner.Parent = tabBtn
-
-				local tStroke = Instance.new("UIStroke")
-				tStroke.Color = isSelected and Color3.fromRGB(255, 215, 80) or Color3.fromRGB(50, 56, 68)
-				tStroke.Thickness = isSelected and 2.0 or 1.0
-				tStroke.Parent = tabBtn
-
-				tabBtn.Activated:Connect(function()
-					playUISound("rbxasset://sounds/electronicpingshort.wav", 1.4, 0.3)
-					activeMobileBranch = branchName
-					refreshUI()
-				end)
-			end
+	-- Ensure activeBranch is valid
+	local isValidBranch = (activeBranch == "ALL")
+	for _, b in ipairs(branchList) do
+		if b == activeBranch then
+			isValidBranch = true
+			break
 		end
 	end
+	if not isValidBranch then
+		activeBranch = isMobile and branchList[1] or "ALL"
+	end
 
-	-- ── Render Branch Columns (Dual-Column on Desktop, Single-Branch on Mobile)
-	if branchesContainer then
-		branchesContainer:ClearAllChildren()
+	if branchTabsContainer then
+		branchTabsContainer.Visible = true
+		branchTabsContainer:ClearAllChildren()
 
-		local classData = Classes[currentClassId] or Classes.Tank
-		if classData and classData.branches then
-			local branchesToShow = isMobile and {activeMobileBranch} or (BRANCH_ORDER_BY_CLASS[currentClassId] or BRANCH_ORDER_BY_CLASS.Tank)
+		local tabLayout = Instance.new("UIListLayout")
+		tabLayout.FillDirection = Enum.FillDirection.Horizontal
+		tabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		tabLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+		tabLayout.Padding = UDim.new(0, isMobile and 6 or 10)
+		tabLayout.Parent = branchTabsContainer
 
-			local branchesLayout = Instance.new("UIListLayout")
-			branchesLayout.FillDirection = Enum.FillDirection.Horizontal
-			branchesLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-			branchesLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-			branchesLayout.Padding = UDim.new(0, 16)
-			branchesLayout.Parent = branchesContainer
-
-			for _, branchName in ipairs(branchesToShow) do
-				local branchInfo = classData.branches[branchName]
-				if not branchInfo then
-					continue
-				end
-
-				local colStyle = BRANCH_COLORS[branchName] or BRANCH_COLORS.Juggernaut
-
-				local unlockedCount = 0
+		-- Build tab definitions
+		local tabDefs = {}
+		for _, branchName in ipairs(branchList) do
+			local colStyle = BRANCH_COLORS[branchName] or BRANCH_COLORS.Juggernaut
+			local branchInfo = classData and classData.branches and classData.branches[branchName]
+			local unlockedCount = 0
+			local totalCount = 3
+			if branchInfo then
+				totalCount = #branchInfo.skills
 				for _, sId in ipairs(branchInfo.skills) do
 					if isSkillUnlocked(sId) then
 						unlockedCount += 1
 					end
 				end
+			end
+			local label = ("%s %s (%d/%d)"):format(colStyle.icon, isMobile and (colStyle.shortName or colStyle.name) or colStyle.name, unlockedCount, totalCount)
+			table.insert(tabDefs, {
+				id = branchName,
+				text = label,
+				color = colStyle.border,
+				accent = colStyle.accent,
+			})
+		end
 
-				local column = Instance.new("Frame")
-				column.Name = "Branch_" .. branchName
-				column.Size = isMobile and UDim2.new(1, 0, 1, 0) or UDim2.new(0.488, 0, 1, 0)
-				column.BackgroundColor3 = colStyle.bg
-				column.BorderSizePixel = 0
-				column.Parent = branchesContainer
+		if not isMobile then
+			table.insert(tabDefs, {
+				id = "ALL",
+				text = ("🌐 ALL TREES (%d)"):format(numBranches),
+				color = Color3.fromRGB(65, 80, 105),
+				accent = Color3.fromRGB(255, 215, 80),
+			})
+		end
 
-				local colCorner = Instance.new("UICorner")
-				colCorner.CornerRadius = UDim.new(0, 10)
-				colCorner.Parent = column
+		local tabCount = #tabDefs
+		for _, tDef in ipairs(tabDefs) do
+			local isSelected = (activeBranch == tDef.id)
+			local tabBtn = Instance.new("TextButton")
+			tabBtn.Name = "Tab_" .. tDef.id
+			tabBtn.Size = UDim2.new(1 / tabCount, -(isMobile and 6 or 10), 1, 0)
+			tabBtn.BackgroundColor3 = isSelected and (tDef.color or Color3.fromRGB(45, 55, 75)) or Color3.fromRGB(24, 28, 38)
+			tabBtn.BorderSizePixel = 0
+			tabBtn.Font = Enum.Font.GothamBold
+			tabBtn.TextSize = isMobile and (tabCount >= 3 and 13.5 or 15) or 15.5
+			tabBtn.TextColor3 = isSelected and Color3.new(1, 1, 1) or Color3.fromRGB(165, 175, 190)
+			tabBtn.Text = tDef.text
+			tabBtn.Parent = branchTabsContainer
 
-				local colStroke = Instance.new("UIStroke")
-				colStroke.Color = colStyle.border
-				colStroke.Thickness = 1.6
-				colStroke.Parent = column
+			local tCorner = Instance.new("UICorner")
+			tCorner.CornerRadius = UDim.new(0, 8)
+			tCorner.Parent = tabBtn
 
-				-- Branch Header Banner
-				local colHeader = Instance.new("Frame")
-				colHeader.Size = UDim2.new(1, 0, 0, isMobile and 30 or 60)
-				colHeader.BackgroundColor3 = isMobile and Color3.fromRGB(15, 18, 25) or colStyle.border
-				colHeader.BorderSizePixel = 0
-				colHeader.Parent = column
+			local tStroke = Instance.new("UIStroke")
+			tStroke.Color = isSelected and Color3.fromRGB(255, 215, 80) or Color3.fromRGB(50, 56, 68)
+			tStroke.Thickness = isSelected and 2.0 or 1.0
+			tStroke.Parent = tabBtn
 
-				local headCorner = Instance.new("UICorner")
-				headCorner.CornerRadius = UDim.new(0, isMobile and 6 or 10)
-				headCorner.Parent = colHeader
+			tabBtn.Activated:Connect(function()
+				playUISound("rbxasset://sounds/electronicpingshort.wav", 1.4, 0.3)
+				activeBranch = tDef.id
+				refreshUI()
+			end)
+		end
+	end
 
-				if not isMobile then
-					local colTitle = Instance.new("TextLabel")
-					colTitle.Size = UDim2.new(1, -110, 0, 28)
-					colTitle.Position = UDim2.new(0, 14, 0, 4)
-					colTitle.BackgroundTransparency = 1
-					colTitle.TextColor3 = Color3.new(1, 1, 1)
-					colTitle.Font = Enum.Font.GothamBold
-					colTitle.TextSize = 20
-					colTitle.TextXAlignment = Enum.TextXAlignment.Left
-					colTitle.Text = colStyle.displayName
-					colTitle.Parent = colHeader
+	-- ── Render Branch Columns ───────────────────────────────────────────────
+	if branchesContainer then
+		branchesContainer:ClearAllChildren()
 
-					local colDesc = Instance.new("TextLabel")
-					colDesc.Size = UDim2.new(1, -110, 0, 22)
-					colDesc.Position = UDim2.new(0, 14, 0, 32)
-					colDesc.BackgroundTransparency = 1
-					colDesc.TextColor3 = Color3.fromRGB(225, 232, 245)
-					colDesc.Font = Enum.Font.Gotham
-					colDesc.TextSize = 15
-					colDesc.TextXAlignment = Enum.TextXAlignment.Left
-					colDesc.Text = colStyle.tagline
-					colDesc.Parent = colHeader
+		local branchesToShow = {}
+		if isMobile then
+			branchesToShow = {activeBranch == "ALL" and branchList[1] or activeBranch}
+		else
+			if activeBranch == "ALL" then
+				branchesToShow = branchList
+			else
+				branchesToShow = {activeBranch}
+			end
+		end
 
-					-- Branch Mastery Progress Pill (e.g. 1 / 3)
-					local progPill = Instance.new("Frame")
-					progPill.Size = UDim2.new(0, 88, 0, 32)
-					progPill.Position = UDim2.new(1, -98, 0.5, -16)
-					progPill.BackgroundColor3 = Color3.fromRGB(15, 20, 28)
-					progPill.BorderSizePixel = 0
-					progPill.Parent = colHeader
+		local isSingleBranchView = (#branchesToShow == 1)
 
-					local pCorner = Instance.new("UICorner")
-					pCorner.CornerRadius = UDim.new(0, 6)
-					pCorner.Parent = progPill
+		local branchesLayout = Instance.new("UIListLayout")
+		branchesLayout.FillDirection = Enum.FillDirection.Horizontal
+		branchesLayout.HorizontalAlignment = isSingleBranchView and Enum.HorizontalAlignment.Center or Enum.HorizontalAlignment.Left
+		branchesLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+		branchesLayout.Padding = UDim.new(0, 16)
+		branchesLayout.Parent = branchesContainer
 
-					local pStroke = Instance.new("UIStroke")
-					pStroke.Color = colStyle.accent
-					pStroke.Thickness = 1.2
-					pStroke.Parent = progPill
+		if not isSingleBranchView and #branchesToShow >= 3 then
+			branchesContainer.AutomaticCanvasSize = Enum.AutomaticSize.X
+			branchesContainer.ScrollBarThickness = 6
+		else
+			branchesContainer.AutomaticCanvasSize = Enum.AutomaticSize.None
+			branchesContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+			branchesContainer.ScrollBarThickness = 0
+		end
 
-					local progLabel = Instance.new("TextLabel")
-					progLabel.Size = UDim2.new(1, 0, 1, 0)
-					progLabel.BackgroundTransparency = 1
-					progLabel.TextColor3 = Color3.fromRGB(255, 235, 170)
-					progLabel.Font = Enum.Font.GothamBold
-					progLabel.TextSize = 15.5
-					progLabel.Text = ("%d / %d"):format(unlockedCount, #branchInfo.skills)
-					progLabel.Parent = progPill
-				else
-					local colDesc = Instance.new("TextLabel")
-					colDesc.Size = UDim2.new(1, -16, 1, 0)
-					colDesc.Position = UDim2.new(0, 8, 0, 0)
-					colDesc.BackgroundTransparency = 1
-					colDesc.TextColor3 = colStyle.accent
-					colDesc.Font = Enum.Font.GothamMedium
-					colDesc.TextSize = 13.5
-					colDesc.TextXAlignment = Enum.TextXAlignment.Center
-					colDesc.Text = "✧ " .. colStyle.tagline
-					colDesc.Parent = colHeader
+		for _, branchName in ipairs(branchesToShow) do
+			local branchInfo = classData and classData.branches and classData.branches[branchName]
+			if not branchInfo then
+				continue
+			end
+
+			local colStyle = BRANCH_COLORS[branchName] or BRANCH_COLORS.Juggernaut
+
+			local unlockedCount = 0
+			for _, sId in ipairs(branchInfo.skills) do
+				if isSkillUnlocked(sId) then
+					unlockedCount += 1
 				end
+			end
 
-				-- ScrollingFrame for Nodes: GUARANTEED NEVER TO CUT OFF TEXT ON MOBILE OR DESKTOP
-				local nodesList = Instance.new("ScrollingFrame")
-				nodesList.Name = "NodesList"
-				nodesList.Size = UDim2.new(1, -12, 1, isMobile and -36 or -70)
-				nodesList.Position = UDim2.new(0, 6, 0, isMobile and 34 or 64)
-				nodesList.BackgroundTransparency = 1
-				nodesList.BorderSizePixel = 0
-				nodesList.ScrollBarThickness = 5
-				nodesList.ScrollBarImageColor3 = Color3.fromRGB(195, 160, 70)
-				nodesList.CanvasSize = UDim2.new(0, 0, 0, 0)
-				nodesList.AutomaticCanvasSize = Enum.AutomaticSize.Y
-				nodesList.ScrollingDirection = Enum.ScrollingDirection.Y
-				nodesList.ElasticBehavior = Enum.ElasticBehavior.WhenScrollable
-				nodesList.ClipsDescendants = true
-				nodesList.Parent = column
+			local column = Instance.new("Frame")
+			column.Name = "Branch_" .. branchName
+			if isMobile then
+				column.Size = UDim2.new(1, 0, 1, 0)
+			elseif isSingleBranchView then
+				column.Size = UDim2.new(0, 680, 1, 0)
+			else
+				if #branchesToShow == 2 then
+					column.Size = UDim2.new(0.488, 0, 1, 0)
+				else
+					column.Size = UDim2.new(0, 520, 1, 0)
+				end
+			end
+			column.BackgroundColor3 = colStyle.bg
+			column.BorderSizePixel = 0
+			column.Parent = branchesContainer
 
-				local nLayout = Instance.new("UIListLayout")
-				nLayout.SortOrder = Enum.SortOrder.LayoutOrder
-				nLayout.FillDirection = Enum.FillDirection.Vertical
-				nLayout.Padding = UDim.new(0, 6)
-				nLayout.Parent = nodesList
+			local colCorner = Instance.new("UICorner")
+			colCorner.CornerRadius = UDim.new(0, 10)
+			colCorner.Parent = column
 
-				-- Sort skills deterministically by Tier 1 -> Tier 2 -> Tier 3
-				local sortedSkills = table.clone(branchInfo.skills)
-				table.sort(sortedSkills, function(a, b)
-					local skillA = Skills[a]
-					local skillB = Skills[b]
-					local tierA = skillA and skillA.tier or 1
-					local tierB = skillB and skillB.tier or 1
-					return tierA < tierB
-				end)
+			local colStroke = Instance.new("UIStroke")
+			colStroke.Color = colStyle.border
+			colStroke.Thickness = 1.6
+			colStroke.Parent = column
 
-				for idx, skillId in ipairs(sortedSkills) do
-					buildNodeCard(skillId, nodesList, branchName, isMobile)
+			-- Branch Header Banner
+			local colHeader = Instance.new("Frame")
+			colHeader.Size = UDim2.new(1, 0, 0, isMobile and 30 or 52)
+			colHeader.BackgroundColor3 = isMobile and Color3.fromRGB(15, 18, 25) or colStyle.border
+			colHeader.BorderSizePixel = 0
+			colHeader.Parent = column
 
-					if idx < #sortedSkills then
-						local thisUnlocked = isSkillUnlocked(skillId)
-						buildTierConnector(idx + 1, thisUnlocked, colStyle.primary, nodesList, isMobile)
-					end
+			local headCorner = Instance.new("UICorner")
+			headCorner.CornerRadius = UDim.new(0, isMobile and 6 or 10)
+			headCorner.Parent = colHeader
+
+			if not isMobile then
+				local colTitle = Instance.new("TextLabel")
+				colTitle.Size = UDim2.new(1, -110, 0, 26)
+				colTitle.Position = UDim2.new(0, 14, 0, 2)
+				colTitle.BackgroundTransparency = 1
+				colTitle.TextColor3 = Color3.new(1, 1, 1)
+				colTitle.Font = Enum.Font.GothamBold
+				colTitle.TextSize = 19
+				colTitle.TextXAlignment = Enum.TextXAlignment.Left
+				colTitle.Text = colStyle.displayName
+				colTitle.Parent = colHeader
+
+				local colDesc = Instance.new("TextLabel")
+				colDesc.Size = UDim2.new(1, -110, 0, 20)
+				colDesc.Position = UDim2.new(0, 14, 0, 28)
+				colDesc.BackgroundTransparency = 1
+				colDesc.TextColor3 = Color3.fromRGB(225, 232, 245)
+				colDesc.Font = Enum.Font.Gotham
+				colDesc.TextSize = 14
+				colDesc.TextXAlignment = Enum.TextXAlignment.Left
+				colDesc.Text = colStyle.tagline
+				colDesc.Parent = colHeader
+
+				-- Branch Mastery Progress Pill (e.g. 1 / 3)
+				local progPill = Instance.new("Frame")
+				progPill.Size = UDim2.new(0, 88, 0, 30)
+				progPill.Position = UDim2.new(1, -98, 0.5, -15)
+				progPill.BackgroundColor3 = Color3.fromRGB(15, 20, 28)
+				progPill.BorderSizePixel = 0
+				progPill.Parent = colHeader
+
+				local pCorner = Instance.new("UICorner")
+				pCorner.CornerRadius = UDim.new(0, 6)
+				pCorner.Parent = progPill
+
+				local pStroke = Instance.new("UIStroke")
+				pStroke.Color = colStyle.accent
+				pStroke.Thickness = 1.2
+				pStroke.Parent = progPill
+
+				local progLabel = Instance.new("TextLabel")
+				progLabel.Size = UDim2.new(1, 0, 1, 0)
+				progLabel.BackgroundTransparency = 1
+				progLabel.TextColor3 = Color3.fromRGB(255, 235, 170)
+				progLabel.Font = Enum.Font.GothamBold
+				progLabel.TextSize = 15
+				progLabel.Text = ("%d / %d"):format(unlockedCount, #branchInfo.skills)
+				progLabel.Parent = progPill
+			else
+				local colDesc = Instance.new("TextLabel")
+				colDesc.Size = UDim2.new(1, -16, 1, 0)
+				colDesc.Position = UDim2.new(0, 8, 0, 0)
+				colDesc.BackgroundTransparency = 1
+				colDesc.TextColor3 = colStyle.accent
+				colDesc.Font = Enum.Font.GothamMedium
+				colDesc.TextSize = 13.5
+				colDesc.TextXAlignment = Enum.TextXAlignment.Center
+				colDesc.Text = "✧ " .. colStyle.tagline
+				colDesc.Parent = colHeader
+			end
+
+			-- ScrollingFrame for Nodes: GUARANTEED NEVER TO CUT OFF TEXT ON MOBILE OR DESKTOP
+			local nodesList = Instance.new("ScrollingFrame")
+			nodesList.Name = "NodesList"
+			nodesList.Size = UDim2.new(1, -12, 1, isMobile and -36 or -60)
+			nodesList.Position = UDim2.new(0, 6, 0, isMobile and 34 or 56)
+			nodesList.BackgroundTransparency = 1
+			nodesList.BorderSizePixel = 0
+			nodesList.ScrollBarThickness = 6
+			nodesList.ScrollBarImageColor3 = Color3.fromRGB(195, 160, 70)
+			nodesList.CanvasSize = UDim2.new(0, 0, 0, 0)
+			nodesList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+			nodesList.ScrollingDirection = Enum.ScrollingDirection.Y
+			nodesList.ElasticBehavior = Enum.ElasticBehavior.WhenScrollable
+			nodesList.ClipsDescendants = true
+			nodesList.Parent = column
+
+			local listPad = Instance.new("UIPadding")
+			listPad.PaddingTop = UDim.new(0, 4)
+			listPad.PaddingBottom = UDim.new(0, 28)
+			listPad.PaddingLeft = UDim.new(0, 2)
+			listPad.PaddingRight = UDim.new(0, 4)
+			listPad.Parent = nodesList
+
+			local nLayout = Instance.new("UIListLayout")
+			nLayout.SortOrder = Enum.SortOrder.LayoutOrder
+			nLayout.FillDirection = Enum.FillDirection.Vertical
+			nLayout.Padding = UDim.new(0, 6)
+			nLayout.Parent = nodesList
+
+			-- Sort skills deterministically by Tier 1 -> Tier 2 -> Tier 3
+			local sortedSkills = table.clone(branchInfo.skills)
+			table.sort(sortedSkills, function(a, b)
+				local skillA = Skills[a]
+				local skillB = Skills[b]
+				local tierA = skillA and skillA.tier or 1
+				local tierB = skillB and skillB.tier or 1
+				return tierA < tierB
+			end)
+
+			for idx, skillId in ipairs(sortedSkills) do
+				buildNodeCard(skillId, nodesList, branchName, isMobile)
+
+				if idx < #sortedSkills then
+					local thisUnlocked = isSkillUnlocked(skillId)
+					buildTierConnector(idx + 1, thisUnlocked, colStyle.primary, nodesList, isMobile)
 				end
 			end
 		end
@@ -1616,21 +1690,28 @@ function SkillTreeUIController.Start()
 		SkillTreeUIController.Close()
 	end)
 
-	-- Mobile Branch Switcher Tabs Container
+	-- Branch Switcher Tabs Container (Desktop & Mobile)
 	branchTabsContainer = Instance.new("Frame")
 	branchTabsContainer.Name = "BranchTabsContainer"
-	branchTabsContainer.Size = UDim2.new(1, -24, 0, 38)
-	branchTabsContainer.Position = UDim2.new(0, 12, 0, 64)
+	branchTabsContainer.Size = UDim2.new(1, -24, 0, 40)
+	branchTabsContainer.Position = UDim2.new(0, 12, 0, 66)
 	branchTabsContainer.BackgroundTransparency = 1
-	branchTabsContainer.Visible = false
+	branchTabsContainer.Visible = true
 	branchTabsContainer.Parent = modalFrame
 
-	-- Center Branches Container
-	branchesContainer = Instance.new("Frame")
+	-- Center Branches Container (ScrollingFrame supporting multi-branch scrolling)
+	branchesContainer = Instance.new("ScrollingFrame")
 	branchesContainer.Name = "BranchesContainer"
-	branchesContainer.Size = UDim2.new(1, -24, 1, -172)
-	branchesContainer.Position = UDim2.new(0, 12, 0, 68)
+	branchesContainer.Size = UDim2.new(1, -24, 1, -216)
+	branchesContainer.Position = UDim2.new(0, 12, 0, 112)
 	branchesContainer.BackgroundTransparency = 1
+	branchesContainer.BorderSizePixel = 0
+	branchesContainer.ScrollBarThickness = 6
+	branchesContainer.ScrollBarImageColor3 = Color3.fromRGB(195, 155, 65)
+	branchesContainer.ElasticBehavior = Enum.ElasticBehavior.WhenScrollable
+	branchesContainer.ScrollingDirection = Enum.ScrollingDirection.X
+	branchesContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+	branchesContainer.ClipsDescendants = true
 	branchesContainer.Parent = modalFrame
 
 	-- Bottom Equipped Slots Bar
@@ -1698,7 +1779,8 @@ function SkillTreeUIController.Start()
 	Net.Get("CharacterDataChanged").OnClientEvent:Connect(function(_level, _unspentEXP, classId)
 		if classId and Classes[classId] and classId ~= currentClassId then
 			currentClassId = classId
-			activeMobileBranch = (BRANCH_ORDER_BY_CLASS[currentClassId] or BRANCH_ORDER_BY_CLASS.Tank)[1]
+			local branchList = BRANCH_ORDER_BY_CLASS[currentClassId] or BRANCH_ORDER_BY_CLASS.Tank
+			activeBranch = isMobileViewport() and branchList[1] or "ALL"
 			-- Refreshes the title bar's class name/icon too, not just the branch
 			-- columns -- updateResponsiveScale() is what actually sets titleLabel.Text.
 			updateResponsiveScale()
