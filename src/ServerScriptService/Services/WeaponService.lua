@@ -974,92 +974,139 @@ local function createApprenticeStaffModel(): (Model, BasePart, Trail)
 	local staff = Instance.new("Model")
 	staff.Name = "EquippedSword"
 
-	-- Handle / Grip Root (where RightHand grips)
-	local handle = makePart(staff, "Handle", Vector3.new(0.25, 1.20, 0.25), Color3.fromRGB(58, 40, 26), Enum.Material.Wood)
+	-- Handle / Grip Root — dark rosewood with octagonal profile via Torso mesh
+	local handle = makePart(staff, "Handle", Vector3.new(0.26, 1.20, 0.26), Color3.fromRGB(52, 34, 20), Enum.Material.Wood)
+	addMesh(handle, Enum.MeshType.Torso, Vector3.new(0.9, 1, 0.9))
 	staff.PrimaryPart = handle
 
-	-- Lower Shaft Extension (-Y from grip)
-	local lowerShaft = makePart(staff, "LowerShaft", Vector3.new(0.24, 2.0, 0.24), Color3.fromRGB(52, 36, 24), Enum.Material.Wood)
-	lowerShaft.CFrame = handle.CFrame * CFrame.new(0, -1.5, 0)
+	-- Leather Grip Wraps (every 0.3 studs along handle)
+	for _, yOff in {-0.38, -0.14, 0.10, 0.34} do
+		local wrap = makePart(staff, "GripWrap", Vector3.new(0.30, 0.09, 0.30), Color3.fromRGB(36, 24, 14), Enum.Material.Fabric)
+		wrap.CFrame = handle.CFrame * CFrame.new(0, yOff, 0)
+		addMesh(wrap, Enum.MeshType.Cylinder)
+		weldParts(handle, wrap)
+	end
+
+	-- Lower Shaft Extension — slightly tapered
+	local lowerShaft = makePart(staff, "LowerShaft", Vector3.new(0.22, 2.1, 0.22), Color3.fromRGB(48, 33, 20), Enum.Material.Wood)
+	addMesh(lowerShaft, Enum.MeshType.Torso, Vector3.new(0.85, 1, 0.85))
+	lowerShaft.CFrame = handle.CFrame * CFrame.new(0, -1.55, 0)
 	weldParts(handle, lowerShaft)
 
-	-- Base Brass Foot Cap
-	local baseCap = makePart(staff, "BaseCap", Vector3.new(0.28, 0.35, 0.28), Color3.fromRGB(195, 150, 50), Enum.Material.Metal)
-	baseCap.CFrame = handle.CFrame * CFrame.new(0, -2.55, 0)
-	addMesh(baseCap, Enum.MeshType.Sphere, Vector3.new(1.0, 0.7, 1.0))
-	weldParts(handle, baseCap)
+	-- Lower shaft carved groove rings
+	for _, yOff in {-0.6, -1.4} do
+		local groove = makePart(staff, "ShaftGroove", Vector3.new(0.26, 0.07, 0.26), Color3.fromRGB(38, 26, 14), Enum.Material.Wood)
+		groove.CFrame = handle.CFrame * CFrame.new(0, yOff, 0)
+		addMesh(groove, Enum.MeshType.Cylinder)
+		weldParts(handle, groove)
+	end
 
-	-- Upper Shaft Extension (+Y from grip)
-	local upperShaft = makePart(staff, "UpperShaft", Vector3.new(0.24, 2.2, 0.24), Color3.fromRGB(52, 36, 24), Enum.Material.Wood)
-	upperShaft.CFrame = handle.CFrame * CFrame.new(0, 1.6, 0)
+	-- Base Ferrule — polished silver cap with octagonal shape
+	local ferrule = makePart(staff, "Ferrule", Vector3.new(0.32, 0.20, 0.32), Color3.fromRGB(168, 172, 180), Enum.Material.Metal)
+	ferrule.CFrame = handle.CFrame * CFrame.new(0, -2.70, 0)
+	addMesh(ferrule, Enum.MeshType.Torso, Vector3.new(0.9, 0.7, 0.9))
+	weldParts(handle, ferrule)
+
+	local ferruleTip = makePart(staff, "FerrucleTip", Vector3.new(0.16, 0.22, 0.16), Color3.fromRGB(130, 135, 145), Enum.Material.Metal)
+	ferruleTip.CFrame = handle.CFrame * CFrame.new(0, -2.88, 0)
+	addMesh(ferruleTip, Enum.MeshType.Pyramid, Vector3.new(0.9, 1.2, 0.9))
+	weldParts(handle, ferruleTip)
+
+	-- Upper Shaft Extension
+	local upperShaft = makePart(staff, "UpperShaft", Vector3.new(0.22, 2.3, 0.22), Color3.fromRGB(48, 33, 20), Enum.Material.Wood)
+	addMesh(upperShaft, Enum.MeshType.Torso, Vector3.new(0.85, 1, 0.85))
+	upperShaft.CFrame = handle.CFrame * CFrame.new(0, 1.65, 0)
 	weldParts(handle, upperShaft)
 
-	-- Polished Brass Rings along shaft
-	for _, yOffset in {-0.7, 0.7, 2.2} do
-		local ring = makePart(staff, "BrassRing", Vector3.new(0.32, 0.12, 0.32), Color3.fromRGB(205, 160, 55), Enum.Material.Metal)
-		ring.CFrame = handle.CFrame * CFrame.new(0, yOffset, 0)
-		addMesh(ring, Enum.MeshType.Cylinder)
-		weldParts(handle, ring)
+	-- Engraved Silver Binding Rings (wider & octagonal this time)
+	for _, yOff in {-0.65, 0.65, 2.20} do
+		local ringOuter = makePart(staff, "BindingRing", Vector3.new(0.34, 0.13, 0.34), Color3.fromRGB(188, 192, 200), Enum.Material.Metal)
+		ringOuter.CFrame = handle.CFrame * CFrame.new(0, yOff, 0)
+		addMesh(ringOuter, Enum.MeshType.Torso, Vector3.new(0.95, 0.7, 0.95))
+		weldParts(handle, ringOuter)
+		-- Thin accent channel inside ring (dark)
+		local ringInner = makePart(staff, "RingChannel", Vector3.new(0.30, 0.07, 0.30), Color3.fromRGB(28, 22, 14), Enum.Material.Wood)
+		ringInner.CFrame = handle.CFrame * CFrame.new(0, yOff, 0)
+		addMesh(ringInner, Enum.MeshType.Cylinder)
+		weldParts(handle, ringInner)
 	end
 
-	-- Ornate Brass Crown Prongs at the tip (+Y 2.8)
-	local crownBase = makePart(staff, "CrownBase", Vector3.new(0.38, 0.25, 0.38), Color3.fromRGB(215, 170, 55), Enum.Material.Metal)
-	crownBase.CFrame = handle.CFrame * CFrame.new(0, 2.75, 0)
-	addMesh(crownBase, Enum.MeshType.Sphere, Vector3.new(1.0, 0.6, 1.0))
+	-- Sculpted Silver Orb Crown Base
+	local crownBase = makePart(staff, "CrownBase", Vector3.new(0.40, 0.28, 0.40), Color3.fromRGB(178, 182, 190), Enum.Material.Metal)
+	crownBase.CFrame = handle.CFrame * CFrame.new(0, 2.80, 0)
+	addMesh(crownBase, Enum.MeshType.Sphere, Vector3.new(1.0, 0.65, 1.0))
 	weldParts(handle, crownBase)
 
-	for _, angle in {0, 90, 180, 270} do
-		local rad = math.rad(angle)
-		local prong = makePart(staff, "Prong_" .. angle, Vector3.new(0.12, 0.65, 0.12), Color3.fromRGB(215, 170, 55), Enum.Material.Metal)
-		prong.CFrame = handle.CFrame * CFrame.new(math.cos(rad) * 0.28, 3.05, math.sin(rad) * 0.28) * CFrame.Angles(math.sin(rad) * 0.2, 0, -math.cos(rad) * 0.2)
-		addMesh(prong, Enum.MeshType.Pyramid, Vector3.new(0.8, 1.2, 0.8))
+	-- Six curved arcane prongs (hexagonal arrangement — more wizard-like)
+	for i = 0, 5 do
+		local rad = math.rad(i * 60)
+		local prong = makePart(staff, "Prong_" .. i, Vector3.new(0.10, 0.72, 0.10), Color3.fromRGB(168, 172, 180), Enum.Material.Metal)
+		prong.CFrame = handle.CFrame
+			* CFrame.new(math.cos(rad) * 0.30, 3.12, math.sin(rad) * 0.30)
+			* CFrame.Angles(math.sin(rad) * 0.22, 0, -math.cos(rad) * 0.22)
+		addMesh(prong, Enum.MeshType.Pyramid, Vector3.new(0.7, 1.3, 0.7))
 		weldParts(handle, prong)
+		-- Thin arcane-lit inner edge on each prong
+		local prongEdge = makePart(staff, "ProngEdge_" .. i, Vector3.new(0.05, 0.44, 0.05), Color3.fromRGB(160, 80, 240), Enum.Material.Neon)
+		prongEdge.CFrame = handle.CFrame
+			* CFrame.new(math.cos(rad) * 0.30, 3.08, math.sin(rad) * 0.30)
+			* CFrame.Angles(math.sin(rad) * 0.22, 0, -math.cos(rad) * 0.22)
+		addMesh(prongEdge, Enum.MeshType.Pyramid, Vector3.new(0.5, 1.2, 0.5))
+		weldParts(handle, prongEdge)
 	end
 
-	-- Floating Luminous Arcane Focus Crystal
-	local crystal = makePart(staff, "FocusCrystal", Vector3.new(0.55, 0.85, 0.55), Color3.fromRGB(185, 80, 255), Enum.Material.Neon)
-	crystal.CFrame = handle.CFrame * CFrame.new(0, 3.25, 0)
-	addMesh(crystal, Enum.MeshType.Sphere, Vector3.new(0.7, 1.3, 0.7))
-	weldParts(handle, crystal)
+	-- Focus Crystal Core — dark base with bright faceted shell (not fully neon)
+	local crystalShell = makePart(staff, "CrystalShell", Vector3.new(0.52, 0.78, 0.52), Color3.fromRGB(100, 55, 160), Enum.Material.Glass)
+	crystalShell.CFrame = handle.CFrame * CFrame.new(0, 3.32, 0)
+	addMesh(crystalShell, Enum.MeshType.Sphere, Vector3.new(0.75, 1.25, 0.75))
+	weldParts(handle, crystalShell)
 
-	-- Arcane Light Source
+	-- Inner glowing arcane core (small, just peeks through glass shell)
+	local crystalCore = makePart(staff, "CrystalCore", Vector3.new(0.28, 0.42, 0.28), Color3.fromRGB(185, 90, 255), Enum.Material.Neon)
+	crystalCore.CFrame = handle.CFrame * CFrame.new(0, 3.32, 0)
+	addMesh(crystalCore, Enum.MeshType.Sphere, Vector3.new(0.7, 1.2, 0.7))
+	weldParts(handle, crystalCore)
+
+	-- Arcane Light Source — toned down (was 2.5 / 10, now 1.0 / 7)
 	local light = Instance.new("PointLight")
 	light.Name = "ArcaneLight"
-	light.Color = Color3.fromRGB(195, 110, 255)
-	light.Brightness = 2.5
-	light.Range = 10
-	light.Parent = crystal
+	light.Color = Color3.fromRGB(180, 100, 255)
+	light.Brightness = 1.0
+	light.Range = 7
+	light.Parent = crystalCore
 
-	-- Arcane Spark Emitter
+	-- Arcane Mote Emitter — subtle ambient sparks, not a firework
 	local sparkEmitter = Instance.new("ParticleEmitter")
 	sparkEmitter.Name = "ArcaneMotes"
-	sparkEmitter.LightEmission = 1
+	sparkEmitter.LightEmission = 0.6
 	sparkEmitter.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(240, 180, 255)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(160, 50, 255)),
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 170, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(140, 50, 220)),
 	})
 	sparkEmitter.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.14),
+		NumberSequenceKeypoint.new(0, 0.08),
+		NumberSequenceKeypoint.new(0.5, 0.05),
 		NumberSequenceKeypoint.new(1, 0),
 	})
 	sparkEmitter.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.1),
+		NumberSequenceKeypoint.new(0, 0.3),
 		NumberSequenceKeypoint.new(1, 1),
 	})
-	sparkEmitter.Lifetime = NumberRange.new(0.4, 0.8)
-	sparkEmitter.Rate = 4
-	sparkEmitter.Speed = NumberRange.new(0.3, 0.8)
-	sparkEmitter.Parent = crystal
+	sparkEmitter.Lifetime = NumberRange.new(0.5, 1.0)
+	sparkEmitter.Rate = 3
+	sparkEmitter.Speed = NumberRange.new(0.2, 0.6)
+	sparkEmitter.SpreadAngle = Vector2.new(30, 30)
+	sparkEmitter.Parent = crystalCore
 
 	-- Arcane Swing Trail
 	local att0 = Instance.new("Attachment")
 	att0.Name = "TrailAtt0"
-	att0.Position = Vector3.new(0, 3.65, 0)
+	att0.Position = Vector3.new(0, 3.72, 0)
 	att0.Parent = handle
 
 	local att1 = Instance.new("Attachment")
 	att1.Name = "TrailAtt1"
-	att1.Position = Vector3.new(0, 2.75, 0)
+	att1.Position = Vector3.new(0, 2.80, 0)
 	att1.Parent = handle
 
 	local trail = Instance.new("Trail")
@@ -1067,16 +1114,16 @@ local function createApprenticeStaffModel(): (Model, BasePart, Trail)
 	trail.Attachment0 = att0
 	trail.Attachment1 = att1
 	trail.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 190, 255)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(185, 75, 255)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 20, 140)),
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 185, 255)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(160, 70, 230)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 18, 120)),
 	})
 	trail.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.1),
-		NumberSequenceKeypoint.new(0.5, 0.4),
+		NumberSequenceKeypoint.new(0, 0.2),
+		NumberSequenceKeypoint.new(0.5, 0.55),
 		NumberSequenceKeypoint.new(1, 1.0),
 	})
-	trail.Lifetime = 0.25
+	trail.Lifetime = 0.22
 	trail.Enabled = false
 	trail.Parent = handle
 
@@ -1410,72 +1457,107 @@ local function attachHelm(character: Model, helmId: string?)
 		weldParts(head, napeRim)
 
 	elseif helmId == "ApprenticeHood" then
-		-- ── Apprentice Wizard Hat (Tall pointed indigo cap) ──────────────────
-		-- Brim: flat ring around base of head
-		local brim = makePart(helm, "HatBrim", Vector3.new(hW * 1.45, 0.10, hD * 1.45), Color3.fromRGB(30, 28, 55), Enum.Material.Fabric)
-		brim.CFrame = head.CFrame * CFrame.new(0, hH * 0.18, 0)
+		-- ── Apprentice Wizard Hat (Tall pointed deep-indigo cap with silver trim) ──
+		-- Wide brim — slightly curved via Wedge shape for a tipped look
+		local brim = makePart(helm, "HatBrim", Vector3.new(hW * 1.52, 0.12, hD * 1.52), Color3.fromRGB(28, 26, 54), Enum.Material.Fabric)
+		brim.CFrame = head.CFrame * CFrame.new(0, hH * 0.17, 0)
 		local brimMesh = Instance.new("SpecialMesh")
 		brimMesh.MeshType = Enum.MeshType.Cylinder
-		brimMesh.Scale = Vector3.new(0.1, 1, 1)
+		brimMesh.Scale = Vector3.new(0.10, 1, 1)
 		brimMesh.Parent = brim
 		weldParts(head, brim)
 
-		-- Brim gold trim ring
-		local brimTrim = makePart(helm, "BrimTrim", Vector3.new(hW * 1.48, 0.07, hD * 1.48), Color3.fromRGB(215, 170, 55), Enum.Material.Metal)
-		brimTrim.CFrame = head.CFrame * CFrame.new(0, hH * 0.16, 0)
+		-- Brim silver trim outer ring
+		local brimTrim = makePart(helm, "BrimTrim", Vector3.new(hW * 1.55, 0.065, hD * 1.55), Color3.fromRGB(188, 192, 200), Enum.Material.Metal)
+		brimTrim.CFrame = head.CFrame * CFrame.new(0, hH * 0.14, 0)
 		local brimTrimMesh = Instance.new("SpecialMesh")
 		brimTrimMesh.MeshType = Enum.MeshType.Cylinder
-		brimTrimMesh.Scale = Vector3.new(0.06, 1, 1)
+		brimTrimMesh.Scale = Vector3.new(0.055, 1, 1)
 		brimTrimMesh.Parent = brimTrim
 		weldParts(head, brimTrim)
 
-		-- Crown base (joins brim to cone)
-		local crownBase = makePart(helm, "CrownBase", Vector3.new(hW * 1.05, 0.32, hD * 1.08), Color3.fromRGB(35, 32, 68), Enum.Material.Fabric)
+		-- Brim arcane rune thread (thin glowing ring inset, very subtle)
+		local brimRune = makePart(helm, "BrimRune", Vector3.new(hW * 1.42, 0.04, hD * 1.42), Color3.fromRGB(140, 80, 230), Enum.Material.Neon)
+		brimRune.CFrame = head.CFrame * CFrame.new(0, hH * 0.22, 0)
+		local brimRuneMesh = Instance.new("SpecialMesh")
+		brimRuneMesh.MeshType = Enum.MeshType.Cylinder
+		brimRuneMesh.Scale = Vector3.new(0.035, 1, 1)
+		brimRuneMesh.Parent = brimRune
+		weldParts(head, brimRune)
+
+		-- Rune ring point light (very dim, just a hint of purple)
+		local runeLight = Instance.new("PointLight")
+		runeLight.Color = Color3.fromRGB(140, 80, 230)
+		runeLight.Brightness = 0.4
+		runeLight.Range = 4
+		runeLight.Parent = brimRune
+
+		-- Crown base — tapered octagonal shape (Torso mesh)
+		local crownBase = makePart(helm, "CrownBase", Vector3.new(hW * 1.06, 0.34, hD * 1.10), Color3.fromRGB(34, 30, 68), Enum.Material.Fabric)
 		crownBase.CFrame = head.CFrame * CFrame.new(0, hH * 0.40, 0)
-		addMesh(crownBase, Enum.MeshType.Cylinder, Vector3.new(0.32, 1, 1))
+		addMesh(crownBase, Enum.MeshType.Torso, Vector3.new(0.32, 1, 1))
 		weldParts(head, crownBase)
 
-		-- Tall cone body (the main wizard hat peak)
-		local cone1 = makePart(helm, "HatCone1", Vector3.new(hW * 0.90, 0.60, hD * 0.92), Color3.fromRGB(40, 36, 80), Enum.Material.Fabric)
-		cone1.CFrame = head.CFrame * CFrame.new(0, hH * 0.72, 0)
-		addMesh(cone1, Enum.MeshType.Cylinder, Vector3.new(0.60, 1, 1))
+		-- Silver band wrapping crown base
+		local crownBand = makePart(helm, "CrownBand", Vector3.new(hW * 1.08, 0.07, hD * 1.12), Color3.fromRGB(178, 182, 190), Enum.Material.Metal)
+		crownBand.CFrame = head.CFrame * CFrame.new(0, hH * 0.55, 0)
+		addMesh(crownBand, Enum.MeshType.Cylinder, Vector3.new(0.06, 1, 1))
+		weldParts(head, crownBand)
+
+		-- Cone body — 4 segments, slightly different tones for fabric depth
+		local cone1 = makePart(helm, "HatCone1", Vector3.new(hW * 0.92, 0.62, hD * 0.94), Color3.fromRGB(38, 34, 78), Enum.Material.Fabric)
+		cone1.CFrame = head.CFrame * CFrame.new(0, hH * 0.74, 0)
+		addMesh(cone1, Enum.MeshType.Torso, Vector3.new(0.60, 1, 1))
 		weldParts(head, cone1)
 
-		local cone2 = makePart(helm, "HatCone2", Vector3.new(hW * 0.60, 0.55, hD * 0.62), Color3.fromRGB(42, 38, 85), Enum.Material.Fabric)
-		cone2.CFrame = head.CFrame * CFrame.new(0, hH * 1.10, 0)
-		addMesh(cone2, Enum.MeshType.Cylinder, Vector3.new(0.55, 1, 1))
+		local cone2 = makePart(helm, "HatCone2", Vector3.new(hW * 0.62, 0.56, hD * 0.64), Color3.fromRGB(40, 36, 82), Enum.Material.Fabric)
+		cone2.CFrame = head.CFrame * CFrame.new(0, hH * 1.12, 0)
+		addMesh(cone2, Enum.MeshType.Torso, Vector3.new(0.54, 1, 1))
 		weldParts(head, cone2)
 
-		local cone3 = makePart(helm, "HatCone3", Vector3.new(hW * 0.32, 0.48, hD * 0.34), Color3.fromRGB(38, 34, 75), Enum.Material.Fabric)
-		cone3.CFrame = head.CFrame * CFrame.new(0, hH * 1.44, 0)
-		addMesh(cone3, Enum.MeshType.Cylinder, Vector3.new(0.48, 1, 1))
+		local cone3 = makePart(helm, "HatCone3", Vector3.new(hW * 0.34, 0.49, hD * 0.36), Color3.fromRGB(36, 32, 74), Enum.Material.Fabric)
+		cone3.CFrame = head.CFrame * CFrame.new(0, hH * 1.46, 0)
+		addMesh(cone3, Enum.MeshType.Torso, Vector3.new(0.47, 1, 1))
 		weldParts(head, cone3)
 
-		local cone4 = makePart(helm, "HatCone4", Vector3.new(hW * 0.14, 0.36, hD * 0.15), Color3.fromRGB(35, 30, 68), Enum.Material.Fabric)
-		cone4.CFrame = head.CFrame * CFrame.new(0, hH * 1.74, 0)
-		addMesh(cone4, Enum.MeshType.Cylinder, Vector3.new(0.36, 1, 1))
+		local cone4 = makePart(helm, "HatCone4", Vector3.new(hW * 0.15, 0.38, hD * 0.16), Color3.fromRGB(32, 28, 66), Enum.Material.Fabric)
+		cone4.CFrame = head.CFrame * CFrame.new(0, hH * 1.76, 0)
+		addMesh(cone4, Enum.MeshType.Torso, Vector3.new(0.36, 1, 1))
 		weldParts(head, cone4)
 
-		-- Tip
-		local tip = makePart(helm, "HatTip", Vector3.new(0.08, 0.14, 0.08), Color3.fromRGB(215, 170, 55), Enum.Material.Metal)
-		tip.CFrame = head.CFrame * CFrame.new(0, hH * 2.0, 0)
+		-- Silver tip cap at peak
+		local tip = makePart(helm, "HatTip", Vector3.new(0.10, 0.16, 0.10), Color3.fromRGB(188, 192, 200), Enum.Material.Metal)
+		tip.CFrame = head.CFrame * CFrame.new(0, hH * 2.02, 0)
 		addMesh(tip, Enum.MeshType.Sphere)
 		weldParts(head, tip)
 
-		-- Cloth drape at back (flowing behind)
-		local drape = makePart(helm, "HoodDrape", Vector3.new(hW * 0.95, 0.80, 0.28), Color3.fromRGB(28, 26, 52), Enum.Material.Fabric)
-		drape.CFrame = head.CFrame * CFrame.new(0, hH * 0.05, hD * 0.42) * CFrame.Angles(math.rad(-20), 0, 0)
+		-- Cloth drape at back — two overlapping panels for depth
+		local drape = makePart(helm, "HoodDrape", Vector3.new(hW * 0.96, 0.84, 0.30), Color3.fromRGB(26, 24, 50), Enum.Material.Fabric)
+		drape.CFrame = head.CFrame * CFrame.new(0, hH * 0.04, hD * 0.44) * CFrame.Angles(math.rad(-22), 0, 0)
 		weldParts(head, drape)
 
-		local drape2 = makePart(helm, "HoodDrape2", Vector3.new(hW * 0.82, 0.60, 0.22), Color3.fromRGB(24, 22, 46), Enum.Material.Fabric)
-		drape2.CFrame = head.CFrame * CFrame.new(0, -hH * 0.28, hD * 0.52) * CFrame.Angles(math.rad(-28), 0, 0)
+		local drape2 = makePart(helm, "HoodDrape2", Vector3.new(hW * 0.80, 0.64, 0.24), Color3.fromRGB(22, 20, 44), Enum.Material.Fabric)
+		drape2.CFrame = head.CFrame * CFrame.new(0, -hH * 0.30, hD * 0.54) * CFrame.Angles(math.rad(-30), 0, 0)
 		weldParts(head, drape2)
 
-		-- Small star gem on brim front
-		local starGem = makePart(helm, "StarGem", Vector3.new(0.10, 0.10, 0.06), Color3.fromRGB(120, 160, 255), Enum.Material.Neon)
-		starGem.CFrame = head.CFrame * CFrame.new(0, hH * 0.20, -hD * 0.72)
-		addMesh(starGem, Enum.MeshType.Sphere)
-		weldParts(head, starGem)
+		-- Side shoulder scarf wisps (left and right draping cloth flaps)
+		for _, xSide in {-1, 1} do
+			local scarf = makePart(helm, "ScarfWisp", Vector3.new(hW * 0.36, 0.55, 0.18), Color3.fromRGB(24, 22, 46), Enum.Material.Fabric)
+			scarf.CFrame = head.CFrame * CFrame.new(xSide * hW * 0.38, -hH * 0.10, hD * 0.36) * CFrame.Angles(math.rad(-15), 0, xSide * math.rad(10))
+			weldParts(head, scarf)
+		end
+
+		-- Brim front gem — faceted glass with a non-neon base and subtle inner core
+		local gemBase = makePart(helm, "GemBase", Vector3.new(0.13, 0.13, 0.08), Color3.fromRGB(55, 35, 90), Enum.Material.Glass)
+		gemBase.CFrame = head.CFrame * CFrame.new(0, hH * 0.20, -hD * 0.73)
+		addMesh(gemBase, Enum.MeshType.Sphere)
+		weldParts(head, gemBase)
+
+		local gemCore = makePart(helm, "GemCore", Vector3.new(0.07, 0.07, 0.05), Color3.fromRGB(155, 100, 255), Enum.Material.Neon)
+		gemCore.CFrame = head.CFrame * CFrame.new(0, hH * 0.20, -hD * 0.74)
+		addMesh(gemCore, Enum.MeshType.Sphere)
+		weldParts(head, gemCore)
+		-- No PointLight on gem — glow comes from the brim rune ring instead
 
 	elseif helmId == "RockhideCowl" then
 		-- ── Rockhide Wizard Hat (Tall basalt stone cap — clearly superior) ────
@@ -1836,19 +1918,94 @@ local function attachChest(character: Model, chestId: string?)
 		weldParts(targetWaist, buckle)
 
 	elseif chestId == "ApprenticeRobe" then
-		-- Mage Starter Robe (Indigo Scholar Vestments)
-		local robeTorso = makePart(chest, "RobeTorso", Vector3.new(tW * 0.96, tH * 0.90, 1.08), Color3.fromRGB(35, 38, 70), Enum.Material.Fabric)
+		-- ── Apprentice Mage Robe (Deep Indigo Scholar Vestments — layered & detailed) ──
+		local targetWaist = lowerTorso or torso
+
+		-- Main robe body — slightly wider than body, Torso mesh for octagonal silhouette
+		local robeTorso = makePart(chest, "RobeTorso", Vector3.new(tW * 0.98, tH * 0.92, 1.10), Color3.fromRGB(34, 36, 68), Enum.Material.Fabric)
 		robeTorso.CFrame = torso.CFrame * CFrame.new(0, 0, 0)
+		addMesh(robeTorso, Enum.MeshType.Torso, Vector3.new(1, 0.95, 1))
 		weldParts(torso, robeTorso)
 
-		local goldSash = makePart(chest, "GoldSash", Vector3.new(0.24, tH * 0.88, 0.16), Color3.fromRGB(215, 170, 55), Enum.Material.Metal)
-		goldSash.CFrame = torso.CFrame * CFrame.new(0, 0, -0.55)
-		weldParts(torso, goldSash)
+		-- Front overlay panel (slightly darker indigo, sits proud of robe body)
+		local frontPanel = makePart(chest, "FrontPanel", Vector3.new(tW * 0.58, tH * 0.88, 0.20), Color3.fromRGB(26, 28, 56), Enum.Material.Fabric)
+		frontPanel.CFrame = torso.CFrame * CFrame.new(0, 0, -0.56)
+		weldParts(torso, frontPanel)
 
-		local targetWaist = lowerTorso or torso
-		local robeSkirt = makePart(chest, "RobeSkirt", Vector3.new(tW * 0.98, 0.45, 1.10), Color3.fromRGB(28, 30, 58), Enum.Material.Fabric)
-		robeSkirt.CFrame = targetWaist.CFrame * CFrame.new(0, isR15 and -0.15 or -tH * 0.38, 0)
+		-- Front panel silver border trim (left and right strips)
+		for _, xOff in {-tW * 0.30, tW * 0.30} do
+			local trim = makePart(chest, "PanelTrim", Vector3.new(0.06, tH * 0.90, 0.10), Color3.fromRGB(188, 192, 200), Enum.Material.Metal)
+			trim.CFrame = torso.CFrame * CFrame.new(xOff, 0, -0.58)
+			weldParts(torso, trim)
+		end
+
+		-- Horizontal silver chest band
+		local chestBand = makePart(chest, "ChestBand", Vector3.new(tW * 0.64, 0.08, 0.22), Color3.fromRGB(178, 182, 190), Enum.Material.Metal)
+		chestBand.CFrame = torso.CFrame * CFrame.new(0, tH * 0.28, -0.56)
+		weldParts(torso, chestBand)
+
+		-- Arcane Sigil Medallion (glass face + small neon core, no bright PointLight)
+		local medallionMount = makePart(chest, "MedallionMount", Vector3.new(0.28, 0.28, 0.14), Color3.fromRGB(44, 36, 72), Enum.Material.Metal)
+		medallionMount.CFrame = torso.CFrame * CFrame.new(0, tH * 0.10, -0.60) * CFrame.Angles(0, 0, math.rad(45))
+		addMesh(medallionMount, Enum.MeshType.Sphere, Vector3.new(1, 1, 0.7))
+		weldParts(torso, medallionMount)
+
+		local medallionFace = makePart(chest, "MedallionFace", Vector3.new(0.20, 0.20, 0.10), Color3.fromRGB(70, 45, 115), Enum.Material.Glass)
+		medallionFace.CFrame = torso.CFrame * CFrame.new(0, tH * 0.10, -0.63) * CFrame.Angles(0, 0, math.rad(45))
+		addMesh(medallionFace, Enum.MeshType.Sphere, Vector3.new(1, 1, 0.6))
+		weldParts(torso, medallionFace)
+
+		local medallionCore = makePart(chest, "MedallionCore", Vector3.new(0.10, 0.10, 0.07), Color3.fromRGB(160, 90, 255), Enum.Material.Neon)
+		medallionCore.CFrame = torso.CFrame * CFrame.new(0, tH * 0.10, -0.64)
+		addMesh(medallionCore, Enum.MeshType.Sphere)
+		weldParts(torso, medallionCore)
+		-- Very dim ambient glow only — not a beacon
+		local medallionLight = Instance.new("PointLight")
+		medallionLight.Color = Color3.fromRGB(150, 80, 240)
+		medallionLight.Brightness = 0.5
+		medallionLight.Range = 4
+		medallionLight.Parent = medallionCore
+
+		-- Sculpted shoulder pads (fabric-covered, rounded with silver edge)
+		for _, xSign in {-1, 1} do
+			local shoulder = makePart(chest, "ShoulderPad", Vector3.new(tW * 0.30, 0.26, 0.30), Color3.fromRGB(38, 34, 72), Enum.Material.Fabric)
+			shoulder.CFrame = torso.CFrame * CFrame.new(xSign * tW * 0.38, tH * 0.36, -0.30)
+			addMesh(shoulder, Enum.MeshType.Sphere, Vector3.new(1, 0.7, 1))
+			weldParts(torso, shoulder)
+
+			local shoulderEdge = makePart(chest, "ShoulderEdge", Vector3.new(tW * 0.32, 0.06, 0.32), Color3.fromRGB(178, 182, 190), Enum.Material.Metal)
+			shoulderEdge.CFrame = torso.CFrame * CFrame.new(xSign * tW * 0.38, tH * 0.24, -0.28)
+			addMesh(shoulderEdge, Enum.MeshType.Cylinder, Vector3.new(0.06, 1, 1))
+			weldParts(torso, shoulderEdge)
+		end
+
+		-- Gold waist sash — wider, with a fabric body and metal clasp
+		local sashBody = makePart(chest, "SashBody", Vector3.new(tW * 0.72, 0.18, 0.22), Color3.fromRGB(195, 150, 40), Enum.Material.Fabric)
+		sashBody.CFrame = torso.CFrame * CFrame.new(0, -tH * 0.30, -0.54)
+		weldParts(torso, sashBody)
+
+		local sashClasp = makePart(chest, "SashClasp", Vector3.new(0.22, 0.22, 0.14), Color3.fromRGB(215, 175, 55), Enum.Material.Metal)
+		sashClasp.CFrame = torso.CFrame * CFrame.new(0, -tH * 0.30, -0.58)
+		addMesh(sashClasp, Enum.MeshType.Sphere, Vector3.new(1, 1, 0.7))
+		weldParts(torso, sashClasp)
+
+		-- Robe skirt — wider hem with a slightly flared bottom wedge panel
+		local robeSkirt = makePart(chest, "RobeSkirt", Vector3.new(tW * 1.02, 0.50, 1.14), Color3.fromRGB(28, 30, 56), Enum.Material.Fabric)
+		robeSkirt.CFrame = targetWaist.CFrame * CFrame.new(0, isR15 and -0.16 or -tH * 0.40, 0)
+		addMesh(robeSkirt, Enum.MeshType.Torso, Vector3.new(0.44, 1, 1))
 		weldParts(targetWaist, robeSkirt)
+
+		-- Front skirt split panel (darker tone, slight overhang)
+		local skirtSplit = makePart(chest, "SkirtSplit", Vector3.new(tW * 0.40, 0.48, 0.18), Color3.fromRGB(22, 24, 46), Enum.Material.Fabric)
+		skirtSplit.CFrame = targetWaist.CFrame * CFrame.new(0, isR15 and -0.18 or -tH * 0.42, -0.52)
+		addMesh(skirtSplit, Enum.MeshType.Wedge)
+		weldParts(targetWaist, skirtSplit)
+
+		-- Silver hem trim on skirt bottom
+		local hemTrim = makePart(chest, "HemTrim", Vector3.new(tW * 1.04, 0.05, 1.16), Color3.fromRGB(168, 172, 180), Enum.Material.Metal)
+		hemTrim.CFrame = targetWaist.CFrame * CFrame.new(0, isR15 and -0.40 or -tH * 0.60, 0)
+		addMesh(hemTrim, Enum.MeshType.Cylinder, Vector3.new(0.04, 1, 1))
+		weldParts(targetWaist, hemTrim)
 
 	elseif chestId == "RockhideRobes" then
 		-- ── Rockhide Geomancer Robes (Earthcaller's Volcanic Vestments) ──────
@@ -2093,20 +2250,62 @@ local function attachPauldrons(character: Model, armsId: string?)
 		end
 
 	elseif armsId == "ApprenticeBracers" then
-		-- Mage Starter Bracers (Soft leather wristbands with runic gold trim)
+		-- ── Apprentice Mage Bracers (Layered indigo cloth + silver runic cuffs) ──
 		local armList = {
-			{ arm = character:FindFirstChild("LeftLowerArm") or leftArm, sign = -1, name = "Left" },
-			{ arm = character:FindFirstChild("RightLowerArm") or rightArm, sign = 1, name = "Right" },
+			{ arm = character:FindFirstChild("LeftLowerArm") or leftArm, upperArm = leftArm, sign = -1, name = "Left" },
+			{ arm = character:FindFirstChild("RightLowerArm") or rightArm, upperArm = rightArm, sign = 1, name = "Right" },
 		}
 		for _, data in ipairs(armList) do
 			if data.arm then
-				local bracer = makePart(pauldrons, data.name .. "Bracer", Vector3.new(0.74, 0.55, 0.74), Color3.fromRGB(115, 75, 42), Enum.Material.Fabric)
-				bracer.CFrame = data.arm.CFrame * CFrame.new(0, -0.2, 0)
+				-- Main cloth bracer body (dark indigo, octagonal via Torso mesh)
+				local bracer = makePart(pauldrons, data.name .. "Bracer", Vector3.new(0.78, 0.60, 0.78), Color3.fromRGB(40, 36, 76), Enum.Material.Fabric)
+				bracer.CFrame = data.arm.CFrame * CFrame.new(0, -0.18, 0)
+				addMesh(bracer, Enum.MeshType.Torso, Vector3.new(0.90, 0.90, 0.90))
 				weldParts(data.arm, bracer)
 
-				local trim = makePart(pauldrons, data.name .. "Trim", Vector3.new(0.78, 0.12, 0.78), Color3.fromRGB(215, 170, 55), Enum.Material.Metal)
-				trim.CFrame = data.arm.CFrame * CFrame.new(0, -0.05, 0)
-				weldParts(data.arm, trim)
+				-- Leather wrapping strips (crosshatch effect)
+				for _, yOff in {0.14, -0.14} do
+					local wrap = makePart(pauldrons, data.name .. "BracerWrap", Vector3.new(0.80, 0.07, 0.80), Color3.fromRGB(75, 50, 28), Enum.Material.Fabric)
+					wrap.CFrame = data.arm.CFrame * CFrame.new(0, -0.18 + yOff, 0)
+					addMesh(wrap, Enum.MeshType.Cylinder)
+					weldParts(data.arm, wrap)
+				end
+
+				-- Silver cuff ring at wrist
+				local wristCuff = makePart(pauldrons, data.name .. "WristCuff", Vector3.new(0.82, 0.10, 0.82), Color3.fromRGB(178, 182, 190), Enum.Material.Metal)
+				wristCuff.CFrame = data.arm.CFrame * CFrame.new(0, -0.40, 0)
+				addMesh(wristCuff, Enum.MeshType.Torso, Vector3.new(0.08, 1, 1))
+				weldParts(data.arm, wristCuff)
+
+				-- Silver cuff ring at elbow
+				local elbowCuff = makePart(pauldrons, data.name .. "ElbowCuff", Vector3.new(0.82, 0.08, 0.82), Color3.fromRGB(178, 182, 190), Enum.Material.Metal)
+				elbowCuff.CFrame = data.arm.CFrame * CFrame.new(0, 0.06, 0)
+				addMesh(elbowCuff, Enum.MeshType.Torso, Vector3.new(0.07, 1, 1))
+				weldParts(data.arm, elbowCuff)
+
+				-- Front arcane gem cuff accent (glass face + tiny neon core, no PointLight)
+				local gemFace = makePart(pauldrons, data.name .. "GemFace", Vector3.new(0.14, 0.14, 0.08), Color3.fromRGB(55, 35, 90), Enum.Material.Glass)
+				gemFace.CFrame = data.arm.CFrame * CFrame.new(0, -0.18, -0.40)
+				addMesh(gemFace, Enum.MeshType.Sphere)
+				weldParts(data.arm, gemFace)
+
+				local gemCore = makePart(pauldrons, data.name .. "GemCore", Vector3.new(0.07, 0.07, 0.05), Color3.fromRGB(150, 85, 245), Enum.Material.Neon)
+				gemCore.CFrame = data.arm.CFrame * CFrame.new(0, -0.18, -0.42)
+				addMesh(gemCore, Enum.MeshType.Sphere)
+				weldParts(data.arm, gemCore)
+
+				-- Small cloth shoulder puff on upper arm (mage scholar look)
+				if data.upperArm then
+					local puff = makePart(pauldrons, data.name .. "ShoulderPuff", Vector3.new(0.96, 0.30, 0.96), Color3.fromRGB(36, 32, 70), Enum.Material.Fabric)
+					puff.CFrame = data.upperArm.CFrame * CFrame.new(data.sign * 0.06, 0.30, 0)
+					addMesh(puff, Enum.MeshType.Sphere, Vector3.new(1.0, 0.60, 1.0))
+					weldParts(data.upperArm, puff)
+
+					local puffBand = makePart(pauldrons, data.name .. "PuffBand", Vector3.new(0.98, 0.07, 0.98), Color3.fromRGB(168, 172, 180), Enum.Material.Metal)
+					puffBand.CFrame = data.upperArm.CFrame * CFrame.new(data.sign * 0.06, 0.16, 0)
+					addMesh(puffBand, Enum.MeshType.Cylinder, Vector3.new(0.06, 1, 1))
+					weldParts(data.upperArm, puffBand)
+				end
 			end
 		end
 
