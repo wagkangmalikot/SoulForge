@@ -1037,7 +1037,7 @@ function HubMapService.BuildHub(): Model
 	sSub.TextColor3 = Color3.fromRGB(255, 175, 60)
 	sSub.Font = Enum.Font.GothamBold
 	sSub.TextScaled = true
-	sSub.Text = "[Tier 2 Dungeon | Level 5-10]"
+	sSub.Text = "[Tier 2 Dungeon | Level 5-30+ Hardcore]"
 	sSub.Parent = sunBb
 
 	makeBrazier(hub, sunPortalPos + Vector3.new(-12, 2, 4), Color3.fromRGB(255, 130, 30))

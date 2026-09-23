@@ -408,7 +408,7 @@ local Equipment = {
 				criticalChance = 0.12,
 			},
 			crafting = {
-				levelRequired = 3,
+				levelRequired = 5,
 				craftTime     = 8.0,
 				materials     = { IronIngot = 12, SunstoneCore = 1, AncientRune = 3 },
 			},
@@ -423,7 +423,7 @@ local Equipment = {
 			
 			description = "A radiant golden crown that channels celestial energy.",
 			stats = { armor = 24, magicResist = 18, maxHPBonus = 40 },
-			crafting = { levelRequired = 3, craftTime = 8.0, materials = { IronIngot = 10, SunstoneCore = 1, AncientRune = 2 } },
+			crafting = { levelRequired = 5, craftTime = 8.0, materials = { IronIngot = 10, SunstoneCore = 1, AncientRune = 2 } },
 		},
 		SunforgedChest = {
 			id = "SunforgedChest",
@@ -435,7 +435,7 @@ local Equipment = {
 			
 			description = "A brilliant golden chestplate inscribed with solar seals.",
 			stats = { armor = 45, maxHPBonus = 80, damageReduction = 0.20 },
-			crafting = { levelRequired = 3, craftTime = 10.0, materials = { IronIngot = 15, SunstoneCore = 2, AncientRune = 3 } },
+			crafting = { levelRequired = 5, craftTime = 10.0, materials = { IronIngot = 15, SunstoneCore = 2, AncientRune = 3 } },
 		},
 		SunforgedArms = {
 			id = "SunforgedArms",
@@ -447,7 +447,7 @@ local Equipment = {
 			
 			description = "Radiant golden gauntlets that pulse with holy light.",
 			stats = { armor = 18, blockChance = 0.25, damageReduction = 0.10 },
-			crafting = { levelRequired = 3, craftTime = 8.0, materials = { IronIngot = 10, SunstoneCore = 1, AncientRune = 2 } },
+			crafting = { levelRequired = 5, craftTime = 8.0, materials = { IronIngot = 10, SunstoneCore = 1, AncientRune = 2 } },
 		},
 		SunforgedFeet = {
 			id = "SunforgedFeet",
@@ -456,12 +456,10 @@ local Equipment = {
 			slot = "Feet",
 			tier = 3,
 			rarity = "Legendary",
-			
 			description = "Golden armored boots that leave radiant footprints.",
 			stats = { armor = 16, movementSpeed = 0.10, maxHPBonus = 25 },
-			crafting = { levelRequired = 3, craftTime = 8.0, materials = { IronIngot = 8, SunstoneCore = 1, AncientRune = 2 } },
+			crafting = { levelRequired = 5, craftTime = 8.0, materials = { IronIngot = 8, SunstoneCore = 1, AncientRune = 2 } },
 		},
-	},
 
 		SunforgedStaff = {
 			id = "SunforgedStaff",
@@ -478,7 +476,7 @@ local Equipment = {
 				criticalChance = 0.10,
 			},
 			crafting = {
-				levelRequired = 3,
+				levelRequired = 5,
 				craftTime     = 8.0,
 				materials     = { OakTimber = 8, SunstoneCore = 1, AncientRune = 3 },
 			},
@@ -492,7 +490,7 @@ local Equipment = {
 			rarity = "Legendary",
 			description = "An ivory and gold silk cowl featuring a floating golden halo of solar radiance.",
 			stats = { armor = 12, magicResist = 28, maxHPBonus = 35 },
-			crafting = { levelRequired = 3, craftTime = 8.0, materials = { LeatherStrap = 6, SunstoneCore = 1, AncientRune = 2 } },
+			crafting = { levelRequired = 5, craftTime = 8.0, materials = { LeatherStrap = 6, SunstoneCore = 1, AncientRune = 2 } },
 		},
 		SunforgedRobes = {
 			id = "SunforgedRobes",
@@ -503,7 +501,7 @@ local Equipment = {
 			rarity = "Legendary",
 			description = "Flowing solar-threaded silk vestments trimmed in sacred gold and inlaid with sunstone gems.",
 			stats = { armor = 20, magicResist = 42, maxHPBonus = 60, spellAmp = 0.12 },
-			crafting = { levelRequired = 3, craftTime = 10.0, materials = { LeatherStrap = 8, SunstoneCore = 2, AncientRune = 3 } },
+			crafting = { levelRequired = 5, craftTime = 10.0, materials = { LeatherStrap = 8, SunstoneCore = 2, AncientRune = 3 } },
 		},
 		SunforgedWraps = {
 			id = "SunforgedWraps",
@@ -514,7 +512,7 @@ local Equipment = {
 			rarity = "Legendary",
 			description = "Brilliant golden bracers inscribed with solar runes that empower spellcasting.",
 			stats = { armor = 10, magicResist = 18, spellAmp = 0.15 },
-			crafting = { levelRequired = 3, craftTime = 8.0, materials = { IronIngot = 6, SunstoneCore = 1, AncientRune = 2 } },
+			crafting = { levelRequired = 5, craftTime = 8.0, materials = { IronIngot = 6, SunstoneCore = 1, AncientRune = 2 } },
 		},
 		SunforgedSlippers = {
 			id = "SunforgedSlippers",
@@ -525,8 +523,10 @@ local Equipment = {
 			rarity = "Legendary",
 			description = "Silken boots lined with sunstone dust, elevating the wearer slightly above the ground.",
 			stats = { armor = 10, magicResist = 16, movementSpeed = 2, maxHPBonus = 20 },
-			crafting = { levelRequired = 3, craftTime = 8.0, materials = { LeatherStrap = 6, SunstoneCore = 1, AncientRune = 2 } },
+			crafting = { levelRequired = 5, craftTime = 8.0, materials = { LeatherStrap = 6, SunstoneCore = 1, AncientRune = 2 } },
 		},
+	},
+
 	-- ── CRAFTING MATERIALS ─────────────────────────────────────────────────
 	Materials = {
 		IronIngot = {

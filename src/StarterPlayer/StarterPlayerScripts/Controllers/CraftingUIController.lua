@@ -904,53 +904,93 @@ local function buildUI()
 
 	local leftHeader = Instance.new("Frame")
 	leftHeader.Name = "SetTabsHeader"
-	leftHeader.Size = UDim2.new(1, 0, 0, 36)
+	leftHeader.Size = UDim2.new(1, 0, 0, 72)
 	leftHeader.BackgroundColor3 = THEME.panelInner
 	leftHeader.BorderSizePixel = 0
 	makeCorner(leftHeader, 6)
 
-	local tankTab = Instance.new("TextButton")
-	tankTab.Name = "TankTab"
-	tankTab.Size = UDim2.new(0.5, -5, 1, -6)
-	tankTab.Position = UDim2.new(0, 3, 0, 3)
-	tankTab.BackgroundColor3 = (selectedSetId == "Rockhide") and THEME.rowSelected or THEME.panelBg
-	tankTab.Text = "🛡️ WARLORD (TANK)"
-	tankTab.Font = Enum.Font.GothamBold
-	tankTab.TextSize = 12.5
-	tankTab.TextColor3 = (selectedSetId == "Rockhide") and THEME.amberBright or THEME.textDim
-	tankTab.BorderSizePixel = 0
-	makeCorner(tankTab, 4)
-	local tankTabStroke = makeStroke(tankTab, (selectedSetId == "Rockhide") and THEME.borderBright or THEME.borderDim, 1)
-	tankTab.Parent = leftHeader
+	-- Row 1: Tier 2 (Rockhide)
+	local rockhideTab = Instance.new("TextButton")
+	rockhideTab.Name = "RockhideTankTab"
+	rockhideTab.Size = UDim2.new(0.5, -5, 0, 30)
+	rockhideTab.Position = UDim2.new(0, 3, 0, 3)
+	rockhideTab.BackgroundColor3 = (selectedSetId == "Rockhide") and THEME.rowSelected or THEME.panelBg
+	rockhideTab.Text = "🛡️ WARLORD [T2]"
+	rockhideTab.Font = Enum.Font.GothamBold
+	rockhideTab.TextSize = 11.5
+	rockhideTab.TextColor3 = (selectedSetId == "Rockhide") and THEME.amberBright or THEME.textDim
+	rockhideTab.BorderSizePixel = 0
+	makeCorner(rockhideTab, 4)
+	local rockhideStroke = makeStroke(rockhideTab, (selectedSetId == "Rockhide") and THEME.borderBright or THEME.borderDim, 1)
+	rockhideTab.Parent = leftHeader
 
-	local mageTab = Instance.new("TextButton")
-	mageTab.Name = "MageTab"
-	mageTab.Size = UDim2.new(0.5, -5, 1, -6)
-	mageTab.Position = UDim2.new(0.5, 2, 0, 3)
-	mageTab.BackgroundColor3 = (selectedSetId == "RockhideMage") and THEME.rowSelected or THEME.panelBg
-	mageTab.Text = "🔮 GEOMANCER (MAGE)"
-	mageTab.Font = Enum.Font.GothamBold
-	mageTab.TextSize = 12.5
-	mageTab.TextColor3 = (selectedSetId == "RockhideMage") and THEME.amberBright or THEME.textDim
-	mageTab.BorderSizePixel = 0
-	makeCorner(mageTab, 4)
-	local mageTabStroke = makeStroke(mageTab, (selectedSetId == "RockhideMage") and THEME.borderBright or THEME.borderDim, 1)
-	mageTab.Parent = leftHeader
+	local rockhideMageTab = Instance.new("TextButton")
+	rockhideMageTab.Name = "RockhideMageTab"
+	rockhideMageTab.Size = UDim2.new(0.5, -5, 0, 30)
+	rockhideMageTab.Position = UDim2.new(0.5, 2, 0, 3)
+	rockhideMageTab.BackgroundColor3 = (selectedSetId == "RockhideMage") and THEME.rowSelected or THEME.panelBg
+	rockhideMageTab.Text = "🔮 GEOMANCER [T2]"
+	rockhideMageTab.Font = Enum.Font.GothamBold
+	rockhideMageTab.TextSize = 11.5
+	rockhideMageTab.TextColor3 = (selectedSetId == "RockhideMage") and THEME.amberBright or THEME.textDim
+	rockhideMageTab.BorderSizePixel = 0
+	makeCorner(rockhideMageTab, 4)
+	local rockhideMageStroke = makeStroke(rockhideMageTab, (selectedSetId == "RockhideMage") and THEME.borderBright or THEME.borderDim, 1)
+	rockhideMageTab.Parent = leftHeader
+
+	-- Row 2: Tier 3 (Sunforged)
+	local sunforgedTab = Instance.new("TextButton")
+	sunforgedTab.Name = "SunforgedTankTab"
+	sunforgedTab.Size = UDim2.new(0.5, -5, 0, 30)
+	sunforgedTab.Position = UDim2.new(0, 3, 0, 37)
+	sunforgedTab.BackgroundColor3 = (selectedSetId == "Sunforged") and THEME.rowSelected or THEME.panelBg
+	sunforgedTab.Text = "☀️ SUNFORGED [T3]"
+	sunforgedTab.Font = Enum.Font.GothamBold
+	sunforgedTab.TextSize = 11.5
+	sunforgedTab.TextColor3 = (selectedSetId == "Sunforged") and THEME.amberBright or THEME.textDim
+	sunforgedTab.BorderSizePixel = 0
+	makeCorner(sunforgedTab, 4)
+	local sunforgedStroke = makeStroke(sunforgedTab, (selectedSetId == "Sunforged") and THEME.borderBright or THEME.borderDim, 1)
+	sunforgedTab.Parent = leftHeader
+
+	local sunforgedMageTab = Instance.new("TextButton")
+	sunforgedMageTab.Name = "SunforgedMageTab"
+	sunforgedMageTab.Size = UDim2.new(0.5, -5, 0, 30)
+	sunforgedMageTab.Position = UDim2.new(0.5, 2, 0, 37)
+	sunforgedMageTab.BackgroundColor3 = (selectedSetId == "SunforgedMage") and THEME.rowSelected or THEME.panelBg
+	sunforgedMageTab.Text = "✨ RADIANT [T3]"
+	sunforgedMageTab.Font = Enum.Font.GothamBold
+	sunforgedMageTab.TextSize = 11.5
+	sunforgedMageTab.TextColor3 = (selectedSetId == "SunforgedMage") and THEME.amberBright or THEME.textDim
+	sunforgedMageTab.BorderSizePixel = 0
+	makeCorner(sunforgedMageTab, 4)
+	local sunforgedMageStroke = makeStroke(sunforgedMageTab, (selectedSetId == "SunforgedMage") and THEME.borderBright or THEME.borderDim, 1)
+	sunforgedMageTab.Parent = leftHeader
 
 	local function updateSetTabs()
-		local isTank = (selectedSetId == "Rockhide")
-		tankTab.BackgroundColor3 = isTank and THEME.rowSelected or THEME.panelBg
-		tankTab.TextColor3 = isTank and THEME.amberBright or THEME.textDim
-		tankTabStroke.Color = isTank and THEME.borderBright or THEME.borderDim
+		local isRTank = (selectedSetId == "Rockhide")
+		rockhideTab.BackgroundColor3 = isRTank and THEME.rowSelected or THEME.panelBg
+		rockhideTab.TextColor3 = isRTank and THEME.amberBright or THEME.textDim
+		rockhideStroke.Color = isRTank and THEME.borderBright or THEME.borderDim
 
-		local isMage = (selectedSetId == "RockhideMage")
-		mageTab.BackgroundColor3 = isMage and THEME.rowSelected or THEME.panelBg
-		mageTab.TextColor3 = isMage and THEME.amberBright or THEME.textDim
-		mageTabStroke.Color = isMage and THEME.borderBright or THEME.borderDim
+		local isRMage = (selectedSetId == "RockhideMage")
+		rockhideMageTab.BackgroundColor3 = isRMage and THEME.rowSelected or THEME.panelBg
+		rockhideMageTab.TextColor3 = isRMage and THEME.amberBright or THEME.textDim
+		rockhideMageStroke.Color = isRMage and THEME.borderBright or THEME.borderDim
+
+		local isSTank = (selectedSetId == "Sunforged")
+		sunforgedTab.BackgroundColor3 = isSTank and THEME.rowSelected or THEME.panelBg
+		sunforgedTab.TextColor3 = isSTank and THEME.amberBright or THEME.textDim
+		sunforgedStroke.Color = isSTank and THEME.borderBright or THEME.borderDim
+
+		local isSMage = (selectedSetId == "SunforgedMage")
+		sunforgedMageTab.BackgroundColor3 = isSMage and THEME.rowSelected or THEME.panelBg
+		sunforgedMageTab.TextColor3 = isSMage and THEME.amberBright or THEME.textDim
+		sunforgedMageStroke.Color = isSMage and THEME.borderBright or THEME.borderDim
 	end
 	updateSetTabsFunc = updateSetTabs
 
-	tankTab.Activated:Connect(function()
+	rockhideTab.Activated:Connect(function()
 		hasManuallySelectedSet = true
 		if selectedSetId == "Rockhide" then return end
 		selectedSetId = "Rockhide"
@@ -961,7 +1001,7 @@ local function buildUI()
 		renderDetailPanel(selectedPieceId)
 	end)
 
-	mageTab.Activated:Connect(function()
+	rockhideMageTab.Activated:Connect(function()
 		hasManuallySelectedSet = true
 		if selectedSetId == "RockhideMage" then return end
 		selectedSetId = "RockhideMage"
@@ -972,12 +1012,34 @@ local function buildUI()
 		renderDetailPanel(selectedPieceId)
 	end)
 
+	sunforgedTab.Activated:Connect(function()
+		hasManuallySelectedSet = true
+		if selectedSetId == "Sunforged" then return end
+		selectedSetId = "Sunforged"
+		selectedPieceId = "SunforgedSword"
+		updateSetTabs()
+		updateSetBonusBanner()
+		renderPiecesList()
+		renderDetailPanel(selectedPieceId)
+	end)
+
+	sunforgedMageTab.Activated:Connect(function()
+		hasManuallySelectedSet = true
+		if selectedSetId == "SunforgedMage" then return end
+		selectedSetId = "SunforgedMage"
+		selectedPieceId = "SunforgedStaff"
+		updateSetTabs()
+		updateSetBonusBanner()
+		renderPiecesList()
+		renderDetailPanel(selectedPieceId)
+	end)
+
 	leftHeader.Parent = leftPanel
 
 	piecesListFrame = Instance.new("ScrollingFrame")
 	piecesListFrame.Name = "PiecesScroll"
-	piecesListFrame.Size = UDim2.new(1, -12, 1, -48)
-	piecesListFrame.Position = UDim2.new(0, 6, 0, 42)
+	piecesListFrame.Size = UDim2.new(1, -12, 1, -84)
+	piecesListFrame.Position = UDim2.new(0, 6, 0, 78)
 	piecesListFrame.BackgroundTransparency = 1
 	piecesListFrame.BorderSizePixel = 0
 	piecesListFrame.ScrollBarThickness = 3

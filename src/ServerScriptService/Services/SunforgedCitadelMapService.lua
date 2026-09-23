@@ -696,6 +696,15 @@ function SunforgedCitadelMapService.IsGateOpen(): boolean
 	return isGateOpen
 end
 
+function SunforgedCitadelMapService.UnsealBossGate()
+	if bossGate then
+		local seal = bossGate:FindFirstChild("CombatSeal")
+		if seal then
+			seal:Destroy()
+		end
+	end
+end
+
 function SunforgedCitadelMapService.Cleanup()
 	if arenaFolder and arenaFolder.Parent then
 		arenaFolder:Destroy()

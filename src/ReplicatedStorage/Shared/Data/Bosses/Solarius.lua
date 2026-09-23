@@ -3,7 +3,8 @@ return {
 	id = "Solarius",
 	displayName = "Solarius, Sunforged Colossus",
 	dungeonTier = 2,
-	maxHealth = 750, -- tuned for Tier 2 party playtest (Level 5-10)
+	level = 30,
+	maxHealth = 2250, -- tuned for Tier 2 endgame party / level 5-30 hardcore retry loop
 	phases = {
 		-- Phase 1: 100% → 61% HP — Solar Might & Sweeping Cleaves
 		{
@@ -13,7 +14,7 @@ return {
 				"Solarius_SolarSmite",
 				"Solarius_SweepingCleave",
 			},
-			attackIntervalRange = {3.2, 5.0},
+			attackIntervalRange = {2.6, 3.8},
 		},
 		-- Phase 2: 60% → 26% HP — Daybreak & Tracking Solar Beams
 		{
@@ -24,8 +25,8 @@ return {
 				"Solarius_Sunburst",
 				"Solarius_BlindingAura",
 			},
-			attackIntervalRange = {2.5, 3.8},
-			telegraphTimeMultiplier = 0.85,
+			attackIntervalRange = {2.0, 3.0},
+			telegraphTimeMultiplier = 0.80,
 		},
 		-- Phase 3: 25% HP — Supernova Enrage: Unchecked Celestial Radiance
 		{
@@ -37,8 +38,8 @@ return {
 				"Solarius_BlindingAura",
 				"Solarius_Supernova",
 			},
-			attackIntervalRange = {1.8, 3.0},
-			telegraphTimeMultiplier = 0.75,
+			attackIntervalRange = {1.4, 2.4},
+			telegraphTimeMultiplier = 0.70,
 		},
 	},
 	phaseTransition = {
@@ -46,3 +47,4 @@ return {
 		{ duration = 3.0, hpThreshold = 0.25 }, -- Celestial roar & solar flare
 	},
 }
+

@@ -336,7 +336,35 @@ function MonsterAIService.SpawnMobs(
 		CollectionService:AddTag(model, "Enemy")
 		model.Parent = workspace
 
-		local currentHealth = MOB_MAX_HEALTH
+		local isSunforged = (spawnInfo.isSunforged == true)
+		local mobMaxHealth = isSunforged and 85 or MOB_MAX_HEALTH
+		local mobAttackDamage = isSunforged and 16 or MOB_ATTACK_DAMAGE
+		local mobNameText = isSunforged and "☀️ Citadel Sentinel [Lv. 25]" or "⚔️ Minion [Lv. 1]"
+
+		if isSunforged then
+			for _, part in model:GetDescendants() do
+				if part:IsA("BasePart") then
+					if part.Name:find("Torso") or part.Name:find("Chest") or part.Name:find("Head") then
+						part.Color = Color3.fromRGB(230, 185, 55)
+						part.Material = Enum.Material.Metal
+					elseif part.Name:find("Arm") or part.Name:find("Leg") then
+						part.Color = Color3.fromRGB(145, 110, 45)
+					end
+				end
+			end
+			local embers = Instance.new("ParticleEmitter")
+			embers.Name = "SolarEmbers"
+			embers.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+			embers.Rate = 5
+			embers.Speed = NumberRange.new(1, 3)
+			embers.Lifetime = NumberRange.new(0.6, 1.2)
+			embers.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.4), NumberSequenceKeypoint.new(1, 0) })
+			embers.Color = ColorSequence.new(Color3.fromRGB(255, 215, 60), Color3.fromRGB(255, 120, 20))
+			embers.LightEmission = 0.8
+			embers.Parent = model.PrimaryPart
+		end
+
+		local currentHealth = mobMaxHealth
 		local alive = true
 		local inCombat = false
 		local targetPlayer: Player? = nil
@@ -378,7 +406,7 @@ function MonsterAIService.SpawnMobs(
 		nameLabel.Size = UDim2.new(1, 0, 0, 11)
 		nameLabel.Position = UDim2.new(0, 0, 0, 0)
 		nameLabel.BackgroundTransparency = 1
-		nameLabel.Text = "⚔️ Minion [Lv. 1]"
+		nameLabel.Text = mobNameText
 		nameLabel.Font = Enum.Font.GothamBold
 		nameLabel.TextSize = 10
 		nameLabel.TextColor3 = Color3.fromRGB(240, 240, 245)
@@ -456,7 +484,7 @@ function MonsterAIService.SpawnMobs(
 		local handle = {
 			model = model,
 			currentHealth = currentHealth,
-			maxHealth = MOB_MAX_HEALTH,
+			maxHealth = mobMaxHealth,
 		}
 
 		function handle.onDamaged(amount: number, attackingPlayer: Player?)
@@ -465,7 +493,7 @@ function MonsterAIService.SpawnMobs(
 			end
 			currentHealth = math.max(0, currentHealth - amount)
 			handle.currentHealth = currentHealth
-			local fillPct = math.clamp(currentHealth / MOB_MAX_HEALTH, 0, 1)
+			local fillPct = math.clamp(currentHealth / mobMaxHealth, 0, 1)
 			TweenService:Create(hpFill, TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
 				Size = UDim2.new(fillPct, 0, 1, 0)
 			}):Play()
@@ -739,7 +767,7 @@ function MonsterAIService.SpawnMobs(
 					-- D. Deal damage on strike impact (140ms)
 					task.delay(0.14, function()
 						if alive and targetPlayer and targetPlayer.Character then
-							CombatService.ApplyDamageToPlayer(targetPlayer, MOB_ATTACK_DAMAGE)
+							CombatService.ApplyDamageToPlayer(targetPlayer, mobAttackDamage)
 						end
 					end)
 				end

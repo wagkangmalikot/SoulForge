@@ -49,8 +49,8 @@ function DungeonPortalController.Start()
 	task.spawn(function()
 		local sunPortalPart = workspace:WaitForChild("SunforgedPortal")
 		local sunPrompt = Instance.new("ProximityPrompt")
-		sunPrompt.ActionText = "Enter Sunforged Citadel (Tier 2)"
-		sunPrompt.ObjectText = "Solar Portal"
+		sunPrompt.ActionText = "Enter Sunforged Citadel (Lv. 5-30+)"
+		sunPrompt.ObjectText = "Tier 2 Hardcore Portal"
 		sunPrompt.HoldDuration = 0.5
 		sunPrompt.RequiresLineOfSight = false
 		sunPrompt.Parent = sunPortalPart

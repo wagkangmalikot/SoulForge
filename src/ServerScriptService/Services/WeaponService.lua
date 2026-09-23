@@ -2684,7 +2684,9 @@ function WeaponService.EquipWeapons(character: Model, weaponSetId: string?, shie
 				hpBonus += itm.stats.maxHPBonus
 			end
 		end
-		local targetMaxHP = baseMaxHP + hpBonus
+		local playerLevel = (profile and profile.Data and profile.Data.Character and profile.Data.Character.Level) or 1
+		local levelHpBonus = (playerLevel - 1) * 4
+		local targetMaxHP = baseMaxHP + hpBonus + levelHpBonus
 		if humanoid.MaxHealth ~= targetMaxHP then
 			local currentRatio = humanoid.Health / math.max(humanoid.MaxHealth, 1)
 			humanoid.MaxHealth = targetMaxHP
