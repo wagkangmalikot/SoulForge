@@ -179,7 +179,7 @@ function DownedUIController.Start()
 	local resultModal = Instance.new("Frame")
 	resultModal.Name = "ResultModal"
 	resultModal.AnchorPoint = Vector2.new(0.5, 0.5)
-	resultModal.Size = UDim2.new(0, 480, 0, 285)
+	resultModal.Size = UDim2.new(0, 500, 0, 295)
 	resultModal.Position = UDim2.new(0.5, 0, 0.48, 0)
 	resultModal.BackgroundColor3 = Color3.fromRGB(16, 20, 28)
 	resultModal.BorderSizePixel = 0
@@ -235,11 +235,11 @@ function DownedUIController.Start()
 	-- Header Title
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Name = "TitleLabel"
-	titleLabel.Size = UDim2.new(1, 0, 0, 30)
-	titleLabel.Position = UDim2.new(0, 0, 0, 36)
+	titleLabel.Size = UDim2.new(1, 0, 0, 32)
+	titleLabel.Position = UDim2.new(0, 0, 0, 34)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.Font = Enum.Font.GothamBlack
-	titleLabel.TextSize = 24
+	titleLabel.TextSize = 28
 	titleLabel.TextColor3 = Color3.fromRGB(255, 225, 90)
 	titleLabel.TextStrokeColor3 = Color3.fromRGB(20, 12, 4)
 	titleLabel.TextStrokeTransparency = 0.2
@@ -250,11 +250,11 @@ function DownedUIController.Start()
 	-- Subtitle
 	local subtitleLabel = Instance.new("TextLabel")
 	subtitleLabel.Name = "SubtitleLabel"
-	subtitleLabel.Size = UDim2.new(1, -32, 0, 20)
+	subtitleLabel.Size = UDim2.new(1, -32, 0, 22)
 	subtitleLabel.Position = UDim2.new(0, 16, 0, 68)
 	subtitleLabel.BackgroundTransparency = 1
 	subtitleLabel.Font = Enum.Font.GothamMedium
-	subtitleLabel.TextSize = 15
+	subtitleLabel.TextSize = 16.5
 	subtitleLabel.TextColor3 = Color3.fromRGB(215, 205, 175)
 	subtitleLabel.TextStrokeColor3 = Color3.fromRGB(15, 15, 20)
 	subtitleLabel.TextStrokeTransparency = 0.3
@@ -310,7 +310,7 @@ function DownedUIController.Start()
 	rewHeader.Position = UDim2.new(0, 10, 0, 6)
 	rewHeader.BackgroundTransparency = 1
 	rewHeader.Font = Enum.Font.GothamBold
-	rewHeader.TextSize = 14
+	rewHeader.TextSize = 15
 	rewHeader.TextColor3 = Color3.fromRGB(245, 205, 100)
 	rewHeader.TextStrokeColor3 = Color3.fromRGB(10, 12, 16)
 	rewHeader.TextStrokeTransparency = 0.3
@@ -358,7 +358,7 @@ function DownedUIController.Start()
 		pLabel.Position = UDim2.new(0, 3, 0, 0)
 		pLabel.BackgroundTransparency = 1
 		pLabel.Font = Enum.Font.GothamBold
-		pLabel.TextSize = 14.5
+		pLabel.TextSize = 15.5
 		pLabel.TextColor3 = textCol
 		pLabel.TextStrokeColor3 = Color3.fromRGB(10, 12, 16)
 		pLabel.TextStrokeTransparency = 0.3
@@ -376,7 +376,7 @@ function DownedUIController.Start()
 	rewSubline.Position = UDim2.new(0, 10, 0, 70)
 	rewSubline.BackgroundTransparency = 1
 	rewSubline.Font = Enum.Font.GothamMedium
-	rewSubline.TextSize = 13.5
+	rewSubline.TextSize = 14.5
 	rewSubline.TextColor3 = Color3.fromRGB(160, 225, 175)
 	rewSubline.TextStrokeColor3 = Color3.fromRGB(10, 12, 16)
 	rewSubline.TextStrokeTransparency = 0.3

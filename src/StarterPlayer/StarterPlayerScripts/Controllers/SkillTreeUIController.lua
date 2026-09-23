@@ -650,7 +650,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.TextColor3 = unlocked and Color3.fromRGB(255, 255, 255) or (canUnlock and Color3.fromRGB(255, 220, 120) or Color3.fromRGB(175, 180, 192))
 	titleLabel.Font = Enum.Font.GothamBold
-	titleLabel.TextSize = isMobile and 21 or 24
+	titleLabel.TextSize = isMobile and 22 or 25
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.TextTruncate = Enum.TextTruncate.None
 	titleLabel.Text = skill.displayName or skillId
@@ -701,7 +701,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	tText.BackgroundTransparency = 1
 	tText.TextColor3 = unlocked and Color3.fromRGB(255, 235, 170) or Color3.fromRGB(180, 188, 200)
 	tText.Font = Enum.Font.GothamBold
-	tText.TextSize = isMobile and 14 or 15
+	tText.TextSize = isMobile and 15 or 16
 	tText.Text = TIER_TITLES[skill.tier or 1] or "TIER I"
 	tText.Parent = tierPill
 
@@ -728,7 +728,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	cdText.BackgroundTransparency = 1
 	cdText.TextColor3 = Color3.fromRGB(125, 205, 255)
 	cdText.Font = Enum.Font.GothamBold
-	cdText.TextSize = isMobile and 14 or 15
+	cdText.TextSize = isMobile and 15 or 16
 	cdText.Text = ("⏱ %ds CD"):format(skill.cooldown or 0)
 	cdText.Parent = cdPill
 
@@ -756,7 +756,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 		dmgText.BackgroundTransparency = 1
 		dmgText.TextColor3 = Color3.fromRGB(255, 135, 125)
 		dmgText.Font = Enum.Font.GothamBold
-		dmgText.TextSize = isMobile and 14 or 15
+		dmgText.TextSize = isMobile and 15 or 16
 		dmgText.Text = ("⚔ %d Dmg"):format(skill.damage)
 		dmgText.Parent = dmgPill
 	end
@@ -785,7 +785,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 		healText.BackgroundTransparency = 1
 		healText.TextColor3 = Color3.fromRGB(135, 245, 165)
 		healText.Font = Enum.Font.GothamBold
-		healText.TextSize = isMobile and 14 or 15
+		healText.TextSize = isMobile and 15 or 16
 		healText.Text = ("💚 %d Heal"):format(skill.healAmount)
 		healText.Parent = healPill
 	end
@@ -814,7 +814,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 		durText.BackgroundTransparency = 1
 		durText.TextColor3 = Color3.fromRGB(255, 220, 95)
 		durText.Font = Enum.Font.GothamBold
-		durText.TextSize = isMobile and 14 or 15
+		durText.TextSize = isMobile and 15 or 16
 		durText.Text = ("🛡 %ds"):format(skill.duration)
 		durText.Parent = durPill
 	end
@@ -840,7 +840,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 		slowText.BackgroundTransparency = 1
 		slowText.TextColor3 = Color3.fromRGB(210, 170, 255)
 		slowText.Font = Enum.Font.GothamBold
-		slowText.TextSize = isMobile and 14 or 15
+		slowText.TextSize = isMobile and 15 or 16
 		slowText.Text = ("🔮 Slow %d%%"):format(skill.slowPercent)
 		slowText.Parent = slowPill
 	end
@@ -866,7 +866,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 		burnText.BackgroundTransparency = 1
 		burnText.TextColor3 = Color3.fromRGB(255, 140, 60)
 		burnText.Font = Enum.Font.GothamBold
-		burnText.TextSize = isMobile and 14 or 15
+		burnText.TextSize = isMobile and 15 or 16
 		burnText.Text = ("🔥 Burn %d×%d"):format(skill.burnTickDamage or 0, skill.burnTicks)
 		burnText.Parent = burnPill
 	end
@@ -892,7 +892,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 		shieldText.BackgroundTransparency = 1
 		shieldText.TextColor3 = Color3.fromRGB(200, 160, 255)
 		shieldText.Font = Enum.Font.GothamBold
-		shieldText.TextSize = isMobile and 14 or 15
+		shieldText.TextSize = isMobile and 15 or 16
 		shieldText.Text = ("🛡 %d Shield"):format(skill.shieldAmount)
 		shieldText.Parent = shieldPill
 	end
@@ -905,7 +905,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	descLabel.BackgroundTransparency = 1
 	descLabel.TextColor3 = Color3.fromRGB(205, 214, 228)
 	descLabel.Font = Enum.Font.Gotham
-	descLabel.TextSize = isMobile and 16 or 17
+	descLabel.TextSize = isMobile and 16.5 or 18
 	descLabel.TextWrapped = true
 	descLabel.TextXAlignment = Enum.TextXAlignment.Left
 	descLabel.TextYAlignment = Enum.TextYAlignment.Top
@@ -1088,7 +1088,7 @@ refreshUI = function()
 			tabBtn.BackgroundColor3 = isSelected and (tDef.color or Color3.fromRGB(45, 55, 75)) or Color3.fromRGB(24, 28, 38)
 			tabBtn.BorderSizePixel = 0
 			tabBtn.Font = Enum.Font.GothamBold
-			tabBtn.TextSize = isMobile and (tabCount >= 3 and 13.5 or 15) or 15.5
+			tabBtn.TextSize = isMobile and (tabCount >= 3 and 14.5 or 16) or 16.5
 			tabBtn.TextColor3 = isSelected and Color3.new(1, 1, 1) or Color3.fromRGB(165, 175, 190)
 			tabBtn.Text = tDef.text
 			tabBtn.Parent = branchTabsContainer
@@ -1545,15 +1545,15 @@ function SkillTreeUIController.Start()
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.TextColor3 = Color3.fromRGB(255, 235, 180)
 	titleLabel.Font = Enum.Font.GothamBold
-	titleLabel.TextSize = 24
+	titleLabel.TextSize = 26
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.Text = getClassTitleText(false)
 	titleLabel.Parent = headerBar
 
 	-- Skill Points Badge Pill
 	pointsPill = Instance.new("Frame")
-	pointsPill.Size = UDim2.new(0, 205, 0, 38)
-	pointsPill.Position = UDim2.new(1, -265, 0.5, -19)
+	pointsPill.Size = UDim2.new(0, 215, 0, 38)
+	pointsPill.Position = UDim2.new(1, -275, 0.5, -19)
 	pointsPill.BackgroundColor3 = Color3.fromRGB(32, 38, 50)
 	pointsPill.BorderSizePixel = 0
 	pointsPill.Parent = headerBar
@@ -1573,7 +1573,7 @@ function SkillTreeUIController.Start()
 	pillLabel.BackgroundTransparency = 1
 	pillLabel.TextColor3 = Color3.fromRGB(220, 228, 238)
 	pillLabel.Font = Enum.Font.GothamBold
-	pillLabel.TextSize = 15
+	pillLabel.TextSize = 16.5
 	pillLabel.Text = "SKILL POINTS:"
 	pillLabel.Parent = pointsPill
 
@@ -1583,15 +1583,15 @@ function SkillTreeUIController.Start()
 	pointsValueLabel.BackgroundTransparency = 1
 	pointsValueLabel.TextColor3 = Color3.fromRGB(255, 220, 70)
 	pointsValueLabel.Font = Enum.Font.GothamBold
-	pointsValueLabel.TextSize = 22
+	pointsValueLabel.TextSize = 24
 	pointsValueLabel.Text = "0"
 	pointsValueLabel.Parent = pointsPill
 
 	-- Reset / Respec Skills Button (Hub Only)
 	reskillBtn = Instance.new("TextButton")
 	reskillBtn.Name = "ReskillBtn"
-	reskillBtn.Size = UDim2.new(0, 110, 0, 38)
-	reskillBtn.Position = UDim2.new(1, -370, 0.5, -19)
+	reskillBtn.Size = UDim2.new(0, 115, 0, 38)
+	reskillBtn.Position = UDim2.new(1, -385, 0.5, -19)
 	reskillBtn.BackgroundColor3 = Color3.fromRGB(42, 48, 62)
 	reskillBtn.BorderSizePixel = 0
 	reskillBtn.AutoButtonColor = true
@@ -1611,7 +1611,7 @@ function SkillTreeUIController.Start()
 	reskillBtnText.BackgroundTransparency = 1
 	reskillBtnText.TextColor3 = Color3.fromRGB(220, 235, 255)
 	reskillBtnText.Font = Enum.Font.GothamBold
-	reskillBtnText.TextSize = 14
+	reskillBtnText.TextSize = 15.5
 	reskillBtnText.Text = "↺ RESPEC"
 	reskillBtnText.Parent = reskillBtn
 
@@ -1645,8 +1645,8 @@ function SkillTreeUIController.Start()
 	-- Dungeon Status Locked Badge (Dungeon Only)
 	dungeonStatusBadge = Instance.new("Frame")
 	dungeonStatusBadge.Name = "DungeonStatusBadge"
-	dungeonStatusBadge.Size = UDim2.new(0, 190, 0, 36)
-	dungeonStatusBadge.Position = UDim2.new(1, -450, 0.5, -18)
+	dungeonStatusBadge.Size = UDim2.new(0, 195, 0, 36)
+	dungeonStatusBadge.Position = UDim2.new(1, -460, 0.5, -18)
 	dungeonStatusBadge.BackgroundColor3 = Color3.fromRGB(56, 18, 18)
 	dungeonStatusBadge.BorderSizePixel = 0
 	dungeonStatusBadge.Visible = false
@@ -1666,7 +1666,7 @@ function SkillTreeUIController.Start()
 	dungeonStatusLabel.BackgroundTransparency = 1
 	dungeonStatusLabel.TextColor3 = Color3.fromRGB(255, 180, 180)
 	dungeonStatusLabel.Font = Enum.Font.GothamBold
-	dungeonStatusLabel.TextSize = 13.5
+	dungeonStatusLabel.TextSize = 14.5
 	dungeonStatusLabel.Text = "🔒 LOADOUT LOCKED"
 	dungeonStatusLabel.Parent = dungeonStatusBadge
 
@@ -1677,7 +1677,7 @@ function SkillTreeUIController.Start()
 	closeBtn.BackgroundColor3 = Color3.fromRGB(185, 45, 45)
 	closeBtn.TextColor3 = Color3.new(1, 1, 1)
 	closeBtn.Font = Enum.Font.GothamBold
-	closeBtn.TextSize = 20
+	closeBtn.TextSize = 22
 	closeBtn.Text = "X"
 	closeBtn.BorderSizePixel = 0
 	closeBtn.Parent = headerBar
@@ -1735,14 +1735,14 @@ function SkillTreeUIController.Start()
 	-- Bottom Action Bar Prompt / Subtitle
 	bottomPromptLabel = Instance.new("TextLabel")
 	bottomPromptLabel.Name = "BottomPrompt"
-	bottomPromptLabel.Size = UDim2.new(1, -20, 0, 22)
-	bottomPromptLabel.Position = UDim2.new(0, 12, 0, 5)
+	bottomPromptLabel.Size = UDim2.new(1, -20, 0, 24)
+	bottomPromptLabel.Position = UDim2.new(0, 12, 0, 4)
 	bottomPromptLabel.BackgroundTransparency = 1
 	bottomPromptLabel.TextColor3 = Color3.fromRGB(180, 190, 205)
-	bottomPromptLabel.Font = Enum.Font.GothamMedium
-	bottomPromptLabel.TextSize = 14.5
+	bottomPromptLabel.Font = Enum.Font.GothamBold
+	bottomPromptLabel.TextSize = 15.5
 	bottomPromptLabel.TextXAlignment = Enum.TextXAlignment.Left
-	bottomPromptLabel.Text = "ACTIVE ACTION SLOTS: Click an unlocked ability above to equip it into your hotbar."
+	bottomPromptLabel.Text = "EQUIPPED SKILLS: Click an unlocked ability above to equip into your hotbar."
 	bottomPromptLabel.Parent = bottomFrame
 
 	equippedSlotsContainer = Instance.new("Frame")

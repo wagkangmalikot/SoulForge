@@ -215,9 +215,9 @@ local function renderDetailPanel(itemId: string)
 	local detailIcon = ItemIconHelper.CreateItemIcon(headerCard, itemId, UDim2.new(0, 56, 0, 56), true)
 	detailIcon.Position = UDim2.new(0, 14, 0.5, -28)
 
-	-- Slot Badge (e.g. "[ WEAPON PIECE ]")
+	-- Slot Badge (e.g. "[ WEAPON ]")
 	local slotBadge = Instance.new("TextLabel")
-	slotBadge.Text = string.format("[ %s PIECE ]", string.upper(item.slot))
+	slotBadge.Text = string.format("[ %s ]", string.upper(item.slot))
 	slotBadge.TextColor3 = THEME.amberBright
 	slotBadge.TextSize = 14
 	slotBadge.Font = Enum.Font.GothamBold
@@ -231,24 +231,24 @@ local function renderDetailPanel(itemId: string)
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Text = item.displayName or item.id
 	titleLabel.TextColor3 = THEME.textWhite
-	titleLabel.TextSize = 21
+	titleLabel.TextSize = 23
 	titleLabel.Font = Enum.Font.GothamBold
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.Position = UDim2.new(0, 78, 0, 27)
-	titleLabel.Size = UDim2.new(0.65, 0, 0, 24)
+	titleLabel.Size = UDim2.new(0.65, 0, 0, 26)
 	titleLabel.Parent = headerCard
 
 	-- Tier & Rarity subtitle
 	local subLabel = Instance.new("TextLabel")
 	subLabel.Text = string.format("Tier %d  ·  %s", item.tier or 1, string.upper(item.rarity or "Common"))
 	subLabel.TextColor3 = rarityColor
-	subLabel.TextSize = 14
-	subLabel.Font = Enum.Font.GothamSemibold
+	subLabel.TextSize = 15.5
+	subLabel.Font = Enum.Font.GothamBold
 	subLabel.BackgroundTransparency = 1
 	subLabel.TextXAlignment = Enum.TextXAlignment.Left
-	subLabel.Position = UDim2.new(0, 78, 0, 53)
-	subLabel.Size = UDim2.new(0.6, 0, 0, 18)
+	subLabel.Position = UDim2.new(0, 78, 0, 54)
+	subLabel.Size = UDim2.new(0.6, 0, 0, 20)
 	subLabel.Parent = headerCard
 
 	-- Ownership Status Pill
@@ -258,7 +258,7 @@ local function renderDetailPanel(itemId: string)
 	local pillTextColor = equipped and THEME.textWhite or (owned and THEME.green or (canForge and THEME.cyan or THEME.textDim))
 
 	local statusPill = Instance.new("Frame")
-	statusPill.Size = UDim2.new(0, 120, 0, 28)
+	statusPill.Size = UDim2.new(0, 120, 0, 30)
 	statusPill.Position = UDim2.new(1, -128, 0, 10)
 	statusPill.BackgroundColor3 = pillBg
 	statusPill.BorderSizePixel = 0
@@ -269,7 +269,7 @@ local function renderDetailPanel(itemId: string)
 	local pillLabel = Instance.new("TextLabel")
 	pillLabel.Text = pillText
 	pillLabel.TextColor3 = pillTextColor
-	pillLabel.TextSize = 13.5
+	pillLabel.TextSize = 14.5
 	pillLabel.Font = Enum.Font.GothamBold
 	pillLabel.BackgroundTransparency = 1
 	pillLabel.Size = UDim2.new(1, 0, 1, 0)
@@ -309,7 +309,7 @@ local function renderDetailPanel(itemId: string)
 		local descText = Instance.new("TextLabel")
 		descText.Text = "“ " .. item.description .. " ”"
 		descText.TextColor3 = THEME.textSilver
-		descText.TextSize = 14.5
+		descText.TextSize = 15
 		descText.Font = Enum.Font.Gotham
 		descText.BackgroundTransparency = 1
 		descText.TextXAlignment = Enum.TextXAlignment.Left
@@ -334,16 +334,16 @@ local function renderDetailPanel(itemId: string)
 	local statsHeader = Instance.new("TextLabel")
 	statsHeader.Text = "ITEM ATTRIBUTES"
 	statsHeader.TextColor3 = THEME.amberBright
-	statsHeader.TextSize = 14.5
+	statsHeader.TextSize = 16
 	statsHeader.Font = Enum.Font.GothamBold
 	statsHeader.BackgroundTransparency = 1
 	statsHeader.TextXAlignment = Enum.TextXAlignment.Left
-	statsHeader.Size = UDim2.new(1, 0, 0, 24)
+	statsHeader.Size = UDim2.new(1, 0, 0, 26)
 	statsHeader.Parent = statsSection
 
 	local statsList = Instance.new("UIListLayout")
 	statsList.SortOrder = Enum.SortOrder.LayoutOrder
-	statsList.Padding = UDim.new(0, 3)
+	statsList.Padding = UDim.new(0, 4)
 	statsList.Parent = statsSection
 
 	local statLabels = {
@@ -363,19 +363,19 @@ local function renderDetailPanel(itemId: string)
 	local statOrder = 1
 	for statKey, statVal in pairs(item.stats or {}) do
 		local statRow = Instance.new("Frame")
-		statRow.Size = UDim2.new(1, 0, 0, 30)
+		statRow.Size = UDim2.new(1, 0, 0, 34)
 		statRow.BackgroundColor3 = (statOrder % 2 == 0) and THEME.rowBg or THEME.rowBgAlt
 		statRow.BorderSizePixel = 0
 		statRow.LayoutOrder = statOrder + 1
-		makeCorner(statRow, 3)
+		makeCorner(statRow, 4)
 		makePadding(statRow, 0, 0, 8, 8)
 		statRow.Parent = statsSection
 
 		local nameLbl = Instance.new("TextLabel")
 		nameLbl.Text = statLabels[statKey] or statKey
 		nameLbl.TextColor3 = THEME.textSilver
-		nameLbl.TextSize = 14
-		nameLbl.Font = Enum.Font.Gotham
+		nameLbl.TextSize = 15.5
+		nameLbl.Font = Enum.Font.GothamMedium
 		nameLbl.BackgroundTransparency = 1
 		nameLbl.TextXAlignment = Enum.TextXAlignment.Left
 		nameLbl.Size = UDim2.new(0.65, 0, 1, 0)
@@ -399,7 +399,7 @@ local function renderDetailPanel(itemId: string)
 		local valLbl = Instance.new("TextLabel")
 		valLbl.Text = valStr
 		valLbl.TextColor3 = THEME.amberBright
-		valLbl.TextSize = 15
+		valLbl.TextSize = 17
 		valLbl.Font = Enum.Font.GothamBold
 		valLbl.BackgroundTransparency = 1
 		valLbl.TextXAlignment = Enum.TextXAlignment.Right
@@ -447,7 +447,7 @@ local function renderDetailPanel(itemId: string)
 			local matColor = RARITY_COLOR[matDef and matDef.rarity or "Common"] or THEME.textWhite
 
 			local matRow = Instance.new("Frame")
-			matRow.Size = UDim2.new(1, 0, 0, 46)
+			matRow.Size = UDim2.new(1, 0, 0, 48)
 			matRow.BackgroundColor3 = enough and Color3.fromRGB(18, 30, 20) or Color3.fromRGB(32, 18, 16)
 			matRow.BorderSizePixel = 0
 			matRow.LayoutOrder = matOrder + 1
@@ -457,37 +457,25 @@ local function renderDetailPanel(itemId: string)
 			matRow.Parent = matsSection
 
 			-- Procedural Material Icon
-			local iconTile = ItemIconHelper.CreateMaterialIcon(matRow, matId, UDim2.new(0, 32, 0, 32))
-			iconTile.Position = UDim2.new(0, 0, 0.5, -16)
+			local iconTile = ItemIconHelper.CreateMaterialIcon(matRow, matId, UDim2.new(0, 36, 0, 36))
+			iconTile.Position = UDim2.new(0, 0, 0.5, -18)
 
 			-- Material Name
 			local nameLbl = Instance.new("TextLabel")
 			nameLbl.Text = matName
 			nameLbl.TextColor3 = matColor
-			nameLbl.TextSize = 15
+			nameLbl.TextSize = 17
 			nameLbl.Font = Enum.Font.GothamBold
 			nameLbl.BackgroundTransparency = 1
 			nameLbl.TextXAlignment = Enum.TextXAlignment.Left
-			nameLbl.Position = UDim2.new(0, 40, 0, 2)
-			nameLbl.Size = UDim2.new(0.6, 0, 0, 22)
+			nameLbl.Position = UDim2.new(0, 46, 0, 0)
+			nameLbl.Size = UDim2.new(1, -150, 1, 0)
 			nameLbl.Parent = matRow
-
-			-- Fragment note
-			local hintLbl = Instance.new("TextLabel")
-			hintLbl.Text = (matId == "RockhideFragment") and "Obtained from Rockhide Boss Arena" or "Smelted / Refined Reagent"
-			hintLbl.TextColor3 = THEME.textDim
-			hintLbl.TextSize = 13
-			hintLbl.Font = Enum.Font.Gotham
-			hintLbl.BackgroundTransparency = 1
-			hintLbl.TextXAlignment = Enum.TextXAlignment.Left
-			hintLbl.Position = UDim2.new(0, 40, 0, 24)
-			hintLbl.Size = UDim2.new(0.6, 0, 0, 18)
-			hintLbl.Parent = matRow
 
 			-- Have / Need Pill (Big & clear)
 			local countPill = Instance.new("Frame")
-			countPill.Size = UDim2.new(0, 80, 0, 28)
-			countPill.Position = UDim2.new(1, -80, 0.5, -14)
+			countPill.Size = UDim2.new(0, 88, 0, 32)
+			countPill.Position = UDim2.new(1, -94, 0.5, -16)
 			countPill.BackgroundColor3 = enough and THEME.greenDark or THEME.redDark
 			countPill.BorderSizePixel = 0
 			makeCorner(countPill, 4)
@@ -497,7 +485,7 @@ local function renderDetailPanel(itemId: string)
 			local countText = Instance.new("TextLabel")
 			countText.Text = string.format("%d / %d", have, needed)
 			countText.TextColor3 = enough and THEME.green or THEME.red
-			countText.TextSize = 14
+			countText.TextSize = 16
 			countText.Font = Enum.Font.GothamBold
 			countText.BackgroundTransparency = 1
 			countText.Size = UDim2.new(1, 0, 1, 0)
@@ -635,25 +623,25 @@ local function renderPiecesList()
 		local nameLabel = Instance.new("TextLabel")
 		nameLabel.Text = item.displayName or item.id
 		nameLabel.TextColor3 = isSelected and THEME.amberBright or THEME.textWhite
-		nameLabel.TextSize = 15.5
+		nameLabel.TextSize = 17
 		nameLabel.Font = Enum.Font.GothamBold
 		nameLabel.BackgroundTransparency = 1
 		nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 		nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
-		nameLabel.Position = UDim2.new(0, 56, 0, 8)
-		nameLabel.Size = UDim2.new(1, -148, 0, 22)
+		nameLabel.Position = UDim2.new(0, 56, 0, 7)
+		nameLabel.Size = UDim2.new(1, -150, 0, 24)
 		nameLabel.Parent = card
 
 		-- Slot & Rarity subtitle
 		local subLabel = Instance.new("TextLabel")
 		subLabel.Text = string.format("%s · Tier %d %s", string.upper(item.slot), item.tier or 1, item.rarity or "Common")
 		subLabel.TextColor3 = rarityColor
-		subLabel.TextSize = 13.5
-		subLabel.Font = Enum.Font.Gotham
+		subLabel.TextSize = 15
+		subLabel.Font = Enum.Font.GothamBold
 		subLabel.BackgroundTransparency = 1
 		subLabel.TextXAlignment = Enum.TextXAlignment.Left
-		subLabel.Position = UDim2.new(0, 56, 0, 32)
-		subLabel.Size = UDim2.new(1, -148, 0, 18)
+		subLabel.Position = UDim2.new(0, 56, 0, 31)
+		subLabel.Size = UDim2.new(1, -150, 0, 20)
 		subLabel.Parent = card
 
 		-- State Pill (EQUIPPED / OWNED / READY / LOCKED)
@@ -663,8 +651,8 @@ local function renderPiecesList()
 		local pillColor = equipped and THEME.amberBright or (owned and THEME.green or (canForge and THEME.cyan or THEME.textDim))
 
 		local statePill = Instance.new("Frame")
-		statePill.Size = UDim2.new(0, 82, 0, 24)
-		statePill.Position = UDim2.new(1, -88, 0.5, -12)
+		statePill.Size = UDim2.new(0, 86, 0, 26)
+		statePill.Position = UDim2.new(1, -92, 0.5, -13)
 		statePill.BackgroundColor3 = pillBg
 		statePill.BorderSizePixel = 0
 		makeCorner(statePill, 4)
@@ -674,7 +662,7 @@ local function renderPiecesList()
 		local stateLabel = Instance.new("TextLabel")
 		stateLabel.Text = pillText
 		stateLabel.TextColor3 = pillColor
-		stateLabel.TextSize = 13
+		stateLabel.TextSize = 13.5
 		stateLabel.Font = Enum.Font.GothamBold
 		stateLabel.BackgroundTransparency = 1
 		stateLabel.Size = UDim2.new(1, 0, 1, 0)
@@ -777,49 +765,38 @@ local function buildUI()
 	headerLine.Parent = header
 
 	local headerTitle = Instance.new("TextLabel")
-	headerTitle.Text = "SOULFORGE FORGE  ·  ROCKHIDE CRAFTING"
+	headerTitle.Text = "⚔️ THE FORGE"
 	headerTitle.TextColor3 = THEME.amberBright
-	headerTitle.TextSize = 22
-	headerTitle.Font = Enum.Font.GothamBold
+	headerTitle.TextSize = 26
+	headerTitle.Font = Enum.Font.GothamBlack
 	headerTitle.BackgroundTransparency = 1
 	headerTitle.TextXAlignment = Enum.TextXAlignment.Left
-	headerTitle.Position = UDim2.new(0, 16, 0, 6)
-	headerTitle.Size = UDim2.new(0.55, 0, 0, 26)
+	headerTitle.Position = UDim2.new(0, 18, 0, 0)
+	headerTitle.Size = UDim2.new(0.55, 0, 1, 0)
 	headerTitle.Parent = header
-
-	local headerSubtitle = Instance.new("TextLabel")
-	headerSubtitle.Text = "Forge boss weapons and armor pieces from collected fragments"
-	headerSubtitle.TextColor3 = THEME.textSilver
-	headerSubtitle.TextSize = 14.5
-	headerSubtitle.Font = Enum.Font.GothamMedium
-	headerSubtitle.BackgroundTransparency = 1
-	headerSubtitle.TextXAlignment = Enum.TextXAlignment.Left
-	headerSubtitle.Position = UDim2.new(0, 16, 0, 32)
-	headerSubtitle.Size = UDim2.new(0.55, 0, 0, 20)
-	headerSubtitle.Parent = header
 
 	-- Gold display pill
 	local goldPill = Instance.new("Frame")
 	goldPill.Name = "GoldPill"
-	goldPill.Size = UDim2.new(0, 180, 0, 36)
-	goldPill.Position = UDim2.new(1, -232, 0.5, -18)
+	goldPill.Size = UDim2.new(0, 180, 0, 38)
+	goldPill.Position = UDim2.new(1, -240, 0.5, -19)
 	goldPill.BackgroundColor3 = THEME.panelBg
 	goldPill.BorderSizePixel = 0
-	makeCorner(goldPill, 5)
+	makeCorner(goldPill, 6)
 	makeStroke(goldPill, THEME.borderBright, 1)
 
-	local coinIcon = ItemIconHelper.CreateGoldCoinIcon(goldPill, UDim2.new(0, 22, 0, 22))
-	coinIcon.Position = UDim2.new(0, 8, 0.5, -11)
+	local coinIcon = ItemIconHelper.CreateGoldCoinIcon(goldPill, UDim2.new(0, 24, 0, 24))
+	coinIcon.Position = UDim2.new(0, 8, 0.5, -12)
 
 	local goldLabel = Instance.new("TextLabel")
 	goldLabel.Text = "9,999,999 GOLD"
 	goldLabel.TextColor3 = THEME.amberBright
-	goldLabel.TextSize = 14.5
+	goldLabel.TextSize = 16
 	goldLabel.Font = Enum.Font.GothamBold
 	goldLabel.BackgroundTransparency = 1
 	goldLabel.TextXAlignment = Enum.TextXAlignment.Left
-	goldLabel.Position = UDim2.new(0, 36, 0, 0)
-	goldLabel.Size = UDim2.new(1, -40, 1, 0)
+	goldLabel.Position = UDim2.new(0, 38, 0, 0)
+	goldLabel.Size = UDim2.new(1, -42, 1, 0)
 	goldLabel.Parent = goldPill
 	goldPill.Parent = header
 
@@ -827,15 +804,15 @@ local function buildUI()
 	local closeBtn = Instance.new("TextButton")
 	closeBtn.Name = "CloseBtn"
 	closeBtn.Text = "X"
-	closeBtn.TextColor3 = THEME.textSilver
-	closeBtn.TextSize = 20
+	closeBtn.TextColor3 = THEME.textWhite
+	closeBtn.TextSize = 22
 	closeBtn.Font = Enum.Font.GothamBold
-	closeBtn.Size = UDim2.new(0, 38, 0, 34)
-	closeBtn.Position = UDim2.new(1, -46, 0.5, -17)
-	closeBtn.BackgroundColor3 = THEME.panelBg
+	closeBtn.Size = UDim2.new(0, 40, 0, 40)
+	closeBtn.Position = UDim2.new(1, -48, 0.5, -20)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
 	closeBtn.BorderSizePixel = 0
-	makeCorner(closeBtn, 5)
-	makeStroke(closeBtn, THEME.borderDim, 1)
+	makeCorner(closeBtn, 6)
+	makeStroke(closeBtn, Color3.fromRGB(220, 70, 70), 1)
 	closeBtn.Parent = header
 	closeBtn.MouseButton1Click:Connect(function()
 		CraftingUIController.Close()
@@ -859,7 +836,7 @@ local function buildUI()
 	setBonusStatusText.Name = "StatusText"
 	setBonusStatusText.Text = "SET BONUS: Loading..."
 	setBonusStatusText.TextColor3 = THEME.textSilver
-	setBonusStatusText.TextSize = 13.5
+	setBonusStatusText.TextSize = 15.5
 	setBonusStatusText.Font = Enum.Font.GothamBold
 	setBonusStatusText.BackgroundTransparency = 1
 	setBonusStatusText.TextXAlignment = Enum.TextXAlignment.Left
@@ -917,7 +894,7 @@ local function buildUI()
 	rockhideTab.BackgroundColor3 = (selectedSetId == "Rockhide") and THEME.rowSelected or THEME.panelBg
 	rockhideTab.Text = "🛡️ WARLORD [T2]"
 	rockhideTab.Font = Enum.Font.GothamBold
-	rockhideTab.TextSize = 11.5
+	rockhideTab.TextSize = 13.5
 	rockhideTab.TextColor3 = (selectedSetId == "Rockhide") and THEME.amberBright or THEME.textDim
 	rockhideTab.BorderSizePixel = 0
 	makeCorner(rockhideTab, 4)
@@ -931,7 +908,7 @@ local function buildUI()
 	rockhideMageTab.BackgroundColor3 = (selectedSetId == "RockhideMage") and THEME.rowSelected or THEME.panelBg
 	rockhideMageTab.Text = "🔮 GEOMANCER [T2]"
 	rockhideMageTab.Font = Enum.Font.GothamBold
-	rockhideMageTab.TextSize = 11.5
+	rockhideMageTab.TextSize = 13.5
 	rockhideMageTab.TextColor3 = (selectedSetId == "RockhideMage") and THEME.amberBright or THEME.textDim
 	rockhideMageTab.BorderSizePixel = 0
 	makeCorner(rockhideMageTab, 4)
@@ -946,7 +923,7 @@ local function buildUI()
 	sunforgedTab.BackgroundColor3 = (selectedSetId == "Sunforged") and THEME.rowSelected or THEME.panelBg
 	sunforgedTab.Text = "☀️ SUNFORGED [T3]"
 	sunforgedTab.Font = Enum.Font.GothamBold
-	sunforgedTab.TextSize = 11.5
+	sunforgedTab.TextSize = 13.5
 	sunforgedTab.TextColor3 = (selectedSetId == "Sunforged") and THEME.amberBright or THEME.textDim
 	sunforgedTab.BorderSizePixel = 0
 	makeCorner(sunforgedTab, 4)
@@ -960,7 +937,7 @@ local function buildUI()
 	sunforgedMageTab.BackgroundColor3 = (selectedSetId == "SunforgedMage") and THEME.rowSelected or THEME.panelBg
 	sunforgedMageTab.Text = "✨ RADIANT [T3]"
 	sunforgedMageTab.Font = Enum.Font.GothamBold
-	sunforgedMageTab.TextSize = 11.5
+	sunforgedMageTab.TextSize = 13.5
 	sunforgedMageTab.TextColor3 = (selectedSetId == "SunforgedMage") and THEME.amberBright or THEME.textDim
 	sunforgedMageTab.BorderSizePixel = 0
 	makeCorner(sunforgedMageTab, 4)

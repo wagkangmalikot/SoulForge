@@ -246,8 +246,8 @@ function PartyUIController.Start()
 
 	local inviteModal = Instance.new("Frame")
 	inviteModal.Name = "InviteModal"
-	inviteModal.Size = UDim2.new(0, 340, 0, 164)
-	inviteModal.Position = UDim2.new(0.5, -170, 0.35, 0)
+	inviteModal.Size = UDim2.new(0, 380, 0, 180)
+	inviteModal.Position = UDim2.new(0.5, -190, 0.35, 0)
 	inviteModal.BackgroundColor3 = Color3.fromRGB(18, 22, 30)
 	inviteModal.BorderSizePixel = 0
 	inviteModal.Visible = false
@@ -271,14 +271,14 @@ function PartyUIController.Start()
 
 	local inviteText = Instance.new("TextLabel")
 	inviteText.Name = "InviteText"
-	inviteText.Size = UDim2.new(1, -24, 0, 68)
-	inviteText.Position = UDim2.new(0, 12, 0, 12)
+	inviteText.Size = UDim2.new(1, -28, 0, 76)
+	inviteText.Position = UDim2.new(0, 14, 0, 14)
 	inviteText.BackgroundTransparency = 1
 	inviteText.TextColor3 = Color3.fromRGB(245, 245, 250)
 	inviteText.TextStrokeColor3 = Color3.fromRGB(10, 12, 16)
 	inviteText.TextStrokeTransparency = 0.3
 	inviteText.TextWrapped = true
-	inviteText.TextSize = 16
+	inviteText.TextSize = 18
 	inviteText.Font = Enum.Font.GothamBold
 	inviteText.Text = ""
 	inviteText.ZIndex = 10
@@ -286,11 +286,11 @@ function PartyUIController.Start()
 
 	-- Accept button
 	local acceptBtn = Instance.new("TextButton")
-	acceptBtn.Size = UDim2.new(0, 140, 0, 46)
-	acceptBtn.Position = UDim2.new(0, 16, 1, -60)
+	acceptBtn.Size = UDim2.new(0, 160, 0, 50)
+	acceptBtn.Position = UDim2.new(0, 16, 1, -64)
 	acceptBtn.Text = "✓  Accept"
 	acceptBtn.Font = Enum.Font.GothamBold
-	acceptBtn.TextSize = 16
+	acceptBtn.TextSize = 17
 	acceptBtn.TextColor3 = Color3.new(1, 1, 1)
 	acceptBtn.BackgroundColor3 = Color3.fromRGB(40, 180, 95)
 	acceptBtn.BorderSizePixel = 0
@@ -313,11 +313,11 @@ function PartyUIController.Start()
 
 	-- Decline button
 	local declineBtn = Instance.new("TextButton")
-	declineBtn.Size = UDim2.new(0, 140, 0, 46)
-	declineBtn.Position = UDim2.new(1, -156, 1, -60)
+	declineBtn.Size = UDim2.new(0, 160, 0, 50)
+	declineBtn.Position = UDim2.new(1, -176, 1, -64)
 	declineBtn.Text = "✗  Decline"
 	declineBtn.Font = Enum.Font.GothamBold
-	declineBtn.TextSize = 16
+	declineBtn.TextSize = 17
 	declineBtn.TextColor3 = Color3.new(1, 1, 1)
 	declineBtn.BackgroundColor3 = Color3.fromRGB(205, 45, 45)
 	declineBtn.BorderSizePixel = 0

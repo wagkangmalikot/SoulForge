@@ -199,42 +199,42 @@ local function renderDetailView(itemId: string?)
 	detailIcon.Position = UDim2.new(0, 10, 0.5, -29)
 
 	local slotTag = Instance.new("TextLabel")
-	slotTag.Text = string.format("[ %s SLOT ]", string.upper(item.slot))
+	slotTag.Text = string.format("[ %s ]", string.upper(item.slot))
 	slotTag.TextColor3 = THEME.amberBright
 	slotTag.TextSize = 14
 	slotTag.Font = Enum.Font.GothamBold
 	slotTag.BackgroundTransparency = 1
 	slotTag.TextXAlignment = Enum.TextXAlignment.Left
-	slotTag.Position = UDim2.new(0, 76, 0, 7)
+	slotTag.Position = UDim2.new(0, 76, 0, 8)
 	slotTag.Size = UDim2.new(0.6, 0, 0, 18)
 	slotTag.Parent = hdr
 
 	local title = Instance.new("TextLabel")
 	title.Text = item.displayName or item.id
 	title.TextColor3 = THEME.textWhite
-	title.TextSize = 21
+	title.TextSize = 23
 	title.Font = Enum.Font.GothamBold
 	title.BackgroundTransparency = 1
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Position = UDim2.new(0, 76, 0, 27)
-	title.Size = UDim2.new(0.65, 0, 0, 24)
+	title.Size = UDim2.new(0.65, 0, 0, 26)
 	title.Parent = hdr
 
 	local sub = Instance.new("TextLabel")
 	sub.Text = string.format("Tier %d  ·  %s", item.tier or 1, string.upper(item.rarity or "Common"))
 	sub.TextColor3 = rarityColor
-	sub.TextSize = 14
-	sub.Font = Enum.Font.GothamSemibold
+	sub.TextSize = 15.5
+	sub.Font = Enum.Font.GothamBold
 	sub.BackgroundTransparency = 1
 	sub.TextXAlignment = Enum.TextXAlignment.Left
-	sub.Position = UDim2.new(0, 76, 0, 53)
-	sub.Size = UDim2.new(0.6, 0, 0, 18)
+	sub.Position = UDim2.new(0, 76, 0, 54)
+	sub.Size = UDim2.new(0.6, 0, 0, 20)
 	sub.Parent = hdr
 
 	-- Status Badge
 	local statusBadge = Instance.new("Frame")
-	statusBadge.Size = UDim2.new(0, 100, 0, 28)
-	statusBadge.Position = UDim2.new(1, -108, 0, 10)
+	statusBadge.Size = UDim2.new(0, 110, 0, 30)
+	statusBadge.Position = UDim2.new(1, -118, 0, 10)
 	statusBadge.BackgroundColor3 = equipped and THEME.amberDim or THEME.greenDark
 	statusBadge.BorderSizePixel = 0
 	makeCorner(statusBadge, 4)
@@ -244,7 +244,7 @@ local function renderDetailView(itemId: string?)
 	local badgeText = Instance.new("TextLabel")
 	badgeText.Text = equipped and "EQUIPPED" or "IN BAG"
 	badgeText.TextColor3 = equipped and THEME.amberBright or THEME.green
-	badgeText.TextSize = 13.5
+	badgeText.TextSize = 14.5
 	badgeText.Font = Enum.Font.GothamBold
 	badgeText.BackgroundTransparency = 1
 	badgeText.Size = UDim2.new(1, 0, 1, 0)
@@ -283,7 +283,7 @@ local function renderDetailView(itemId: string?)
 		local descText = Instance.new("TextLabel")
 		descText.Text = "“ " .. item.description .. " ”"
 		descText.TextColor3 = THEME.textSilver
-		descText.TextSize = 14.5
+		descText.TextSize = 15
 		descText.Font = Enum.Font.Gotham
 		descText.BackgroundTransparency = 1
 		descText.TextXAlignment = Enum.TextXAlignment.Left
@@ -308,16 +308,16 @@ local function renderDetailView(itemId: string?)
 	local statsTitle = Instance.new("TextLabel")
 	statsTitle.Text = "ITEM ATTRIBUTES"
 	statsTitle.TextColor3 = THEME.amberBright
-	statsTitle.TextSize = 14.5
+	statsTitle.TextSize = 16
 	statsTitle.Font = Enum.Font.GothamBold
 	statsTitle.BackgroundTransparency = 1
 	statsTitle.TextXAlignment = Enum.TextXAlignment.Left
-	statsTitle.Size = UDim2.new(1, 0, 0, 24)
+	statsTitle.Size = UDim2.new(1, 0, 0, 26)
 	statsTitle.Parent = statsCard
 
 	local statsList = Instance.new("UIListLayout")
 	statsList.SortOrder = Enum.SortOrder.LayoutOrder
-	statsList.Padding = UDim.new(0, 3)
+	statsList.Padding = UDim.new(0, 4)
 	statsList.Parent = statsCard
 
 	local statLabels = {
@@ -337,19 +337,19 @@ local function renderDetailView(itemId: string?)
 	local statIndex = 1
 	for statKey, statVal in pairs(item.stats or {}) do
 		local row = Instance.new("Frame")
-		row.Size = UDim2.new(1, 0, 0, 30)
+		row.Size = UDim2.new(1, 0, 0, 34)
 		row.BackgroundColor3 = (statIndex % 2 == 0) and THEME.rowBg or THEME.rowBgAlt
 		row.BorderSizePixel = 0
 		row.LayoutOrder = statIndex + 1
-		makeCorner(row, 3)
+		makeCorner(row, 4)
 		makePadding(row, 0, 0, 8, 8)
 		row.Parent = statsCard
 
 		local nameLbl = Instance.new("TextLabel")
 		nameLbl.Text = statLabels[statKey] or statKey
 		nameLbl.TextColor3 = THEME.textSilver
-		nameLbl.TextSize = 14
-		nameLbl.Font = Enum.Font.Gotham
+		nameLbl.TextSize = 15.5
+		nameLbl.Font = Enum.Font.GothamMedium
 		nameLbl.BackgroundTransparency = 1
 		nameLbl.TextXAlignment = Enum.TextXAlignment.Left
 		nameLbl.Size = UDim2.new(0.65, 0, 1, 0)
@@ -373,7 +373,7 @@ local function renderDetailView(itemId: string?)
 		local valLbl = Instance.new("TextLabel")
 		valLbl.Text = valStr
 		valLbl.TextColor3 = THEME.amberBright
-		valLbl.TextSize = 15
+		valLbl.TextSize = 17
 		valLbl.Font = Enum.Font.GothamBold
 		valLbl.BackgroundTransparency = 1
 		valLbl.TextXAlignment = Enum.TextXAlignment.Right
@@ -403,7 +403,7 @@ local function renderDetailView(itemId: string?)
 		else
 			equipActionButton.Active = true
 			equipActionButton.BackgroundColor3 = THEME.greenDark
-			equipActionLabel.Text = string.format("EQUIP TO %s", string.upper(item.slot))
+			equipActionLabel.Text = string.format("EQUIP %s", string.upper(item.slot))
 			equipActionLabel.TextColor3 = THEME.green
 		end
 	end
@@ -473,32 +473,32 @@ local function renderItemsList()
 			local nameLabel = Instance.new("TextLabel")
 			nameLabel.Text = item.displayName or item.id
 			nameLabel.TextColor3 = isSelected and THEME.amberBright or THEME.textWhite
-			nameLabel.TextSize = 15.5
+			nameLabel.TextSize = 17
 			nameLabel.Font = Enum.Font.GothamBold
 			nameLabel.BackgroundTransparency = 1
 			nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 			nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
-			nameLabel.Position = UDim2.new(0, 56, 0, 8)
-			nameLabel.Size = UDim2.new(1, -125, 0, 22)
+			nameLabel.Position = UDim2.new(0, 56, 0, 7)
+			nameLabel.Size = UDim2.new(1, -135, 0, 24)
 			nameLabel.Parent = card
 
 			-- Subtitle
 			local subLabel = Instance.new("TextLabel")
 			subLabel.Text = string.format("%s · Tier %d", string.upper(item.slot), item.tier or 1)
 			subLabel.TextColor3 = rarityColor
-			subLabel.TextSize = 13.5
-			subLabel.Font = Enum.Font.GothamMedium
+			subLabel.TextSize = 15
+			subLabel.Font = Enum.Font.GothamBold
 			subLabel.BackgroundTransparency = 1
 			subLabel.TextXAlignment = Enum.TextXAlignment.Left
-			subLabel.Position = UDim2.new(0, 56, 0, 32)
-			subLabel.Size = UDim2.new(1, -125, 0, 18)
+			subLabel.Position = UDim2.new(0, 56, 0, 31)
+			subLabel.Size = UDim2.new(1, -135, 0, 20)
 			subLabel.Parent = card
 
 			-- Badge
 			if equipped then
 				local badge = Instance.new("Frame")
-				badge.Size = UDim2.new(0, 72, 0, 22)
-				badge.Position = UDim2.new(1, -78, 0.5, -11)
+				badge.Size = UDim2.new(0, 76, 0, 24)
+				badge.Position = UDim2.new(1, -82, 0.5, -12)
 				badge.BackgroundColor3 = THEME.amberDim
 				badge.BorderSizePixel = 0
 				makeCorner(badge, 4)
@@ -507,7 +507,7 @@ local function renderItemsList()
 				local badgeTxt = Instance.new("TextLabel")
 				badgeTxt.Text = "EQUIPPED"
 				badgeTxt.TextColor3 = THEME.amberBright
-				badgeTxt.TextSize = 12.5
+				badgeTxt.TextSize = 13.5
 				badgeTxt.Font = Enum.Font.GothamBold
 				badgeTxt.BackgroundTransparency = 1
 				badgeTxt.Size = UDim2.new(1, 0, 1, 0)
@@ -539,36 +539,24 @@ local function renderItemsList()
 			makeCorner(card, 5)
 			makeStroke(card, THEME.borderDim, 1)
 
-			local iconTile = ItemIconHelper.CreateMaterialIcon(card, matId, UDim2.new(0, 40, 0, 40))
-			iconTile.Position = UDim2.new(0, 8, 0.5, -20)
+			local iconTile = ItemIconHelper.CreateMaterialIcon(card, matId, UDim2.new(0, 42, 0, 42))
+			iconTile.Position = UDim2.new(0, 8, 0.5, -21)
 
 			local nameLabel = Instance.new("TextLabel")
 			nameLabel.Text = matDef.displayName or matId
 			nameLabel.TextColor3 = matColor
-			nameLabel.TextSize = 15.5
+			nameLabel.TextSize = 17
 			nameLabel.Font = Enum.Font.GothamBold
 			nameLabel.BackgroundTransparency = 1
 			nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-			nameLabel.Position = UDim2.new(0, 54, 0, 7)
-			nameLabel.Size = UDim2.new(1, -135, 0, 22)
+			nameLabel.Position = UDim2.new(0, 56, 0, 0)
+			nameLabel.Size = UDim2.new(1, -150, 1, 0)
 			nameLabel.Parent = card
-
-			local descLabel = Instance.new("TextLabel")
-			descLabel.Text = matDef.description or ""
-			descLabel.TextColor3 = THEME.textDim
-			descLabel.TextSize = 13.5
-			descLabel.Font = Enum.Font.Gotham
-			descLabel.BackgroundTransparency = 1
-			descLabel.TextXAlignment = Enum.TextXAlignment.Left
-			descLabel.TextTruncate = Enum.TextTruncate.AtEnd
-			descLabel.Position = UDim2.new(0, 54, 0, 30)
-			descLabel.Size = UDim2.new(1, -135, 0, 20)
-			descLabel.Parent = card
 
 			-- Count pill
 			local countPill = Instance.new("Frame")
-			countPill.Size = UDim2.new(0, 76, 0, 26)
-			countPill.Position = UDim2.new(1, -82, 0.5, -13)
+			countPill.Size = UDim2.new(0, 84, 0, 30)
+			countPill.Position = UDim2.new(1, -90, 0.5, -15)
 			countPill.BackgroundColor3 = THEME.panelInner
 			countPill.BorderSizePixel = 0
 			makeCorner(countPill, 4)
@@ -577,7 +565,7 @@ local function renderItemsList()
 			local countText = Instance.new("TextLabel")
 			countText.Text = string.format("x %s", tostring(count))
 			countText.TextColor3 = THEME.amberBright
-			countText.TextSize = 14
+			countText.TextSize = 16
 			countText.Font = Enum.Font.GothamBold
 			countText.BackgroundTransparency = 1
 			countText.Size = UDim2.new(1, 0, 1, 0)
@@ -622,24 +610,24 @@ local function renderLoadoutSlots()
 		local slotTitle = Instance.new("TextLabel")
 		slotTitle.Text = string.upper(slotName)
 		slotTitle.TextColor3 = THEME.amberBright
-		slotTitle.TextSize = 13.5
+		slotTitle.TextSize = 14
 		slotTitle.Font = Enum.Font.GothamBold
 		slotTitle.BackgroundTransparency = 1
 		slotTitle.TextXAlignment = Enum.TextXAlignment.Left
-		slotTitle.Position = UDim2.new(0, 54, 0, 6)
-		slotTitle.Size = UDim2.new(1, -95, 0, 16)
+		slotTitle.Position = UDim2.new(0, 56, 0, 6)
+		slotTitle.Size = UDim2.new(1, -95, 0, 18)
 		slotTitle.Parent = card
 
 		local itemNameLabel = Instance.new("TextLabel")
 		itemNameLabel.Text = item and (item.displayName or item.id) or "(Empty)"
 		itemNameLabel.TextColor3 = item and THEME.textWhite or THEME.textDim
-		itemNameLabel.TextSize = 14.5
+		itemNameLabel.TextSize = 16
 		itemNameLabel.Font = Enum.Font.GothamBold
 		itemNameLabel.BackgroundTransparency = 1
 		itemNameLabel.TextXAlignment = Enum.TextXAlignment.Left
 		itemNameLabel.TextTruncate = Enum.TextTruncate.AtEnd
-		itemNameLabel.Position = UDim2.new(0, 54, 0, 26)
-		itemNameLabel.Size = UDim2.new(1, -62, 0, 22)
+		itemNameLabel.Position = UDim2.new(0, 56, 0, 26)
+		itemNameLabel.Size = UDim2.new(1, -62, 0, 24)
 		itemNameLabel.Parent = card
 
 		if item then
@@ -803,49 +791,38 @@ local function buildUI()
 	headerLine.Parent = header
 
 	local headerTitle = Instance.new("TextLabel")
-	headerTitle.Text = "ADVENTURER'S INVENTORY & GEAR"
+	headerTitle.Text = "🎒 INVENTORY"
 	headerTitle.TextColor3 = THEME.amberBright
-	headerTitle.TextSize = 22
-	headerTitle.Font = Enum.Font.GothamBold
+	headerTitle.TextSize = 26
+	headerTitle.Font = Enum.Font.GothamBlack
 	headerTitle.BackgroundTransparency = 1
 	headerTitle.TextXAlignment = Enum.TextXAlignment.Left
-	headerTitle.Position = UDim2.new(0, 16, 0, 6)
-	headerTitle.Size = UDim2.new(0.55, 0, 0, 26)
+	headerTitle.Position = UDim2.new(0, 18, 0, 0)
+	headerTitle.Size = UDim2.new(0.55, 0, 1, 0)
 	headerTitle.Parent = header
-
-	local headerSubtitle = Instance.new("TextLabel")
-	headerSubtitle.Text = "View owned weapons, armor loadouts, and crafting reagents bag"
-	headerSubtitle.TextColor3 = THEME.textSilver
-	headerSubtitle.TextSize = 14.5
-	headerSubtitle.Font = Enum.Font.GothamMedium
-	headerSubtitle.BackgroundTransparency = 1
-	headerSubtitle.TextXAlignment = Enum.TextXAlignment.Left
-	headerSubtitle.Position = UDim2.new(0, 16, 0, 32)
-	headerSubtitle.Size = UDim2.new(0.55, 0, 0, 20)
-	headerSubtitle.Parent = header
 
 	-- Gold Pill
 	local goldPill = Instance.new("Frame")
 	goldPill.Name = "GoldPill"
-	goldPill.Size = UDim2.new(0, 180, 0, 36)
-	goldPill.Position = UDim2.new(1, -232, 0.5, -18)
+	goldPill.Size = UDim2.new(0, 180, 0, 38)
+	goldPill.Position = UDim2.new(1, -240, 0.5, -19)
 	goldPill.BackgroundColor3 = THEME.panelBg
 	goldPill.BorderSizePixel = 0
-	makeCorner(goldPill, 5)
+	makeCorner(goldPill, 6)
 	makeStroke(goldPill, THEME.borderBright, 1)
 
-	local coinIcon = ItemIconHelper.CreateGoldCoinIcon(goldPill, UDim2.new(0, 22, 0, 22))
-	coinIcon.Position = UDim2.new(0, 8, 0.5, -11)
+	local coinIcon = ItemIconHelper.CreateGoldCoinIcon(goldPill, UDim2.new(0, 24, 0, 24))
+	coinIcon.Position = UDim2.new(0, 8, 0.5, -12)
 
 	local goldLabel = Instance.new("TextLabel")
-	goldLabel.Text = "9,999,999 GOLD"
+	goldLabel.Text = "GOLD"
 	goldLabel.TextColor3 = THEME.amberBright
-	goldLabel.TextSize = 14.5
+	goldLabel.TextSize = 16
 	goldLabel.Font = Enum.Font.GothamBold
 	goldLabel.BackgroundTransparency = 1
 	goldLabel.TextXAlignment = Enum.TextXAlignment.Left
-	goldLabel.Position = UDim2.new(0, 36, 0, 0)
-	goldLabel.Size = UDim2.new(1, -40, 1, 0)
+	goldLabel.Position = UDim2.new(0, 38, 0, 0)
+	goldLabel.Size = UDim2.new(1, -42, 1, 0)
 	goldLabel.Parent = goldPill
 	goldPill.Parent = header
 
@@ -853,15 +830,15 @@ local function buildUI()
 	local closeBtn = Instance.new("TextButton")
 	closeBtn.Name = "CloseBtn"
 	closeBtn.Text = "X"
-	closeBtn.TextColor3 = THEME.textSilver
-	closeBtn.TextSize = 20
+	closeBtn.TextColor3 = THEME.textWhite
+	closeBtn.TextSize = 22
 	closeBtn.Font = Enum.Font.GothamBold
-	closeBtn.Size = UDim2.new(0, 38, 0, 34)
-	closeBtn.Position = UDim2.new(1, -46, 0.5, -17)
-	closeBtn.BackgroundColor3 = THEME.panelBg
+	closeBtn.Size = UDim2.new(0, 40, 0, 40)
+	closeBtn.Position = UDim2.new(1, -48, 0.5, -20)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
 	closeBtn.BorderSizePixel = 0
-	makeCorner(closeBtn, 5)
-	makeStroke(closeBtn, THEME.borderDim, 1)
+	makeCorner(closeBtn, 6)
+	makeStroke(closeBtn, Color3.fromRGB(220, 70, 70), 1)
 	closeBtn.Parent = header
 	closeBtn.MouseButton1Click:Connect(function()
 		InventoryUIController.Close()
@@ -895,9 +872,9 @@ local function buildUI()
 	makeCorner(leftHeader, 6)
 
 	local leftTitle = Instance.new("TextLabel")
-	leftTitle.Text = "  EQUIPPED LOADOUT"
+	leftTitle.Text = "  LOADOUT"
 	leftTitle.TextColor3 = THEME.amberBright
-	leftTitle.TextSize = 14.5
+	leftTitle.TextSize = 16.5
 	leftTitle.Font = Enum.Font.GothamBold
 	leftTitle.BackgroundTransparency = 1
 	leftTitle.TextXAlignment = Enum.TextXAlignment.Left
@@ -925,9 +902,9 @@ local function buildUI()
 
 	setBonusText = Instance.new("TextLabel")
 	setBonusText.Name = "BonusText"
-	setBonusText.Text = "Set Bonus: (0/5)"
+	setBonusText.Text = "SET BONUS: 0/5"
 	setBonusText.TextColor3 = THEME.textSilver
-	setBonusText.TextSize = 12.5
+	setBonusText.TextSize = 15
 	setBonusText.Font = Enum.Font.GothamBold
 	setBonusText.BackgroundTransparency = 1
 	setBonusText.TextXAlignment = Enum.TextXAlignment.Left
@@ -978,7 +955,7 @@ local function buildUI()
 	tabEquipBtn.Text = "GEAR"
 	tabEquipBtn.TextColor3 = (activeTab == "Equipment") and THEME.amberBright or THEME.textSilver
 	tabEquipBtn.Font = Enum.Font.GothamBold
-	tabEquipBtn.TextSize = 15
+	tabEquipBtn.TextSize = 16.5
 	makeCorner(tabEquipBtn, 4)
 	tabEquipBtn.Parent = tabsHeader
 
@@ -991,7 +968,7 @@ local function buildUI()
 	tabMatsBtn.Text = "POUCH"
 	tabMatsBtn.TextColor3 = (activeTab == "Materials") and THEME.amberBright or THEME.textSilver
 	tabMatsBtn.Font = Enum.Font.GothamBold
-	tabMatsBtn.TextSize = 15
+	tabMatsBtn.TextSize = 16.5
 	makeCorner(tabMatsBtn, 4)
 	tabMatsBtn.Parent = tabsHeader
 
@@ -1046,15 +1023,15 @@ local function buildUI()
 
 	detailViewContainer = Instance.new("Frame")
 	detailViewContainer.Name = "DetailContainer"
-	detailViewContainer.Size = UDim2.new(1, 0, 1, -56)
+	detailViewContainer.Size = UDim2.new(1, 0, 1, -58)
 	detailViewContainer.BackgroundTransparency = 1
 	detailViewContainer.Parent = rightCol
 
 	-- Equip CTA button at bottom of Right Column
 	equipActionButton = Instance.new("TextButton")
 	equipActionButton.Name = "EquipButton"
-	equipActionButton.Size = UDim2.new(1, 0, 0, 46)
-	equipActionButton.Position = UDim2.new(0, 0, 1, -48)
+	equipActionButton.Size = UDim2.new(1, 0, 0, 50)
+	equipActionButton.Position = UDim2.new(0, 0, 1, -52)
 	equipActionButton.BackgroundColor3 = THEME.greenDark
 	equipActionButton.BorderSizePixel = 0
 	equipActionButton.Text = ""
@@ -1065,7 +1042,7 @@ local function buildUI()
 	equipActionLabel = Instance.new("TextLabel")
 	equipActionLabel.Text = "EQUIP PIECE"
 	equipActionLabel.TextColor3 = THEME.green
-	equipActionLabel.TextSize = 16.5
+	equipActionLabel.TextSize = 18
 	equipActionLabel.Font = Enum.Font.GothamBold
 	equipActionLabel.BackgroundTransparency = 1
 	equipActionLabel.Size = UDim2.new(1, 0, 1, 0)
