@@ -285,6 +285,31 @@ function LevelUpService.Start()
 						char.CraftingMaterials
 					)
 				end
+			elseif cmd == "/boss" or cmd == "/solarius" or cmd == "/bossfight" or cmd == "/opengate" then
+				local DungeonSessionService = require(script.Parent.DungeonSessionService)
+				if DungeonSessionService.OpenBossGateForTesting then
+					DungeonSessionService.OpenBossGateForTesting()
+				end
+				if player.Character then
+					local targetCF = CFrame.new(0, 52, -45)
+					player.Character:PivotTo(targetCF)
+					local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+					if hrp then
+						hrp.AssemblyLinearVelocity = Vector3.zero
+						hrp.AssemblyAngularVelocity = Vector3.zero
+					end
+					Net.Get("TeleportClient"):FireClient(player, targetCF)
+				end
+			elseif cmd == "/clearmobs" or cmd == "/killmobs" or cmd == "/slayall" then
+				local CombatService = require(script.Parent.CombatService)
+				for _, desc in workspace:GetChildren() do
+					if desc:IsA("Model") and string.find(desc.Name, "TrashMob") then
+						local enemyHandle = CombatService.GetEnemy(desc.Name)
+						if enemyHandle and enemyHandle.onDamaged then
+							enemyHandle.onDamaged(999999, player)
+						end
+					end
+				end
 			end
 		end)
 	end

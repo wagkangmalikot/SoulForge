@@ -432,6 +432,11 @@ function DungeonSessionService.Start(dungeonId: string, partyUserIds: {number}?)
 		end)
 	end
 
+	DungeonSessionService.OpenBossGateForTesting = function()
+		isGateUnlocked = true
+		handleOpenGate()
+	end
+
 	-- Build the grand MMO dungeon environment (antechamber, labyrinth, boss colosseum)
 	mapService.BuildDungeon()
 	mapService.UpdateGateStatus(mobsRemaining, totalMobs)
