@@ -12,6 +12,7 @@ local SunforgedCitadelMapService = require(script.Parent.SunforgedCitadelMapServ
 local PlayerDataService = require(script.Parent.PlayerDataService)
 local RespawnService = require(script.Parent.RespawnService)
 local WeaponService = require(script.Parent.WeaponService)
+local SkillTreeService = require(script.Parent.SkillTreeService)
 
 local DungeonSessionService = {}
 local currentDungeonId = "Rockhide"
@@ -332,6 +333,11 @@ local function hookPlayerDeath(player: Player, character: Model)
 	end)
 
 	WeaponService.EquipWeapons(character)
+	SkillTreeService.SyncSkills(player)
+	if profile and profile.Data and profile.Data.Character then
+		local char = profile.Data.Character
+		Net.Get("CharacterDataChanged"):FireClient(player, char.Level, char.UnspentEXP, char.ClassId)
+	end
 end
 
 function DungeonSessionService.Start(dungeonId: string, partyUserIds: {number}?)
@@ -553,6 +559,18 @@ function DungeonSessionService.Start(dungeonId: string, partyUserIds: {number}?)
 		spawnAndHook(player)
 		syncObjective(player)
 	end
+
+	-- Re-sync objectives on brief delays to ensure asynchronous client controllers receive it
+	task.delay(1.0, function()
+		if not ended then
+			syncObjective()
+		end
+	end)
+	task.delay(2.5, function()
+		if not ended then
+			syncObjective()
+		end
+	end)
 
 	-- Wipe detection:
 	-- 1. Wait a 10s grace period on dungeon start so players connecting/loading character models don't trigger a false wipe.
