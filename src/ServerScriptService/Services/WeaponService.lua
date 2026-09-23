@@ -2730,8 +2730,8 @@ function WeaponService.EquipWeapons(character: Model, weaponSetId: string?, shie
 	weaponGrip.Parent = rightHand
 	weaponModel.Parent = character
 
-	-- 2. Equip Shield (Tank only; Mages do not carry shields)
-	if not isMage and targetWeapon ~= "ApprenticeStaff" and targetWeapon ~= "RockhideStaff" then
+	-- 2. Equip Shield (Tank only; Mages and Warriors do not carry shields)
+	if not isMage and classId ~= "Warrior" and targetWeapon ~= "ApprenticeStaff" and targetWeapon ~= "RockhideStaff" then
 		local shieldModel, shieldHandle = createShieldModel(targetArms, targetWeapon)
 		if shieldModel and shieldHandle then
 			local shieldGrip = Instance.new("Motor6D")
@@ -2776,10 +2776,19 @@ function WeaponService.Start()
 		end
 
 		-- Validate class eligibility: Mages cannot equip Tank gear, Tanks cannot equip Mage gear
+		-- (itemClass may be a single classId string, or a table of classIds for dual-class gear)
 		local itemClass = EquipmentData.GetItemClass(itemId)
 		local playerClass = charData.ClassId or "Mage"
-		if itemClass and itemClass ~= playerClass then
-			warn(string.format("WeaponService: %s (%s) cannot equip %s (requires %s)", player.Name, tostring(playerClass), itemId, itemClass))
+		local classAllowed = true
+		if itemClass then
+			if type(itemClass) == "table" then
+				classAllowed = table.find(itemClass, playerClass) ~= nil
+			else
+				classAllowed = itemClass == playerClass
+			end
+		end
+		if not classAllowed then
+			warn(string.format("WeaponService: %s (%s) cannot equip %s (requires %s)", player.Name, tostring(playerClass), itemId, tostring(itemClass)))
 			return
 		end
 
