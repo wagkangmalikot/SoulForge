@@ -42,8 +42,9 @@ local isSelectingSlotForSkill: string? = nil
 local currentClassId: string = "Tank"
 
 local BRANCH_ORDER_BY_CLASS = {
-	Tank = {"Bulwark", "Juggernaut"},
+	Tank = {"Bulwark", "Sentinel"},
 	Mage = {"Pyromancy", "Frostweave", "ArcaneMastery"},
+	Warrior = {"Juggernaut", "Bloodlust"},
 }
 
 local activeMobileBranch: string = BRANCH_ORDER_BY_CLASS.Tank[1]
@@ -52,6 +53,7 @@ local activeMobileBranch: string = BRANCH_ORDER_BY_CLASS.Tank[1]
 local CLASS_TITLE_INFO = {
 	Tank = { icon = "🛡️", name = "TANK" },
 	Mage = { icon = "🔮", name = "MAGE" },
+	Warrior = { icon = "⚔️", name = "WARRIOR" },
 }
 
 local function getClassTitleText(mobile: boolean): string
@@ -122,6 +124,30 @@ local BRANCH_COLORS = {
 		name = "ARCANE MASTERY",
 		displayName = "ARCANE MASTERY SPECIALIZATION",
 		tagline = "Barriers, burst damage & arcane control",
+	},
+	Sentinel = {
+		primary = Color3.fromRGB(120, 135, 150),
+		secondary = Color3.fromRGB(65, 75, 88),
+		bg = Color3.fromRGB(20, 23, 27),
+		cardBg = Color3.fromRGB(28, 32, 38),
+		border = Color3.fromRGB(100, 112, 128),
+		accent = Color3.fromRGB(185, 200, 215),
+		icon = "🔰",
+		name = "SENTINEL",
+		displayName = "SENTINEL SPECIALIZATION",
+		tagline = "Retaliation, counterattacks & guardian's wrath",
+	},
+	Bloodlust = {
+		primary = Color3.fromRGB(110, 20, 35),
+		secondary = Color3.fromRGB(60, 10, 20),
+		bg = Color3.fromRGB(26, 14, 16),
+		cardBg = Color3.fromRGB(36, 18, 20),
+		border = Color3.fromRGB(95, 25, 38),
+		accent = Color3.fromRGB(190, 55, 70),
+		icon = "🩸",
+		name = "BLOODLUST",
+		displayName = "BLOODLUST SPECIALIZATION",
+		tagline = "Sustained lifesteal, reckless offense & frenzy",
 	},
 }
 
