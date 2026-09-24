@@ -19,6 +19,7 @@ local WeaponService = require(ServerScriptService.Services.WeaponService)
 local HubMapService = require(ServerScriptService.Services.HubMapService)
 local SkillTreeService = require(ServerScriptService.Services.SkillTreeService)
 local CraftingService = require(ServerScriptService.Services.CraftingService)
+local ShopService = require(ServerScriptService.Services.ShopService)
 
 PlayerDataService.Start()
 CombatService.Start()
@@ -100,6 +101,7 @@ local function determineServerTypeAndStart(player: Player)
 		CharacterCreationService.Start()
 		LevelUpService.Start()
 		CraftingService.Start()
+		ShopService.Start()
 	end
 end
 
