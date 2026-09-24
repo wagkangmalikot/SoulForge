@@ -68,16 +68,16 @@ local COLORS = {
 }
 
 -- Per-class content for the character-creation picker cards. Keys must match
--- ReplicatedStorage.Shared.Data.Classes's own keys ("Tank", "Mage").
+-- ReplicatedStorage.Shared.Data.Classes's own keys ("Tank", "Mage", "Warrior").
 local CLASS_CARD_INFO = {
 	Tank = {
 		icon = "🛡️",
 		title = "TANK ARCHETYPE",
-		description = "Steadfast frontline juggernaut armed with sword and heavy shield. Masters crowd control and holds boss aggro with Taunt.",
+		description = "Steadfast frontline defender armed with sword and heavy shield. Locks down boss aggro with Taunt and shrugs off punishment while specializing into unbreakable Bulwark mitigation or Sentinel-style shield retaliation.",
 		traits = {
 			{ "⚔️", "Attack: Heavy Sword Cleave" },
 			{ "🛡️", "Starter Skill: Taunt" },
-			{ "🌳", "Trees: Juggernaut & Bulwark" },
+			{ "🌳", "Trees: Bulwark & Sentinel" },
 		},
 	},
 	Mage = {
@@ -88,6 +88,16 @@ local CLASS_CARD_INFO = {
 			{ "🔮", "Attack: Arcane Bolt (Ranged, Slows)" },
 			{ "💙", "Base Health: 90 (Moderate)" },
 			{ "🌳", "Trees: Pyromancy, Frostweave & Arcane Mastery" },
+		},
+	},
+	Warrior = {
+		icon = "⚔️",
+		title = "WARRIOR ARCHETYPE",
+		description = "Relentless melee striker who closes the gap and tears enemies apart with heavy weapon swings and open wounds. Specialize into escalating Juggernaut strikes and AoE control, or pure bleed-and-burst Bloodlust damage.",
+		traits = {
+			{ "🪓", "Attack: Heavy Weapon Cleave" },
+			{ "💙", "Base Health: 120 (Balanced)" },
+			{ "🌳", "Trees: Juggernaut & Bloodlust" },
 		},
 	},
 }
@@ -754,6 +764,43 @@ function CharacterCreationController.Start()
 	local chip2Title, chip2Sub = createPerkChip("🔮", "Arcane Bolt", "Ranged Focus")
 	local chip3Title, chip3Sub = createPerkChip("🔥", "Spellweaver", "Fire & Frost")
 
+	-- Per-class content for the "hero choice" (continue-as-existing-hero) summary
+	-- card. Keys must match ReplicatedStorage.Shared.Data.Classes's own keys
+	-- ("Tank", "Mage", "Warrior"). Any unrecognized/missing classId falls back
+	-- to Tank, matching the old isMage-ternary's implicit fallback direction.
+	local HERO_CHOICE_INFO = {
+		Tank = {
+			badgeText = "🛡️ TANK",
+			badgeTextColor = Color3.fromRGB(150, 210, 255),
+			badgeStrokeColor = Color3.fromRGB(75, 150, 255),
+			badgeBackgroundColor = Color3.fromRGB(24, 45, 80),
+			chip1 = { icon = "❤️", title = "150 HP", subtitle = "Base Health" },
+			chip2 = { icon = "🛡️", title = "Taunt", subtitle = "Threat Lock" },
+			chip3 = { icon = "⚔️", title = "Blade & Shield", subtitle = "Melee Defender" },
+			deleteName = "Tank",
+		},
+		Mage = {
+			badgeText = "🔮 MAGE",
+			badgeTextColor = Color3.fromRGB(240, 210, 255),
+			badgeStrokeColor = Color3.fromRGB(190, 120, 255),
+			badgeBackgroundColor = Color3.fromRGB(60, 30, 90),
+			chip1 = { icon = "❤️", title = "80 HP", subtitle = "Base Health" },
+			chip2 = { icon = "🔮", title = "Arcane Bolt", subtitle = "Ranged Focus" },
+			chip3 = { icon = "🔥", title = "Spellweaver", subtitle = "Fire & Frost" },
+			deleteName = "Mage",
+		},
+		Warrior = {
+			badgeText = "⚔️ WARRIOR",
+			badgeTextColor = Color3.fromRGB(255, 175, 150),
+			badgeStrokeColor = COLORS.crimsonPrimary,
+			badgeBackgroundColor = Color3.fromRGB(90, 28, 34),
+			chip1 = { icon = "❤️", title = "120 HP", subtitle = "Base Health" },
+			chip2 = { icon = "⚔️", title = "Cleave", subtitle = "Melee Opener" },
+			chip3 = { icon = "🩸", title = "Berserker", subtitle = "Juggernaut & Bloodlust" },
+			deleteName = "Warrior",
+		},
+	}
+
 	local function updateHeroChoiceCard(classId: string, level: number)
 		local levelText = ("⭐ LEVEL %d"):format(level)
 		local lvlChild = levelBadge:FindFirstChildOfClass("TextLabel")
@@ -761,36 +808,27 @@ function CharacterCreationController.Start()
 			lvlChild.Text = levelText
 		end
 
-		local isMage = (classId == "Mage")
+		local info = HERO_CHOICE_INFO[classId] or HERO_CHOICE_INFO.Tank
 		local badgeLabel = classBadge:FindFirstChildOfClass("TextLabel")
 		local badgeStroke = classBadge:FindFirstChildOfClass("UIStroke")
 		if badgeLabel then
-			badgeLabel.Text = isMage and "🔮 MAGE" or "🛡️ TANK"
-			badgeLabel.TextColor3 = isMage and Color3.fromRGB(240, 210, 255) or Color3.fromRGB(150, 210, 255)
+			badgeLabel.Text = info.badgeText
+			badgeLabel.TextColor3 = info.badgeTextColor
 		end
 		if badgeStroke then
-			badgeStroke.Color = isMage and Color3.fromRGB(190, 120, 255) or Color3.fromRGB(75, 150, 255)
+			badgeStroke.Color = info.badgeStrokeColor
 		end
-		classBadge.BackgroundColor3 = isMage and Color3.fromRGB(60, 30, 90) or Color3.fromRGB(24, 45, 80)
+		classBadge.BackgroundColor3 = info.badgeBackgroundColor
 
-		if isMage then
-			chip1Title.Text = "❤️ 80 HP"
-			chip1Sub.Text = "Base Health"
-			chip2Title.Text = "🔮 Arcane Bolt"
-			chip2Sub.Text = "Ranged Focus"
-			chip3Title.Text = "🔥 Spellweaver"
-			chip3Sub.Text = "Fire & Frost"
-		else
-			chip1Title.Text = "❤️ 150 HP"
-			chip1Sub.Text = "Base Health"
-			chip2Title.Text = "🛡️ Taunt"
-			chip2Sub.Text = "Threat Lock"
-			chip3Title.Text = "⚔️ Blade & Shield"
-			chip3Sub.Text = "Melee Defender"
-		end
+		chip1Title.Text = info.chip1.icon .. " " .. info.chip1.title
+		chip1Sub.Text = info.chip1.subtitle
+		chip2Title.Text = info.chip2.icon .. " " .. info.chip2.title
+		chip2Sub.Text = info.chip2.subtitle
+		chip3Title.Text = info.chip3.icon .. " " .. info.chip3.title
+		chip3Sub.Text = info.chip3.subtitle
 
 		if warnDesc then
-			warnDesc.Text = ("This will permanently delete your Level %d %s and reset all skill points, unlocked abilities, and level progression."):format(level, isMage and "Mage" or "Tank")
+			warnDesc.Text = ("This will permanently delete your Level %d %s and reset all skill points, unlocked abilities, and level progression."):format(level, info.deleteName)
 		end
 	end
 
@@ -901,15 +939,16 @@ function CharacterCreationController.Start()
 	createTitle.TextSize = 24
 	createTitle.Parent = createCard
 
-	-- Class Picker: two selectable cards
+	-- Class Picker: three selectable cards
 	local classCardsRow = Instance.new("Frame")
 	classCardsRow.Size = UDim2.new(1, 0, 0, 220)
 	classCardsRow.Position = UDim2.new(0, 0, 0, 56)
 	classCardsRow.BackgroundTransparency = 1
 	classCardsRow.Parent = createCard
 
-	local tankCard, tankCardStroke, tankCardHitbox = createClassCard(classCardsRow, "Tank", 0, 0.485)
-	local mageCard, mageCardStroke, mageCardHitbox = createClassCard(classCardsRow, "Mage", 0.515, 0.485)
+	local tankCard, tankCardStroke, tankCardHitbox = createClassCard(classCardsRow, "Tank", 0, 0.315)
+	local mageCard, mageCardStroke, mageCardHitbox = createClassCard(classCardsRow, "Mage", 0.3425, 0.315)
+	local warriorCard, warriorCardStroke, warriorCardHitbox = createClassCard(classCardsRow, "Warrior", 0.685, 0.315)
 
 	local selectedClassId = "Mage"
 
@@ -918,6 +957,8 @@ function CharacterCreationController.Start()
 		tankCardStroke.Thickness = (selectedClassId == "Tank") and 2.4 or 1.6
 		mageCardStroke.Color = (selectedClassId == "Mage") and COLORS.goldPrimary or COLORS.slateBorder
 		mageCardStroke.Thickness = (selectedClassId == "Mage") and 2.4 or 1.6
+		warriorCardStroke.Color = (selectedClassId == "Warrior") and COLORS.goldPrimary or COLORS.slateBorder
+		warriorCardStroke.Thickness = (selectedClassId == "Warrior") and 2.4 or 1.6
 	end
 	refreshClassCardSelection()
 
@@ -927,6 +968,10 @@ function CharacterCreationController.Start()
 	end)
 	mageCardHitbox.Activated:Connect(function()
 		selectedClassId = "Mage"
+		refreshClassCardSelection()
+	end)
+	warriorCardHitbox.Activated:Connect(function()
+		selectedClassId = "Warrior"
 		refreshClassCardSelection()
 	end)
 
