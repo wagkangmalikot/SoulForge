@@ -804,23 +804,28 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 	-- ── SECTION 2C: East Transept & Dead End Alcove B (Z = -900 to -780) ───────
 	-- Exit from Sunken Crypts at X[-26, -6], Z = -900 turns East along Z[-900, -860]
 	makeWallX(dungeon, "Crypt_South_W", -38, -26, -900, 3)
-	makeWallX(dungeon, "Crypt_South_E", -6, 35, -900, 3)
+	makeWallX(dungeon, "Crypt_South_E", -6, 25, -900, 3)
 
-	-- Corridor proceeds East to X = 35, then turns South along X[35, 50], Z[-860, -820]
-	makeWallX(dungeon, "Transept_South_Wall", -15, 35, -860, 3)
-	makeWallZ(dungeon, "Transept_West_Wall", 20, -860, -820, 3)
+	-- Corridor proceeds East to X = 25, then turns South along X[25, 50], Z[-860, -820]
+	makeWallX(dungeon, "Transept_South_Wall", -38, 25, -860, 3)
+	makeWallZ(dungeon, "Transept_West_Wall", 25, -860, -820, 3)
 
-	-- Dead End Alcove B at X[35, 50], Z[-820, -780] (Houses Mob Pack 6)
-	makeWallX(dungeon, "AlcoveB_South", 35, 50, -780, 3)
+	-- Dead End Alcove B at X[25, 50], Z[-820, -780] (Houses Mob Pack 6)
+	makeWallX(dungeon, "AlcoveB_South", 25, 50, -780, 3)
 	makePart(dungeon, "AlcoveB_RelicPlinth", Vector3.new(4, 2, 4), CFrame.new(42, FLOOR_Y + 1, -800), GOLD_DARK, Enum.Material.Metal)
 	spawnDragonStatue(dungeon, Vector3.new(42, FLOOR_Y + 2, -800), 0, 1.1)
 	makeSolarBrazier(dungeon, Vector3.new(42, FLOOR_Y, -815), SOLAR_ORANGE)
 
-	-- Forward exit into Grand Archives: moves West from X = 20 to X = 0, then South through Z[-820, -780]
-	makeWallX(dungeon, "Maze_Exit_North", -15, 20, -820, 3)
-	makeWallZ(dungeon, "Maze_Exit_West", -15, -820, -780, 3)
-	makeWallZ(dungeon, "Maze_Exit_East", 15, -820, -780, 3)
-	spawnArchCapstone(dungeon, Vector3.new(0, FLOOR_Y + 20, -780), 0, 1.6) -- Keystone into Archives
+	-- Forward exit into Grand Archives: moves West from X = 25 to X = 0, then South into Archives
+	-- West bounding wall of the exit approach
+	makeWallZ(dungeon, "Maze_Exit_West", -15, -860, -780, 3)
+	-- Overhead archway lintel at Z = -820 (player walks under at Y = 0 to 18)
+	makeWallX(dungeon, "Maze_Exit_North_Lintel", -15, 25, -820, 3, 18, WALL_HEIGHT)
+
+	-- Keystone & luminous beacons marking the Grand Archives Entrance at Z = -780
+	makeSolarBrazier(dungeon, Vector3.new(-12, FLOOR_Y, -785), CELESTIAL_BLUE)
+	makeSolarBrazier(dungeon, Vector3.new(12, FLOOR_Y, -785), CELESTIAL_BLUE)
+	spawnArchCapstone(dungeon, Vector3.new(0, FLOOR_Y + 20, -780), 0, 1.8) -- Keystone into Archives
 
 	-- ═══════════════════════════════════════════════════════════════════════════
 	-- ZONE 3: THE GRAND ARCHIVES & SUNKEN VAULTS (Z = -780 to -550, X = -38 to 45)
@@ -892,11 +897,18 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 	end
 
 	-- 3D Mesh Details: High Altar Dais, Central 2.0x Seraph, Twin Dragons & Grand Portal Capstone
-	makeFloor(dungeon, "CathedralAltar_Dais1", -15, 15, -315, -295, FLOOR_Y + 1)
-	makeFloor(dungeon, "CathedralAltar_Dais2", -10, 10, -313, -297, FLOOR_Y + 2)
-	spawnSeraphIdol(dungeon, Vector3.new(0, FLOOR_Y + 2, -305), 0, 2.0)
-	spawnDragonStatue(dungeon, Vector3.new(-16, FLOOR_Y + 1, -305), math.rad(45), 1.3)
-	spawnDragonStatue(dungeon, Vector3.new(16, FLOOR_Y + 1, -305), math.rad(-45), 1.3)
+	-- Positioned at Z = -370 to -350 so there is 70 studs of open, majestic vista leading to Grand Stepped Colonnade
+	makeFloor(dungeon, "CathedralAltar_Dais1", -15, 15, -370, -350, FLOOR_Y + 1)
+	makeFloor(dungeon, "CathedralAltar_Dais2", -10, 10, -368, -352, FLOOR_Y + 2)
+	spawnSeraphIdol(dungeon, Vector3.new(0, FLOOR_Y + 2, -360), 0, 2.0)
+	spawnDragonStatue(dungeon, Vector3.new(-16, FLOOR_Y + 1, -360), math.rad(45), 1.3)
+	spawnDragonStatue(dungeon, Vector3.new(16, FLOOR_Y + 1, -360), math.rad(-45), 1.3)
+
+	-- Flanking guardian statues & braziers marking the Grand Stepped Colonnade portal
+	makeSolarBrazier(dungeon, Vector3.new(-14, FLOOR_Y, -283), SOLAR_ORANGE)
+	makeSolarBrazier(dungeon, Vector3.new(14, FLOOR_Y, -283), SOLAR_ORANGE)
+	spawnGuardianStatue(dungeon, Vector3.new(-14, FLOOR_Y, -284), math.rad(45), 1.25)
+	spawnGuardianStatue(dungeon, Vector3.new(14, FLOOR_Y, -284), math.rad(-45), 1.25)
 	spawnArchCapstone(dungeon, Vector3.new(0, FLOOR_Y + 26, -280), 0, 2.0)
 
 	-- ═══════════════════════════════════════════════════════════════════════════
@@ -908,9 +920,9 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 	local stairMinX = -stairWidth / 2
 	local stairMaxX = stairWidth / 2
 
-	-- Side Enclosure Walls running from Y = 1 to Y = 80
-	makeWallZ(dungeon, "Colonnade_WestWall", stairMinX, -290, -100, 4, 0, 80)
-	makeWallZ(dungeon, "Colonnade_EastWall", stairMaxX, -290, -100, 4, 0, 80)
+	-- Side Enclosure Walls running from Y = 1 to Y = 80 starting cleanly at Z = -280
+	makeWallZ(dungeon, "Colonnade_WestWall", stairMinX, -280, -100, 4, 0, 80)
+	makeWallZ(dungeon, "Colonnade_EastWall", stairMaxX, -280, -100, 4, 0, 80)
 
 	-- High vaulted sloped ceiling over Grand Stepped Colonnade
 	local colCeilingAngle = math.atan(47 / 180) -- gentle ~14.6 degrees
@@ -918,10 +930,9 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 	local colCeiling = makePart(dungeon, "Colonnade_Ceiling", Vector3.new(stairWidth + 8, 3, colCeilingLen),
 		CFrame.new(0, 56, -190) * CFrame.Angles(colCeilingAngle, 0, 0), MARBLE_WHITE, Enum.Material.Marble)
 
-	-- 45 gentle steps flush with Cathedral floor: startY = FLOOR_Y+1 (=2) matches Cathedral top surface
-	-- Landing platform at the base of the stairs (bridges Cathedral floor to stair entry)
-	makeFloor(dungeon, "Colonnade_Landing", stairMinX, stairMaxX, -290, -280)
-	makeStairs(dungeon, "Colonnade_Ascent", stairMinX, stairMaxX, -290, -100, FLOOR_Y + 1, 49, 45)
+	-- 45 gentle steps flush with Cathedral floor: starts at Z = -280, startY = FLOOR_Y+1 (=2) matches Cathedral top surface
+	makeStairs(dungeon, "Colonnade_Ascent", stairMinX, stairMaxX, -280, -100, FLOOR_Y + 1, 49, 45)
+
 
 	-- Stepped Colonnade Braziers along the climb
 	makeSolarBrazier(dungeon, Vector3.new(-12, 12, -240), SOLAR_ORANGE)
