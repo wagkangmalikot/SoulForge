@@ -1976,10 +1976,18 @@ function HUDController.Start()
 		cachedConsumables = consumables or {}
 	end)
 
-	Net.Get("PotionUseResult").OnClientEvent:Connect(function(success: boolean, _message: string, newConsumables: {[string]: number}?)
+	Net.Get("PotionUseResult").OnClientEvent:Connect(function(success: boolean, message: string, newConsumables: {[string]: number}?)
 		if success and newConsumables then
 			cachedConsumables = newConsumables
 			potionCooldownEnd = os.clock() + POTION_USE_COOLDOWN
+		else
+			-- Server rejected the optimistically-started cooldown (e.g. already at full
+			-- health, no longer owned, downed) -- clear it immediately instead of leaving
+			-- the slot falsely dimmed for the full cooldown duration with no explanation.
+			potionCooldownEnd = 0
+			if message ~= "" then
+				warn("[Shop] Potion not used: " .. message)
+			end
 		end
 	end)
 
