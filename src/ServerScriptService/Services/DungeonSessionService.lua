@@ -42,24 +42,24 @@ local SUNFORGED_ENTRANCE_POSITION = Vector3.new(0, 5.5, -1300)
 local SUNFORGED_BOSS_SPAWN_CFRAME = CFrame.new(0, 50, 40) * CFrame.Angles(0, math.pi, 0)
 
 local SUNFORGED_ZONE_MOB_COORDINATES = {
-	-- Zone 1: Labyrinth Imperial Portal
-	{ Vector3.new(-6, 3, -1180), Vector3.new(6, 3, -1180), Vector3.new(-4, 3, -1185), Vector3.new(4, 3, -1185) },
-	-- Zone 2: West Crypts - Chamber of Urns
-	{ Vector3.new(-85, 3, -1100), Vector3.new(-75, 3, -1100), Vector3.new(-80, 3, -1110), Vector3.new(-70, 3, -1090) },
-	-- Zone 3: West Crypts - Vault of Shadows
-	{ Vector3.new(-85, 3, -980), Vector3.new(-75, 3, -980), Vector3.new(-90, 3, -975), Vector3.new(-70, 3, -985) },
-	-- Zone 4: Central Avenue Crossroads
-	{ Vector3.new(-5, 3, -1050), Vector3.new(5, 3, -1050), Vector3.new(0, 3, -1060), Vector3.new(0, 3, -1040) },
-	-- Zone 5: East Sunken Tombs - Hall of Runes
-	{ Vector3.new(75, 3, -1100), Vector3.new(85, 3, -1100), Vector3.new(80, 3, -1110), Vector3.new(90, 3, -1090) },
-	-- Zone 6: East Sunken Tombs - Reliquary
-	{ Vector3.new(75, 3, -980), Vector3.new(85, 3, -980), Vector3.new(70, 3, -975), Vector3.new(90, 3, -985) },
-	-- Zone 7: Grand Archives & Sunken Vaults
-	{ Vector3.new(-25, 3, -720), Vector3.new(25, 3, -720), Vector3.new(-10, 3, -735), Vector3.new(10, 3, -735) },
+	-- Zone 1: Maze Entry Corridor (X = 26)
+	{ Vector3.new(24, 3, -1170), Vector3.new(28, 3, -1170), Vector3.new(24, 3, -1180), Vector3.new(28, 3, -1180) },
+	-- Zone 2: Dead End Alcove A (West Ambush)
+	{ Vector3.new(-34, 3, -1070), Vector3.new(-30, 3, -1070), Vector3.new(-34, 3, -1060), Vector3.new(-30, 3, -1060) },
+	-- Zone 3: Sunken Crypts - North Chicane
+	{ Vector3.new(-14, 3, -1000), Vector3.new(-6, 3, -1000), Vector3.new(-10, 3, -1010), Vector3.new(-2, 3, -1010) },
+	-- Zone 4: Sunken Crypts - South Chicane
+	{ Vector3.new(6, 3, -940), Vector3.new(14, 3, -940), Vector3.new(10, 3, -950), Vector3.new(18, 3, -950) },
+	-- Zone 5: East Transept Corridor
+	{ Vector3.new(24, 3, -870), Vector3.new(28, 3, -870), Vector3.new(24, 3, -860), Vector3.new(28, 3, -860) },
+	-- Zone 6: Dead End Alcove B (East Ambush)
+	{ Vector3.new(40, 3, -800), Vector3.new(44, 3, -800), Vector3.new(40, 3, -790), Vector3.new(44, 3, -790) },
+	-- Zone 7: Grand Archives - Rotunda
+	{ Vector3.new(-12, 3, -670), Vector3.new(12, 3, -670), Vector3.new(-6, 3, -680), Vector3.new(6, 3, -680) },
 	-- Zone 8: Grand Solar Cathedral Nave
-	{ Vector3.new(-18, 3, -480), Vector3.new(18, 3, -480), Vector3.new(-10, 3, -490), Vector3.new(10, 3, -490) },
-	-- Zone 9: Grand Solar Cathedral Altar
-	{ Vector3.new(-16, 3, -340), Vector3.new(16, 3, -340), Vector3.new(0, 3, -330), Vector3.new(0, 3, -350) },
+	{ Vector3.new(-14, 3, -440), Vector3.new(14, 3, -440), Vector3.new(-8, 3, -450), Vector3.new(8, 3, -450) },
+	-- Zone 9: Grand Stepped Colonnade Ascent
+	{ Vector3.new(-8, 25, -190), Vector3.new(8, 25, -190), Vector3.new(-4, 26, -185), Vector3.new(4, 26, -185) },
 	-- Zone 10: Solar Sanctum Gate Praetorians
 	{ Vector3.new(-12, 50, -75), Vector3.new(12, 50, -75), Vector3.new(-6, 50, -70), Vector3.new(6, 50, -70) },
 }
