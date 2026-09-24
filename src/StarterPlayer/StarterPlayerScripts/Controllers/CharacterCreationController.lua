@@ -150,9 +150,15 @@ local function createClassCard(parent: Instance, classId: string, xScale: number
 	banner.Size = UDim2.new(1, 0, 0, 40)
 	banner.BackgroundColor3 = Color3.fromRGB(24, 30, 44)
 	banner.BorderSizePixel = 0
+	banner.ClipsDescendants = true
 	banner.Parent = card
 	applyCorner(banner, 12)
 
+	-- At the 4-card width (~106px card), a fixed 13.5pt title like "WARRIOR
+	-- ARCHETYPE" no longer fits the banner and would spill into the next
+	-- card without a clip guard. TextScaled shrinks it to fit; the
+	-- constraint keeps it from shrinking below legibility, and
+	-- banner.ClipsDescendants above is the last-resort backstop.
 	local classTitle = Instance.new("TextLabel")
 	classTitle.Size = UDim2.new(1, -16, 1, 0)
 	classTitle.Position = UDim2.new(0, 10, 0, 0)
@@ -161,8 +167,14 @@ local function createClassCard(parent: Instance, classId: string, xScale: number
 	classTitle.Text = info.icon .. " " .. info.title
 	classTitle.TextColor3 = COLORS.goldLight
 	classTitle.TextSize = 13.5
+	classTitle.TextScaled = true
 	classTitle.TextXAlignment = Enum.TextXAlignment.Left
 	classTitle.Parent = banner
+
+	local titleTextConstraint = Instance.new("UITextSizeConstraint")
+	titleTextConstraint.MinTextSize = 9
+	titleTextConstraint.MaxTextSize = 13.5
+	titleTextConstraint.Parent = classTitle
 
 	-- Card width shrank further (~31.5% to ~23.5% of the row) once Healer joined
 	-- Warrior as a 4th card, and several classes' descriptions run 100-200+
