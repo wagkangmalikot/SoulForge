@@ -924,6 +924,20 @@ function HUDController.Start()
 	local bossGateBeaconModel: Model? = nil
 
 	local function getBossGateTarget(): Vector3
+		local sunforged = workspace:FindFirstChild("SunforgedCitadel")
+		if sunforged then
+			local promptPart = sunforged:FindFirstChild("GatePromptPart", true)
+			if promptPart and promptPart:IsA("BasePart") then
+				return promptPart.Position
+			end
+			local gateModel = sunforged:FindFirstChild("BossArenaGate", true)
+			if gateModel and gateModel:IsA("Model") then
+				local cf = gateModel:GetPivot()
+				return Vector3.new(cf.Position.X, 48, cf.Position.Z)
+			end
+			return Vector3.new(0, 48, -50)
+		end
+
 		local arena = workspace:FindFirstChild("RockhideArena")
 		if arena then
 			local promptPart = arena:FindFirstChild("GatePromptPart", true)
@@ -1108,7 +1122,8 @@ function HUDController.Start()
 		local pillar = Instance.new("Part")
 		pillar.Name = "BeaconPillar"
 		pillar.Size = Vector3.new(3.2, 26, 3.2)
-		pillar.CFrame = CFrame.new(targetPos.X, 13, targetPos.Z)
+		local beaconBaseY = targetPos.Y
+		pillar.CFrame = CFrame.new(targetPos.X, beaconBaseY + 13, targetPos.Z)
 		pillar.Material = Enum.Material.Neon
 		pillar.Color = Color3.fromRGB(255, 195, 45)
 		pillar.Transparency = 0.76
@@ -1130,7 +1145,7 @@ function HUDController.Start()
 		ring.Name = "GateRing"
 		ring.Shape = Enum.PartType.Cylinder
 		ring.Size = Vector3.new(0.12, 16, 16)
-		ring.CFrame = CFrame.new(targetPos.X, 1.08, targetPos.Z) * CFrame.Angles(0, 0, math.rad(90))
+		ring.CFrame = CFrame.new(targetPos.X, beaconBaseY + 0.08, targetPos.Z) * CFrame.Angles(0, 0, math.rad(90))
 		ring.Material = Enum.Material.Neon
 		ring.Color = Color3.fromRGB(255, 205, 55)
 		ring.Transparency = 0.55
@@ -1153,6 +1168,7 @@ function HUDController.Start()
 		gateChevron.CanQuery = false
 		gateChevron.CastShadow = false
 		gateChevron.Anchored = true
+		gateChevron.CFrame = CFrame.new(targetPos.X, beaconBaseY + 16, targetPos.Z)
 		gateChevron.Parent = beaconModel
 
 		local gateBb = Instance.new("BillboardGui")
@@ -1198,6 +1214,7 @@ function HUDController.Start()
 		gateTitle.Text = "⚡ BOSS GATE UNLOCKED ⚡"
 		gateTitle.Parent = gateBg
 
+		local isSunforged = workspace:FindFirstChild("SunforgedCitadel") ~= nil
 		local gateSub = Instance.new("TextLabel")
 		gateSub.Size = UDim2.new(1, 0, 0.28, 0)
 		gateSub.Position = UDim2.new(0, 0, 0.7, 0)
@@ -1205,7 +1222,7 @@ function HUDController.Start()
 		gateSub.Font = Enum.Font.Gotham
 		gateSub.TextSize = 13.5
 		gateSub.TextColor3 = Color3.fromRGB(200, 205, 220)
-		gateSub.Text = "[Approach to Awaken Rockhide]"
+		gateSub.Text = isSunforged and "[Approach to Awaken Solarius]" or "[Approach to Awaken Rockhide]"
 		gateSub.Parent = gateBg
 
 		beaconModel.Parent = workspace
@@ -1216,7 +1233,8 @@ function HUDController.Start()
 		rayParams.FilterType = Enum.RaycastFilterType.Exclude
 
 		bossGuideConnection = RunService.RenderStepped:Connect(function()
-			if not workspace:FindFirstChild("RockhideArena") then
+			local inSunforged = workspace:FindFirstChild("SunforgedCitadel") ~= nil
+			if not inSunforged and not workspace:FindFirstChild("RockhideArena") then
 				stopBossDirectionGuide()
 				return
 			end
@@ -1229,7 +1247,7 @@ function HUDController.Start()
 
 			local playerPos = root.Position
 			-- Automatically complete and cleanup once player enters the arena!
-			if playerPos.Z > -18 then
+			if (inSunforged and playerPos.Z > -40) or (not inSunforged and playerPos.Z > -18) then
 				stopBossDirectionGuide()
 				return
 			end

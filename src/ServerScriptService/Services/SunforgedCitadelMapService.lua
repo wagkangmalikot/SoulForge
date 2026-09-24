@@ -1,8 +1,8 @@
 -- src/ServerScriptService/Services/SunforgedCitadelMapService.lua
 -- Generates and manages the physical MMO dungeon architecture for the Sunforged Citadel (Tier 2 Dungeon).
--- Features a large, interconnected maze-like canyon fortress with verticality,
--- golden marble halls, celestial orreries, solar braziers, and two Elden Ring-style
--- one-way shortcuts (heavy portcullis winch and solar elevator lift).
+-- Features a 3x expanded, grand celestial fortress with multiple exploration wings,
+-- 2 cross-wing shortcut doors (linking distant sections door-to-door),
+-- gentle stepped grand colonnades (no steep walls), and the Solar Throne Colosseum.
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -24,20 +24,18 @@ local isGateOpen = false
 local onGateOpenedCallback: (() -> ())? = nil
 local onGateOpenRequestedCallback: (() -> ())? = nil
 
--- Elden Ring shortcut state tracking:
--- shortcut_portcullis: heavy iron gate between Lower Bastion and Antechamber
--- shortcut_elevator: solar lift connecting Orrery Spire directly down to Antechamber
+-- Cross-wing shortcut state tracking
 local shortcuts = {
-	shortcut_portcullis = {
+	shortcut_crypt_vault = {
+		isOpen = false,
+		doorL = nil :: BasePart?,
+		doorR = nil :: BasePart?,
+		prompt = nil :: ProximityPrompt?,
+	},
+	shortcut_transept_portcullis = {
 		isOpen = false,
 		gatePart = nil :: BasePart?,
 		prompt = nil :: ProximityPrompt?,
-	},
-	shortcut_elevator = {
-		isOpen = false,
-		platformPart = nil :: BasePart?,
-		leverPrompt = nil :: ProximityPrompt?,
-		isMoving = false,
 	},
 }
 
@@ -51,7 +49,7 @@ local SOLAR_ORANGE   = Color3.fromRGB(255, 135, 30)
 local CELESTIAL_BLUE = Color3.fromRGB(100, 180, 255)
 local DESERT_STONE   = Color3.fromRGB(180, 160, 135)
 
-local WALL_HEIGHT = 26
+local WALL_HEIGHT = 28
 local FLOOR_Y = 1
 
 local function makePart(parent: Instance, name: string, size: Vector3, cframe: CFrame, color: Color3, material: Enum.Material): Part
@@ -138,6 +136,42 @@ local function makeGoldenPillar(parent: Instance, position: Vector3, height: num
 	makePart(parent, "PillarCap", Vector3.new(width + 1.2, 2.5, width + 1.2), CFrame.new(position + Vector3.new(0, height - 1.25, 0)), GOLD_ACCENT, Enum.Material.Metal)
 end
 
+-- Constructs a physical, completely walkable staircase (slope < 22 degrees)
+local function makeStairs(parent: Instance, name: string, minX: number, maxX: number, startZ: number, endZ: number, startY: number, endY: number, numSteps: number)
+	local width = math.abs(maxX - minX)
+	local totalDepth = math.abs(endZ - startZ)
+	local totalHeight = endY - startY
+	local stepDepth = totalDepth / numSteps
+	local stepHeight = totalHeight / numSteps
+	local stepZDir = (endZ >= startZ) and 1 or -1
+
+	local stairsFolder = Instance.new("Folder")
+	stairsFolder.Name = name .. "_Stairs"
+	stairsFolder.Parent = parent
+
+	-- Solid smooth walkable wedge base underlay
+	local rampWedge = Instance.new("WedgePart")
+	rampWedge.Name = name .. "_WedgeBase"
+	rampWedge.Size = Vector3.new(width, totalHeight, totalDepth)
+	local wedgeCenterY = startY + (totalHeight / 2)
+	local wedgeCenterZ = (startZ + endZ) / 2
+	local wedgeRot = (endZ >= startZ) and 0 or math.pi
+	rampWedge.CFrame = CFrame.new((minX + maxX) / 2, wedgeCenterY, wedgeCenterZ) * CFrame.Angles(0, wedgeRot, 0)
+	rampWedge.Color = MARBLE_FLOOR
+	rampWedge.Material = Enum.Material.Marble
+	rampWedge.Anchored = true
+	rampWedge.CanCollide = true
+	rampWedge.Parent = stairsFolder
+
+	-- Stepped treads for visual and tactile fidelity
+	for i = 1, numSteps do
+		local curY = startY + (i * stepHeight)
+		local curZ = startZ + ((i - 0.5) * stepDepth * stepZDir)
+		local step = makePart(stairsFolder, ("%s_Step_%d"):format(name, i), Vector3.new(width, stepHeight, stepDepth + 0.1), CFrame.new((minX + maxX) / 2, curY - (stepHeight / 2), curZ), GOLD_DARK, Enum.Material.Marble)
+		step.CanCollide = true
+	end
+end
+
 -- Constructs a massive radiant golden sun disc door leaf
 local function createSunforgedDoorLeaf(parent: Instance, doorName: string, isLeft: boolean, size: Vector3, cframe: CFrame): BasePart
 	local doorBase = Instance.new("Part")
@@ -180,187 +214,180 @@ local function createSunforgedDoorLeaf(parent: Instance, doorName: string, isLef
 end
 
 -- ============================================================================
--- SHORTCUT 1: Lower Bastion One-Way Portcullis
+-- SHORTCUT 1: West Crypts to Grand Archives (Door-to-Door passage)
+-- Connects outer crypts (Z = -950, X = -80) directly to Grand Archives (Z = -750, X = -80)
 -- ============================================================================
-local function setupPortcullisShortcut(dungeon: Model, gatePos: Vector3)
-	local frame = Instance.new("Model")
-	frame.Name = "ShortcutPortcullis"
-	frame.Parent = dungeon
+local function setupCryptToArchivesShortcut(dungeon: Model, passagePos: Vector3)
+	local model = Instance.new("Model")
+	model.Name = "Shortcut_CryptVault"
+	model.Parent = dungeon
 
-	-- Arch frame
-	makePart(frame, "PortcullisPillar_L", Vector3.new(3, WALL_HEIGHT, 3), CFrame.new(gatePos + Vector3.new(-7.5, WALL_HEIGHT/2, 0)), GOLD_DARK, Enum.Material.Metal)
-	makePart(frame, "PortcullisPillar_R", Vector3.new(3, WALL_HEIGHT, 3), CFrame.new(gatePos + Vector3.new(7.5, WALL_HEIGHT/2, 0)), GOLD_DARK, Enum.Material.Metal)
-	makePart(frame, "PortcullisTop", Vector3.new(18, 3, 4), CFrame.new(gatePos + Vector3.new(0, WALL_HEIGHT - 1.5, 0)), GOLD_ACCENT, Enum.Material.Metal)
+	local doorX = passagePos.X
+	local doorY = passagePos.Y
+	local doorZ = passagePos.Z
 
-	-- The sliding heavy iron grate
-	local grate = makePart(frame, "PortcullisGrate", Vector3.new(12, WALL_HEIGHT - 3, 1), CFrame.new(gatePos + Vector3.new(0, (WALL_HEIGHT - 3)/2, 0)), BRONZE_METAL, Enum.Material.Metal)
-	shortcuts.shortcut_portcullis.gatePart = grate
+	-- Portal Archway
+	makePart(model, "Arch_L", Vector3.new(3, WALL_HEIGHT, 4), CFrame.new(doorX - 7.5, doorY + WALL_HEIGHT/2, doorZ), GOLD_DARK, Enum.Material.Metal)
+	makePart(model, "Arch_R", Vector3.new(3, WALL_HEIGHT, 4), CFrame.new(doorX + 7.5, doorY + WALL_HEIGHT/2, doorZ), GOLD_DARK, Enum.Material.Metal)
+	makePart(model, "Arch_Top", Vector3.new(18, 4, 5), CFrame.new(doorX, doorY + WALL_HEIGHT - 2, doorZ), GOLD_ACCENT, Enum.Material.Metal)
 
-	-- LOCKED SIDE INTERACTION (Front/South: Antechamber side)
-	local frontExamPart = Instance.new("Part")
-	frontExamPart.Size = Vector3.new(4, 4, 2)
-	frontExamPart.CFrame = CFrame.new(gatePos + Vector3.new(0, 4, -4))
-	frontExamPart.Transparency = 1
-	frontExamPart.Anchored = true
-	frontExamPart.CanCollide = false
-	frontExamPart.Parent = frame
+	-- Double heavy bronze vault doors
+	local doorL = makePart(model, "VaultDoor_L", Vector3.new(6, WALL_HEIGHT - 4, 1.5), CFrame.new(doorX - 3, doorY + (WALL_HEIGHT - 4)/2, doorZ), BRONZE_METAL, Enum.Material.Metal)
+	local doorR = makePart(model, "VaultDoor_R", Vector3.new(6, WALL_HEIGHT - 4, 1.5), CFrame.new(doorX + 3, doorY + (WALL_HEIGHT - 4)/2, doorZ), BRONZE_METAL, Enum.Material.Metal)
+	shortcuts.shortcut_crypt_vault.doorL = doorL
+	shortcuts.shortcut_crypt_vault.doorR = doorR
 
-	local frontPrompt = Instance.new("ProximityPrompt")
-	frontPrompt.ActionText = "Examine Gate"
-	frontPrompt.ObjectText = "Heavy Portcullis"
-	frontPrompt.MaxActivationDistance = 14
-	frontPrompt.HoldDuration = 0.4
-	frontPrompt.RequiresLineOfSight = false
-	frontPrompt.Parent = frontExamPart
+	-- Locked side examination prompt (North/Crypt side at doorZ - 3)
+	local cryptSidePart = Instance.new("Part")
+	cryptSidePart.Size = Vector3.new(4, 4, 2)
+	cryptSidePart.CFrame = CFrame.new(doorX, doorY + 4, doorZ - 4)
+	cryptSidePart.Transparency = 1
+	cryptSidePart.Anchored = true
+	cryptSidePart.CanCollide = false
+	cryptSidePart.Parent = model
 
-	frontPrompt.Triggered:Connect(function(player)
-		if not shortcuts.shortcut_portcullis.isOpen then
-			frontPrompt.ActionText = "Does not open from this side"
+	local cryptPrompt = Instance.new("ProximityPrompt")
+	cryptPrompt.ActionText = "Examine Vault Door"
+	cryptPrompt.ObjectText = "Barred from the inside"
+	cryptPrompt.MaxActivationDistance = 14
+	cryptPrompt.HoldDuration = 0.3
+	cryptPrompt.RequiresLineOfSight = false
+	cryptPrompt.Parent = cryptSidePart
+
+	cryptPrompt.Triggered:Connect(function(player)
+		if not shortcuts.shortcut_crypt_vault.isOpen then
+			cryptPrompt.ActionText = "Barred from Archives side"
 			task.delay(2.0, function()
-				if frontPrompt and not shortcuts.shortcut_portcullis.isOpen then
-					frontPrompt.ActionText = "Examine Gate"
+				if cryptPrompt and not shortcuts.shortcut_crypt_vault.isOpen then
+					cryptPrompt.ActionText = "Examine Vault Door"
 				end
 			end)
 		end
 	end)
 
-	-- UNLOCK MECHANISM (Back/North: Lower Bastion side)
-	local winchMount = makePart(frame, "WinchMount", Vector3.new(2.5, 3.5, 2.5), CFrame.new(gatePos + Vector3.new(7.5, 3.5/2, 3.5)), GOLD_DARK, Enum.Material.Metal)
-	local winchWheel = makePart(frame, "WinchWheel", Vector3.new(2, 2, 0.6), CFrame.new(gatePos + Vector3.new(7.5, 3, 4.5)), GOLD_ACCENT, Enum.Material.Metal)
+	-- Unlock mechanism on the Archives side (South side at doorZ + 4)
+	local unlockPart = Instance.new("Part")
+	unlockPart.Size = Vector3.new(4, 4, 2)
+	unlockPart.CFrame = CFrame.new(doorX, doorY + 4, doorZ + 4)
+	unlockPart.Transparency = 1
+	unlockPart.Anchored = true
+	unlockPart.CanCollide = false
+	unlockPart.Parent = model
+
+	local unlockPrompt = Instance.new("ProximityPrompt")
+	unlockPrompt.ActionText = "Unlock Shortcut Door"
+	unlockPrompt.ObjectText = "West Crypts Passage"
+	unlockPrompt.MaxActivationDistance = 14
+	unlockPrompt.HoldDuration = 1.0
+	unlockPrompt.RequiresLineOfSight = false
+	unlockPrompt.Parent = unlockPart
+	shortcuts.shortcut_crypt_vault.prompt = unlockPrompt
+
+	unlockPrompt.Triggered:Connect(function(player)
+		if shortcuts.shortcut_crypt_vault.isOpen then return end
+		shortcuts.shortcut_crypt_vault.isOpen = true
+		unlockPrompt.Enabled = false
+		cryptPrompt.Enabled = false
+
+		doorL.CanCollide = false
+		doorR.CanCollide = false
+		local openL = CFrame.new(doorX - 6, doorY + (WALL_HEIGHT - 4)/2, doorZ) * CFrame.Angles(0, math.rad(-90), 0)
+		local openR = CFrame.new(doorX + 6, doorY + (WALL_HEIGHT - 4)/2, doorZ) * CFrame.Angles(0, math.rad(90), 0)
+		TweenService:Create(doorL, TweenInfo.new(1.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = openL }):Play()
+		TweenService:Create(doorR, TweenInfo.new(1.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = openR }):Play()
+	end)
+end
+
+-- ============================================================================
+-- SHORTCUT 2: East Sunken Tombs to Grand Solar Cathedral (Door-to-Door passage)
+-- Connects East Tombs (Z = -900, X = 80) directly to Cathedral Transept (Z = -550, X = 70)
+-- ============================================================================
+local function setupTombsToCathedralShortcut(dungeon: Model, gatePos: Vector3)
+	local model = Instance.new("Model")
+	model.Name = "Shortcut_TombsPortcullis"
+	model.Parent = dungeon
+
+	local gateX = gatePos.X
+	local gateY = gatePos.Y
+	local gateZ = gatePos.Z
+
+	-- Portal Archway
+	makePart(model, "PortcullisArch_L", Vector3.new(3, WALL_HEIGHT, 4), CFrame.new(gateX - 7.5, gateY + WALL_HEIGHT/2, gateZ), GOLD_DARK, Enum.Material.Metal)
+	makePart(model, "PortcullisArch_R", Vector3.new(3, WALL_HEIGHT, 4), CFrame.new(gateX + 7.5, gateY + WALL_HEIGHT/2, gateZ), GOLD_DARK, Enum.Material.Metal)
+	makePart(model, "PortcullisArch_Top", Vector3.new(18, 4, 5), CFrame.new(gateX, gateY + WALL_HEIGHT - 2, gateZ), GOLD_ACCENT, Enum.Material.Metal)
+
+	-- Heavy iron grate
+	local grate = makePart(model, "TranseptGrate", Vector3.new(12, WALL_HEIGHT - 4, 1.2), CFrame.new(gateX, gateY + (WALL_HEIGHT - 4)/2, gateZ), BRONZE_METAL, Enum.Material.Metal)
+	shortcuts.shortcut_transept_portcullis.gatePart = grate
+
+	-- Locked side (East Tombs side at gateZ - 4)
+	local tombsSidePart = Instance.new("Part")
+	tombsSidePart.Size = Vector3.new(4, 4, 2)
+	tombsSidePart.CFrame = CFrame.new(gateX, gateY + 4, gateZ - 4)
+	tombsSidePart.Transparency = 1
+	tombsSidePart.Anchored = true
+	tombsSidePart.CanCollide = false
+	tombsSidePart.Parent = model
+
+	local tombsPrompt = Instance.new("ProximityPrompt")
+	tombsPrompt.ActionText = "Examine Iron Portcullis"
+	tombsPrompt.ObjectText = "Mechanism locked from Cathedral"
+	tombsPrompt.MaxActivationDistance = 14
+	tombsPrompt.HoldDuration = 0.3
+	tombsPrompt.RequiresLineOfSight = false
+	tombsPrompt.Parent = tombsSidePart
+
+	tombsPrompt.Triggered:Connect(function(player)
+		if not shortcuts.shortcut_transept_portcullis.isOpen then
+			tombsPrompt.ActionText = "Cannot lift from this side"
+			task.delay(2.0, function()
+				if tombsPrompt and not shortcuts.shortcut_transept_portcullis.isOpen then
+					tombsPrompt.ActionText = "Examine Iron Portcullis"
+				end
+			end)
+		end
+	end)
+
+	-- Winch mechanism on Cathedral side (gateZ + 4)
+	local winchWheel = makePart(model, "TranseptWinch", Vector3.new(2, 2, 0.8), CFrame.new(gateX + 7, gateY + 4, gateZ + 3.5), GOLD_ACCENT, Enum.Material.Metal)
 
 	local winchPrompt = Instance.new("ProximityPrompt")
-	winchPrompt.ActionText = "Turn Winch Mechanism"
-	winchPrompt.ObjectText = "Shortcut Gate"
+	winchPrompt.ActionText = "Raise Transept Portcullis"
+	winchPrompt.ObjectText = "Shortcut Passage"
 	winchPrompt.MaxActivationDistance = 14
 	winchPrompt.HoldDuration = 1.0
 	winchPrompt.RequiresLineOfSight = false
 	winchPrompt.Parent = winchWheel
-	shortcuts.shortcut_portcullis.prompt = winchPrompt
+	shortcuts.shortcut_transept_portcullis.prompt = winchPrompt
 
 	winchPrompt.Triggered:Connect(function(player)
-		if shortcuts.shortcut_portcullis.isOpen then return end
-		shortcuts.shortcut_portcullis.isOpen = true
+		if shortcuts.shortcut_transept_portcullis.isOpen then return end
+		shortcuts.shortcut_transept_portcullis.isOpen = true
 		winchPrompt.Enabled = false
-		frontPrompt.Enabled = false
+		tombsPrompt.Enabled = false
 
-		-- Animate portcullis raising
-		local raiseTween = TweenService:Create(grate, TweenInfo.new(3.0, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			CFrame = CFrame.new(gatePos + Vector3.new(0, WALL_HEIGHT + 6, 0))
+		local raiseTween = TweenService:Create(grate, TweenInfo.new(2.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			CFrame = CFrame.new(gateX, gateY + WALL_HEIGHT + 6, gateZ)
 		})
 		raiseTween:Play()
 		grate.CanCollide = false
 	end)
 end
 
--- ============================================================================
--- SHORTCUT 2: Solar Orrery Spire Elevator Lift
--- ============================================================================
-local function setupElevatorShortcut(dungeon: Model, shaftPos: Vector3, topY: number, bottomY: number)
-	local elevModel = Instance.new("Model")
-	elevModel.Name = "ShortcutElevator"
-	elevModel.Parent = dungeon
-
-	-- Elevator Platform (Hexagonal disc)
-	local platform = makePart(elevModel, "LiftPlatform", Vector3.new(16, 2, 16), CFrame.new(shaftPos.X, topY, shaftPos.Z), GOLD_ACCENT, Enum.Material.Metal)
-	shortcuts.shortcut_elevator.platformPart = platform
-
-	-- Solar Rune Inlay in center of elevator
-	local runeInlay = Instance.new("Part")
-	runeInlay.Size = Vector3.new(8, 0.4, 8)
-	runeInlay.CFrame = platform.CFrame * CFrame.new(0, 1.1, 0)
-	runeInlay.Color = SOLAR_ORANGE
-	runeInlay.Material = Enum.Material.Neon
-	runeInlay.CanCollide = false
-	runeInlay.Anchored = false
-	runeInlay.Parent = platform
-
-	local weld = Instance.new("WeldConstraint")
-	weld.Part0 = platform
-	weld.Part1 = runeInlay
-	weld.Parent = platform
-
-	-- Lower Lever (Antechamber bottom - locked until activated from top)
-	local bottomLeverBase = makePart(elevModel, "BottomLeverBase", Vector3.new(2, 3, 2), CFrame.new(shaftPos.X + 11, bottomY + 1.5, shaftPos.Z), GOLD_DARK, Enum.Material.Metal)
-	local bottomPrompt = Instance.new("ProximityPrompt")
-	bottomPrompt.ActionText = "Call Solar Lift"
-	bottomPrompt.ObjectText = "Elevator Lever"
-	bottomPrompt.MaxActivationDistance = 14
-	bottomPrompt.HoldDuration = 0.5
-	bottomPrompt.Enabled = false -- starts disabled until top lever is pulled
-	bottomPrompt.Parent = bottomLeverBase
-
-	-- Top Lever (Spire top - initial unlock)
-	local topLeverBase = makePart(elevModel, "TopLeverBase", Vector3.new(2, 3, 2), CFrame.new(shaftPos.X + 11, topY + 1.5, shaftPos.Z), GOLD_DARK, Enum.Material.Metal)
-	local topPrompt = Instance.new("ProximityPrompt")
-	topPrompt.ActionText = "Pull Lever (Unlock Shortcut Lift)"
-	topPrompt.ObjectText = "Solar Orrery Lift"
-	topPrompt.MaxActivationDistance = 14
-	topPrompt.HoldDuration = 1.0
-	topPrompt.Parent = topLeverBase
-	shortcuts.shortcut_elevator.leverPrompt = topPrompt
-
-	local function moveElevator(targetY: number, duration: number)
-		if shortcuts.shortcut_elevator.isMoving then return end
-		shortcuts.shortcut_elevator.isMoving = true
-
-		local tween = TweenService:Create(platform, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {
-			CFrame = CFrame.new(shaftPos.X, targetY, shaftPos.Z)
-		})
-		tween:Play()
-		tween.Completed:Connect(function()
-			shortcuts.shortcut_elevator.isMoving = false
-		end)
-	end
-
-	topPrompt.Triggered:Connect(function()
-		shortcuts.shortcut_elevator.isOpen = true
-		topPrompt.ActionText = "Operate Lift"
-		topPrompt.HoldDuration = 0.4
-		bottomPrompt.Enabled = true
-
-		-- Ride it down or call down
-		local currentY = platform.Position.Y
-		if math.abs(currentY - topY) < 3 then
-			moveElevator(bottomY, 4.5)
-		else
-			moveElevator(topY, 4.5)
-		end
-	end)
-
-	bottomPrompt.Triggered:Connect(function()
-		local currentY = platform.Position.Y
-		if math.abs(currentY - bottomY) < 3 then
-			moveElevator(topY, 4.5)
-		else
-			moveElevator(bottomY, 4.5)
-		end
-	end)
-end
-
--- ============================================================================
--- MAIN CITADEL DUNGEON BUILDER
--- ============================================================================
 function SunforgedCitadelMapService.BuildDungeon(): Model
-	local existing = workspace:FindFirstChild("SunforgedCitadel")
-	if existing then
-		existing:Destroy()
+	if arenaFolder and arenaFolder.Parent then
+		arenaFolder:Destroy()
 	end
 
 	local dungeon = Instance.new("Model")
 	dungeon.Name = "SunforgedCitadel"
 	arenaFolder = dungeon
 
-	isGateUnlocked = false
-	isGateOpen = false
-
-	-- ═══════════════════════════════════════════════════════════════════════════
-	-- 0. INVISIBLE SAFETY VOID CATCHER
-	-- Catches any player who clips or falls through geometry and returns them to spawn
-	-- ═══════════════════════════════════════════════════════════════════════════
+	-- Comprehensive Void Catcher: covers entire 3x expanded citadel
 	local voidCatcher = Instance.new("Part")
 	voidCatcher.Name = "CitadelVoidCatcher"
-	voidCatcher.Size = Vector3.new(400, 6, 800)
-	voidCatcher.CFrame = CFrame.new(0, -20, -200)
+	voidCatcher.Size = Vector3.new(600, 6, 1800)
+	voidCatcher.CFrame = CFrame.new(0, -25, -600)
 	voidCatcher.Transparency = 1
 	voidCatcher.CanCollide = false
 	voidCatcher.Anchored = true
@@ -369,7 +396,7 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 		local char = hit.Parent
 		local player = Players:GetPlayerFromCharacter(char)
 		if player and char then
-			char:PivotTo(CFrame.new(0, 5, -420))
+			char:PivotTo(CFrame.new(0, 5, -1300))
 			local hrp = char:FindFirstChild("HumanoidRootPart")
 			if hrp then
 				hrp.AssemblyLinearVelocity = Vector3.zero
@@ -379,185 +406,228 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 	end)
 
 	-- ═══════════════════════════════════════════════════════════════════════════
-	-- ZONE 1: Sunlit Staging Antechamber (Safe Spawn Courtyard, Z = -450 to -390)
-	-- Grand golden marble courtyard with sunlight shafts & shortcut access points
+	-- ZONE 1: THE IMPERIAL SUNCOURT & ANTECHAMBER (Z = -1350 to -1200, X = -50 to 50)
+	-- Grand golden colonnade, spawn location, and twin guardian statues
 	-- ═══════════════════════════════════════════════════════════════════════════
-	makeFloor(dungeon, "Antechamber", -35, 35, -450, -390)
-	makeCeiling(dungeon, "Antechamber", -35, 35, -450, -390)
+	makeFloor(dungeon, "Antechamber", -50, 50, -1350, -1200)
+	makeCeiling(dungeon, "Antechamber", -50, 50, -1350, -1200)
 
-	-- Native Dungeon SpawnLocation pad
 	local spawnPad = Instance.new("SpawnLocation")
 	spawnPad.Name = "SunforgedDungeonSpawn"
-	spawnPad.Size = Vector3.new(16, 1, 16)
-	spawnPad.CFrame = CFrame.new(0, FLOOR_Y + 0.5, -420)
+	spawnPad.Size = Vector3.new(20, 1, 20)
+	spawnPad.CFrame = CFrame.new(0, FLOOR_Y + 0.5, -1300)
 	spawnPad.Transparency = 1
 	spawnPad.CanCollide = true
 	spawnPad.Anchored = true
 	spawnPad.Duration = 0
 	spawnPad.Parent = dungeon
 
-	-- Back (North) & side walls
-	makeWallX(dungeon, "Antechamber_BackWall", -35, 35, -450, 4)
-	makeWallZ(dungeon, "Antechamber_WestWall", -35, -450, -390, 4)
-	makeWallZ(dungeon, "Antechamber_EastWall", 35, -450, -390, 4)
+	-- Perimeter Walls
+	makeWallX(dungeon, "Antechamber_BackWall", -50, 50, -1350, 4)
+	makeWallZ(dungeon, "Antechamber_WestWall", -50, -1350, -1200, 4)
+	makeWallZ(dungeon, "Antechamber_EastWall", 50, -1350, -1200, 4)
 
-	-- South Wall flanking Entryway to Main Maze (Center open X = -8 to 8)
-	makeWallX(dungeon, "Antechamber_SouthWall_L", -35, -8, -390, 4)
-	makeWallX(dungeon, "Antechamber_SouthWall_Lintel", -8, 8, -390, 4, 18, WALL_HEIGHT)
-	makeWallX(dungeon, "Antechamber_SouthWall_R1", 8, 19, -390, 4)
-	makeWallX(dungeon, "Antechamber_Portcullis_Lintel", 19, 31, -390, 4, 16, WALL_HEIGHT)
-	makeWallX(dungeon, "Antechamber_SouthWall_R2", 31, 35, -390, 4)
+	-- South Wall flanking 3-portal exit into Labyrinth (West Wing, Central, East Wing)
+	makeWallX(dungeon, "Antechamber_South_W1", -50, -32, -1200, 4)
+	makeWallX(dungeon, "Antechamber_South_Lintel_W", -32, -18, -1200, 4, 18, WALL_HEIGHT) -- West Portal
+	makeWallX(dungeon, "Antechamber_South_Mid1", -18, -8, -1200, 4)
+	makeWallX(dungeon, "Antechamber_South_Lintel_C", -8, 8, -1200, 4, 20, WALL_HEIGHT)    -- Central Portal
+	makeWallX(dungeon, "Antechamber_South_Mid2", 8, 18, -1200, 4)
+	makeWallX(dungeon, "Antechamber_South_Lintel_E", 18, 32, -1200, 4, 18, WALL_HEIGHT)   -- East Portal
+	makeWallX(dungeon, "Antechamber_South_E1", 32, 50, -1200, 4)
 
-	-- Antechamber Pillars & Braziers
-	makeGoldenPillar(dungeon, Vector3.new(-18, FLOOR_Y, -420), WALL_HEIGHT, 4.5)
-	makeGoldenPillar(dungeon, Vector3.new(18, FLOOR_Y, -420), WALL_HEIGHT, 4.5)
-	makeSolarBrazier(dungeon, Vector3.new(-24, FLOOR_Y, -440), SOLAR_ORANGE)
-	makeSolarBrazier(dungeon, Vector3.new(24, FLOOR_Y, -440), SOLAR_ORANGE)
-
-	-- ═══════════════════════════════════════════════════════════════════════════
-	-- SHORTCUT 1: Lower Bastion One-Way Portcullis & Bypass Gallery (X = 25, Z = -390 to -270)
-	-- When unlocked, allows players to bypass the entire labyrinth directly into Zone 3!
-	-- ═══════════════════════════════════════════════════════════════════════════
-	setupPortcullisShortcut(dungeon, Vector3.new(25, FLOOR_Y, -390))
-
-	-- Enclosed private fortress gallery for Shortcut 1
-	makeFloor(dungeon, "ShortcutGallery_Floor", 19, 31, -390, -270)
-	makeCeiling(dungeon, "ShortcutGallery_Ceiling", 19, 31, -390, -270)
-	makeWallZ(dungeon, "ShortcutGallery_InnerWest", 19, -390, -270, 3)
-	makeWallZ(dungeon, "ShortcutGallery_OuterEast", 31, -390, -270, 3)
-	makeSolarBrazier(dungeon, Vector3.new(25, FLOOR_Y, -330), GOLD_ACCENT)
+	-- Columns & Solar Braziers
+	makeGoldenPillar(dungeon, Vector3.new(-24, FLOOR_Y, -1320), WALL_HEIGHT, 5)
+	makeGoldenPillar(dungeon, Vector3.new(24, FLOOR_Y, -1320), WALL_HEIGHT, 5)
+	makeGoldenPillar(dungeon, Vector3.new(-24, FLOOR_Y, -1250), WALL_HEIGHT, 5)
+	makeGoldenPillar(dungeon, Vector3.new(24, FLOOR_Y, -1250), WALL_HEIGHT, 5)
+	makeSolarBrazier(dungeon, Vector3.new(-36, FLOOR_Y, -1330), SOLAR_ORANGE)
+	makeSolarBrazier(dungeon, Vector3.new(36, FLOOR_Y, -1330), SOLAR_ORANGE)
+	makeSolarBrazier(dungeon, Vector3.new(-36, FLOOR_Y, -1220), SOLAR_ORANGE)
+	makeSolarBrazier(dungeon, Vector3.new(36, FLOOR_Y, -1220), SOLAR_ORANGE)
 
 	-- ═══════════════════════════════════════════════════════════════════════════
-	-- ZONE 2: The Sunken Canyon Maze (Z = -390 to -270, X = -50 to 50)
-	-- Multi-branched labyrinth with dead-ends, ambush corners, and mob packs
+	-- ZONE 2: THE 3-WING GRAND SOLAR LABYRINTH & CATACOMBS (Z = -1200 to -800, X = -120 to 120)
+	-- Vast interconnected maze: West Crypts, Central Avenue, East Sunken Tombs
 	-- ═══════════════════════════════════════════════════════════════════════════
-	makeFloor(dungeon, "Maze_Ground", -50, 50, -390, -270)
-	makeCeiling(dungeon, "Maze_Ceiling", -50, 50, -390, -270)
+	makeFloor(dungeon, "Labyrinth_MainFloor", -120, 120, -1200, -800)
+	makeCeiling(dungeon, "Labyrinth_MainCeiling", -120, 120, -1200, -800)
 
-	-- North Perimeter Caps (SEALS GAP BETWEEN ANTECHAMBER X[-35, 35] AND MAZE X[-50, 50])
-	makeWallX(dungeon, "Maze_NorthCap_West", -50, -35, -390, 4)
-	makeWallX(dungeon, "Maze_NorthCap_East", 35, 50, -390, 4)
+	-- Outer Boundary Walls
+	makeWallX(dungeon, "Labyrinth_NorthCap_W", -120, -50, -1200, 4)
+	makeWallX(dungeon, "Labyrinth_NorthCap_E", 50, 120, -1200, 4)
+	makeWallZ(dungeon, "Labyrinth_OuterWest", -120, -1200, -800, 4)
+	makeWallZ(dungeon, "Labyrinth_OuterEast", 120, -1200, -800, 4)
 
-	-- Outer Side Perimeter Walls
-	makeWallZ(dungeon, "Maze_OuterWest", -50, -390, -270, 4)
-	makeWallZ(dungeon, "Maze_OuterEast", 50, -390, -270, 4)
+	-- West Wing Interior Partition Walls (The Crypt of the Sunken Sun)
+	makeWallZ(dungeon, "Crypt_Div_W", -45, -1200, -960, 4)
+	makeWallZ(dungeon, "Crypt_Div_W2", -45, -920, -800, 4) -- Opening at Z[-960, -920] to center
+	makeWallX(dungeon, "Crypt_Wall_1", -110, -65, -1140, 3)
+	makeWallZ(dungeon, "Crypt_Wall_2", -85, -1140, -1040, 3)
+	makeWallX(dungeon, "Crypt_Wall_3", -120, -75, -1040, 3)
+	makeWallZ(dungeon, "Crypt_Wall_4", -65, -1080, -950, 3)
+	makeWallX(dungeon, "Crypt_Wall_5", -105, -55, -950, 3)
+	makeWallZ(dungeon, "Crypt_Wall_6", -95, -950, -860, 3)
+	makeWallX(dungeon, "Crypt_Wall_7", -95, -55, -860, 3)
 
-	-- South Perimeter Caps (SEALS GAP BETWEEN MAZE X[-50, 50] AND CATHEDRAL X[-40, 40])
-	makeWallX(dungeon, "Maze_SouthCap_West", -50, -40, -270, 4, 0, 34)
-	makeWallX(dungeon, "Maze_SouthCap_East", 40, 50, -270, 4, 0, 34)
+	-- Central Avenue Partition Walls (The Imperial Way)
+	makeWallZ(dungeon, "Avenue_Wall_L1", -15, -1160, -1070, 3)
+	makeWallZ(dungeon, "Avenue_Wall_R1", 15, -1160, -1070, 3)
+	makeWallX(dungeon, "Avenue_Cross_1", -35, 10, -1070, 3)
+	makeWallX(dungeon, "Avenue_Cross_2", -10, 35, -990, 3)
+	makeWallZ(dungeon, "Avenue_Wall_L2", -18, -990, -880, 3)
+	makeWallZ(dungeon, "Avenue_Wall_R2", 18, -990, -880, 3)
 
-	-- Bulkhead sealing vertical gap between Maze ceiling (Y = 27) and Cathedral ceiling (Y = 35)
-	makeWallX(dungeon, "Maze_Ceiling_Bulkhead", -40, 40, -270, 4, WALL_HEIGHT, 34)
+	-- East Wing Interior Partition Walls (The Hall of Sunken Runes)
+	makeWallZ(dungeon, "Tombs_Div_E", 45, -1200, -960, 4)
+	makeWallZ(dungeon, "Tombs_Div_E2", 45, -920, -800, 4) -- Opening at Z[-960, -920] to center
+	makeWallX(dungeon, "Tombs_Wall_1", 65, 110, -1140, 3)
+	makeWallZ(dungeon, "Tombs_Wall_2", 85, -1140, -1040, 3)
+	makeWallX(dungeon, "Tombs_Wall_3", 75, 120, -1040, 3)
+	makeWallZ(dungeon, "Tombs_Wall_4", 65, -1080, -950, 3)
+	makeWallX(dungeon, "Tombs_Wall_5", 55, 105, -950, 3)
+	makeWallZ(dungeon, "Tombs_Wall_6", 95, -950, -860, 3)
+	makeWallX(dungeon, "Tombs_Wall_7", 55, 95, -860, 3)
 
-	-- Internal Maze Partition Walls (creating winding paths & loops)
-	makeWallX(dungeon, "Maze_Wall_1", -20, 18, -370, 3)
-	makeWallZ(dungeon, "Maze_Wall_2", -20, -370, -340, 3)
-	makeWallX(dungeon, "Maze_Wall_3", -40, -5, -340, 3)
-	makeWallZ(dungeon, "Maze_Wall_4", 15, -370, -320, 3)
-	makeWallX(dungeon, "Maze_Wall_5", -10, 18, -320, 3)
-	makeWallZ(dungeon, "Maze_Wall_6", -35, -330, -290, 3)
-	makeWallX(dungeon, "Maze_Wall_7", -35, 10, -290, 3)
-	makeWallZ(dungeon, "Maze_Wall_8", 12, -310, -275, 3)
-
-	-- Torches and braziers scattered inside the maze
-	makeSolarBrazier(dungeon, Vector3.new(-35, FLOOR_Y, -360), CELESTIAL_BLUE)
-	makeSolarBrazier(dungeon, Vector3.new(0, FLOOR_Y, -345), SOLAR_ORANGE)
-	makeSolarBrazier(dungeon, Vector3.new(0, FLOOR_Y, -305), SOLAR_ORANGE)
+	-- Labyrinth Braziers & Lighting
+	makeSolarBrazier(dungeon, Vector3.new(-85, FLOOR_Y, -1100), CELESTIAL_BLUE)
+	makeSolarBrazier(dungeon, Vector3.new(-85, FLOOR_Y, -900), CELESTIAL_BLUE)
+	makeSolarBrazier(dungeon, Vector3.new(0, FLOOR_Y, -1120), SOLAR_ORANGE)
+	makeSolarBrazier(dungeon, Vector3.new(0, FLOOR_Y, -930), SOLAR_ORANGE)
+	makeSolarBrazier(dungeon, Vector3.new(85, FLOOR_Y, -1100), SOLAR_ORANGE)
+	makeSolarBrazier(dungeon, Vector3.new(85, FLOOR_Y, -900), SOLAR_ORANGE)
 
 	-- ═══════════════════════════════════════════════════════════════════════════
-	-- ZONE 3: Cathedral of Radiance & Grand Library (Z = -270 to -140, X = -40 to 40)
-	-- Expansive high-ceiling hall, light beams, and connection to Shortcut 1's winch
+	-- SHORTCUT DOOR 1: Crypt Vault Door (West Crypts to Grand Archives)
+	-- Cross-wing portal at X = -80, Z = -800
 	-- ═══════════════════════════════════════════════════════════════════════════
-	makeFloor(dungeon, "Cathedral", -40, 40, -270, -140)
-	makeCeiling(dungeon, "Cathedral", -40, 40, -270, -140, 34)
+	setupCryptToArchivesShortcut(dungeon, Vector3.new(-80, FLOOR_Y, -800))
 
-	makeWallZ(dungeon, "Cathedral_West", -40, -270, -140, 4, 0, 34)
-	makeWallZ(dungeon, "Cathedral_East", 40, -270, -140, 4, 0, 34)
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- ZONE 3: THE GRAND ARCHIVES & SUNKEN VAULTS (Z = -800 to -550, X = -100 to 100)
+	-- Massive vaulted hall connecting the labyrinth to the Grand Cathedral
+	-- ═══════════════════════════════════════════════════════════════════════════
+	makeFloor(dungeon, "Archives", -100, 100, -800, -550)
+	makeCeiling(dungeon, "Archives", -100, 100, -800, -550, 32)
 
-	-- Southern doorway connecting from Maze & Shortcut 1 Gallery
-	makeWallX(dungeon, "Cathedral_South_L", -40, -10, -270, 4, 0, 34)
-	makeWallX(dungeon, "Cathedral_South_Lintel", -10, 10, -270, 4, 20, 34)
-	makeWallX(dungeon, "Cathedral_South_Mid", 10, 19, -270, 4, 0, 34)
-	makeWallX(dungeon, "Cathedral_South_ShortcutDoorLintel", 19, 31, -270, 4, 16, 34)
-	makeWallX(dungeon, "Cathedral_South_R", 31, 40, -270, 4, 0, 34)
+	-- North Wall separating Labyrinth and Archives (Openings at X[-87, -73] for Shortcut 1, Center X[-14, 14], East X[73, 87] for Shortcut 2 corridor)
+	makeWallX(dungeon, "Archives_North_W1", -100, -88, -800, 4)
+	-- X[-88, -72] is Shortcut 1 portal frame
+	makeWallX(dungeon, "Archives_North_W2", -72, -14, -800, 4)
+	makeWallX(dungeon, "Archives_North_Lintel_C", -14, 14, -800, 4, 20, 32) -- Main entrance from Center Avenue
+	makeWallX(dungeon, "Archives_North_E1", 14, 72, -800, 4)
+	makeWallX(dungeon, "Archives_North_E2", 88, 100, -800, 4)
 
-	-- North Wall of Cathedral flanking Grand Stairway (SEALS GAP AT Z = -140)
-	makeWallX(dungeon, "Cathedral_North_L", -40, -14, -140, 4, 0, 34)
-	makeWallX(dungeon, "Cathedral_North_Lintel", -14, 14, -140, 4, 22, 34)
-	makeWallX(dungeon, "Cathedral_North_R", 14, 40, -140, 4, 0, 34)
+	makeWallZ(dungeon, "Archives_West", -100, -800, -550, 4, 0, 32)
+	makeWallZ(dungeon, "Archives_East", 100, -800, -550, 4, 0, 32)
 
-	-- Grand rows of fluted marble pillars
-	for z = -250, -160, 30 do
-		makeGoldenPillar(dungeon, Vector3.new(-22, FLOOR_Y, z), 34, 4.5)
-		makeGoldenPillar(dungeon, Vector3.new(22, FLOOR_Y, z), 34, 4.5)
-		makeSolarBrazier(dungeon, Vector3.new(-18, FLOOR_Y, z), SOLAR_ORANGE)
-		makeSolarBrazier(dungeon, Vector3.new(18, FLOOR_Y, z), SOLAR_ORANGE)
+	-- South Wall of Archives connecting to Cathedral (Center opening X[-20, 20])
+	makeWallX(dungeon, "Archives_South_W", -100, -20, -550, 4, 0, 32)
+	makeWallX(dungeon, "Archives_South_Lintel", -20, 20, -550, 4, 22, 32)
+	makeWallX(dungeon, "Archives_South_E", 20, 62, -550, 4, 0, 32)
+	-- Opening at X[62, 78] for Shortcut 2 Portcullis
+	makeWallX(dungeon, "Archives_South_E2", 78, 100, -550, 4, 0, 32)
+
+	-- Grand Archives Colonnade Rows & Statuary
+	for z = -750, -600, 50 do
+		makeGoldenPillar(dungeon, Vector3.new(-45, FLOOR_Y, z), 32, 5)
+		makeGoldenPillar(dungeon, Vector3.new(45, FLOOR_Y, z), 32, 5)
+		makeSolarBrazier(dungeon, Vector3.new(-45, FLOOR_Y, z + 20), SOLAR_ORANGE)
+		makeSolarBrazier(dungeon, Vector3.new(45, FLOOR_Y, z + 20), SOLAR_ORANGE)
+	end
+	makeGoldenPillar(dungeon, Vector3.new(0, FLOOR_Y, -675), 32, 7) -- Central celestial pillar
+	makeSolarBrazier(dungeon, Vector3.new(0, FLOOR_Y, -650), CELESTIAL_BLUE)
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- SHORTCUT DOOR 2: Transept Portcullis (East Sunken Tombs to Grand Cathedral)
+	-- Cross-wing portal at X = 70, Z = -550
+	-- ═══════════════════════════════════════════════════════════════════════════
+	setupTombsToCathedralShortcut(dungeon, Vector3.new(70, FLOOR_Y, -550))
+
+	-- Enclosed transit gallery for Shortcut 2 from East Tombs (Z[-800, -550], X[62, 78])
+	makeFloor(dungeon, "Shortcut2Gallery_Floor", 62, 78, -800, -550)
+	makeCeiling(dungeon, "Shortcut2Gallery_Ceiling", 62, 78, -800, -550, 26)
+	makeWallZ(dungeon, "Shortcut2Gallery_W", 62, -800, -550, 3)
+	makeWallZ(dungeon, "Shortcut2Gallery_E", 78, -800, -550, 3)
+
+	-- ═══════════════════════════════════════════════════════════════════════════
+	-- ZONE 4: THE GRAND SOLAR CATHEDRAL OF RADIANCE (Z = -550 to -280, X = -70 to 70)
+	-- Soaring 36-stud high celestial sanctuary
+	-- ═══════════════════════════════════════════════════════════════════════════
+	makeFloor(dungeon, "Cathedral", -70, 70, -550, -280)
+	makeCeiling(dungeon, "Cathedral", -70, 70, -550, -280, 36)
+
+	makeWallZ(dungeon, "Cathedral_West", -70, -550, -280, 4, 0, 36)
+	makeWallZ(dungeon, "Cathedral_East", 70, -550, -280, 4, 0, 36)
+
+	-- South Wall flanking Grand Stepped Colonnade Entrance (Center opening X[-16, 16])
+	makeWallX(dungeon, "Cathedral_South_W", -70, -16, -280, 4, 0, 36)
+	makeWallX(dungeon, "Cathedral_South_Lintel", -16, 16, -280, 4, 24, 36)
+	makeWallX(dungeon, "Cathedral_South_E", 16, 70, -280, 4, 0, 36)
+
+	-- Rows of Colossal Radiant Columns
+	for z = -500, -320, 45 do
+		makeGoldenPillar(dungeon, Vector3.new(-32, FLOOR_Y, z), 36, 5)
+		makeGoldenPillar(dungeon, Vector3.new(32, FLOOR_Y, z), 36, 5)
+		makeSolarBrazier(dungeon, Vector3.new(-24, FLOOR_Y, z), SOLAR_ORANGE)
+		makeSolarBrazier(dungeon, Vector3.new(24, FLOOR_Y, z), SOLAR_ORANGE)
 	end
 
 	-- ═══════════════════════════════════════════════════════════════════════════
-	-- ZONE 3.5: GRAND ENCLOSED STAIRWAY HALL (Z = -140 to -100, rising from Y = 1 to Y = 48)
-	-- Completely enclosed corridor ascending to the Orrery Spire with ZERO gaps
+	-- ZONE 5: THE GRAND STEPPED COLONNADE (Z = -280 to -100, rising from Y = 1 to Y = 48)
+	-- Smooth, 100% walkable stepped ascension: 45 gentle steps (slope < 15 degrees)
+	-- NO steep walls or impassable ramps!
 	-- ═══════════════════════════════════════════════════════════════════════════
-	makeFloor(dungeon, "RampHall_GroundFloor", -14, 14, -140, -100, 1)
+	local stairWidth = 32
+	local stairMinX = -stairWidth / 2
+	local stairMaxX = stairWidth / 2
 
-	-- Side Enclosure Walls running from Y = 1 to Y = 78
-	makeWallZ(dungeon, "RampHall_WestWall", -14, -140, -100, 4, 0, 78)
-	makeWallZ(dungeon, "RampHall_EastWall", 14, -140, -100, 4, 0, 78)
+	-- Side Enclosure Walls running from Y = 1 to Y = 80
+	makeWallZ(dungeon, "Colonnade_WestWall", stairMinX, -280, -100, 4, 0, 80)
+	makeWallZ(dungeon, "Colonnade_EastWall", stairMaxX, -280, -100, 4, 0, 80)
 
-	-- Grand Ascending Ramp
-	local ramp = makePart(dungeon, "Spire_AscendingRamp", Vector3.new(24, 2.5, 62), CFrame.new(0, 24.5, -120) * CFrame.Angles(math.rad(49.6), 0, 0), GOLD_DARK, Enum.Material.Cobblestone)
-	ramp.CanCollide = true
+	-- High vaulted sloped ceiling over Grand Stepped Colonnade
+	local colCeilingAngle = math.atan(47 / 180) -- gentle ~14.6 degrees
+	local colCeilingLen = math.sqrt(180^2 + 47^2) + 6
+	local colCeiling = makePart(dungeon, "Colonnade_Ceiling", Vector3.new(stairWidth + 8, 3, colCeilingLen),
+		CFrame.new(0, 56, -190) * CFrame.Angles(colCeilingAngle, 0, 0), MARBLE_WHITE, Enum.Material.Marble)
 
-	-- Sloped Enclosed Ceiling over Stairway
-	makePart(dungeon, "RampHall_SlopedCeiling", Vector3.new(28, 3, 64), CFrame.new(0, 52, -120) * CFrame.Angles(math.rad(49.6), 0, 0), MARBLE_WHITE, Enum.Material.Marble)
+	-- 45 gentle steps: 1 stud rise each, 4 studs depth = completely walkable by any character!
+	makeStairs(dungeon, "Colonnade_Ascent", stairMinX, stairMaxX, -280, -100, 1, 48, 45)
 
-	-- Grand Staircase Braziers
-	makeSolarBrazier(dungeon, Vector3.new(-10, 14, -130), SOLAR_ORANGE)
-	makeSolarBrazier(dungeon, Vector3.new(10, 14, -130), SOLAR_ORANGE)
-	makeSolarBrazier(dungeon, Vector3.new(-10, 36, -110), SOLAR_ORANGE)
-	makeSolarBrazier(dungeon, Vector3.new(10, 36, -110), SOLAR_ORANGE)
-
-	-- ═══════════════════════════════════════════════════════════════════════════
-	-- SHORTCUT 2: Solar Orrery Spire Elevator Shaft Tower (Located at X = -32, Z = -110)
-	-- Real vertical shaft tower connecting Cathedral (Y = 1) directly up to Spire Terrace (Y = 48)
-	-- ═══════════════════════════════════════════════════════════════════════════
-	setupElevatorShortcut(dungeon, Vector3.new(-32, 0, -110), 48, 1)
-
-	-- Elevator Shaft Tower Walls (enclosed 4-sided stone shaft tower from Y = 1 to Y = 78)
-	makeFloor(dungeon, "Elevator_BottomPit", -40, -24, -118, -102, 1)
-	makeWallX(dungeon, "ElevatorShaft_N", -40, -24, -102, 3, 0, 78)
-	makeWallX(dungeon, "ElevatorShaft_S", -40, -24, -118, 3, 0, 78)
-	makeWallZ(dungeon, "ElevatorShaft_W", -40, -118, -102, 3, 0, 78)
-	-- East wall with lower and upper doorway openings
-	makeWallZ(dungeon, "ElevatorShaft_E_LowerLintel", -24, -118, -102, 3, 16, 48)
-	makeWallZ(dungeon, "ElevatorShaft_E_UpperLintel", -24, -118, -102, 3, 64, 78)
+	-- Stepped Colonnade Braziers along the climb
+	makeSolarBrazier(dungeon, Vector3.new(-12, 12, -240), SOLAR_ORANGE)
+	makeSolarBrazier(dungeon, Vector3.new(12, 12, -240), SOLAR_ORANGE)
+	makeSolarBrazier(dungeon, Vector3.new(-12, 28, -180), SOLAR_ORANGE)
+	makeSolarBrazier(dungeon, Vector3.new(12, 28, -180), SOLAR_ORANGE)
+	makeSolarBrazier(dungeon, Vector3.new(-12, 44, -120), SOLAR_ORANGE)
+	makeSolarBrazier(dungeon, Vector3.new(12, 44, -120), SOLAR_ORANGE)
 
 	-- ═══════════════════════════════════════════════════════════════════════════
-	-- ZONE 4: Solar Orrery Spire & Elevated Terrace (Z = -100 to -50, X = -50 to 50, Y = 48)
-	-- High elevation terrace connecting to boss gate
+	-- ZONE 6: SPIRE COURTYARD & PRE-BOSS GATE SANCTUM (Z = -100 to -50, X = -60 to 60, Y = 48)
+	-- Grand high-elevation terrace under the sky leading to the boss gate
 	-- ═══════════════════════════════════════════════════════════════════════════
-	makeFloor(dungeon, "SpireTerrace", -50, 50, -100, -50, 48)
-	makeCeiling(dungeon, "SpireTerrace", -50, 50, -100, -50, 30, 48)
+	makeFloor(dungeon, "SpireTerrace", -60, 60, -100, -50, 48)
+	makeCeiling(dungeon, "SpireTerrace", -60, 60, -100, -50, 32, 48)
 
-	-- South Wall at Z = -100 (SEALS GAP AT TOP OF RAMP)
-	makeWallX(dungeon, "Spire_South_L", -50, -14, -100, 4, 0, 30, 48)
-	makeWallX(dungeon, "Spire_South_Lintel", -14, 14, -100, 4, 20, 30, 48)
-	makeWallX(dungeon, "Spire_South_R", 14, 50, -100, 4, 0, 30, 48)
+	-- North Wall at Z = -100 (flanking entrance at top of stairs X[-16, 16])
+	makeWallX(dungeon, "Spire_North_W", -60, -16, -100, 4, 0, 32, 48)
+	makeWallX(dungeon, "Spire_North_Lintel", -16, 16, -100, 4, 22, 32, 48)
+	makeWallX(dungeon, "Spire_North_E", 16, 60, -100, 4, 0, 32, 48)
 
-	-- Outer Walls
-	makeWallZ(dungeon, "Spire_West", -50, -100, -50, 4, 0, 30, 48)
-	makeWallZ(dungeon, "Spire_East", 50, -100, -50, 4, 0, 30, 48)
+	-- Outer Parapet Walls
+	makeWallZ(dungeon, "Spire_WestWall", -60, -100, -50, 4, 0, 32, 48)
+	makeWallZ(dungeon, "Spire_EastWall", 60, -100, -50, 4, 0, 32, 48)
 
-	-- North Wall flanking Gate at Z = -50
-	makeWallX(dungeon, "Spire_North_L", -50, -16, -50, 4, 0, 30, 48)
-	makeWallX(dungeon, "Spire_North_R", 16, 50, -50, 4, 0, 30, 48)
+	-- South Wall flanking Gate at Z = -50
+	makeWallX(dungeon, "Spire_South_W", -60, -18, -50, 4, 0, 32, 48)
+	makeWallX(dungeon, "Spire_South_E", 18, 60, -50, 4, 0, 32, 48)
 
-	-- Elevated Balcony Braziers
 	makeSolarBrazier(dungeon, Vector3.new(-35, 48, -75), CELESTIAL_BLUE)
 	makeSolarBrazier(dungeon, Vector3.new(35, 48, -75), CELESTIAL_BLUE)
 
 	-- ═══════════════════════════════════════════════════════════════════════════
-	-- ZONE 5: THE SOLAR SANCTUM GATE (Z = -50, at Y = 48)
+	-- ZONE 7: THE SOLAR SANCTUM GATE (Z = -50, at Y = 48)
 	-- Massive sealed double disc gate leading to Solarius's Solar Throne
 	-- ═══════════════════════════════════════════════════════════════════════════
 	local gateModel = Instance.new("Model")
@@ -569,20 +639,20 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 	local gateY = 48
 
 	-- Gate arch frame
-	makePart(gateModel, "GatePost_L", Vector3.new(5, 26, 5), CFrame.new(-16, gateY + 13, gateZ), GOLD_DARK, Enum.Material.Metal)
-	makePart(gateModel, "GatePost_R", Vector3.new(5, 26, 5), CFrame.new(16, gateY + 13, gateZ), GOLD_DARK, Enum.Material.Metal)
-	makePart(gateModel, "GateArch_Top", Vector3.new(36, 5, 6), CFrame.new(0, gateY + 23, gateZ), GOLD_ACCENT, Enum.Material.Metal)
+	makePart(gateModel, "GatePost_L", Vector3.new(5, 26, 5), CFrame.new(-18, gateY + 13, gateZ), GOLD_DARK, Enum.Material.Metal)
+	makePart(gateModel, "GatePost_R", Vector3.new(5, 26, 5), CFrame.new(18, gateY + 13, gateZ), GOLD_DARK, Enum.Material.Metal)
+	makePart(gateModel, "GateArch_Top", Vector3.new(40, 5, 6), CFrame.new(0, gateY + 23, gateZ), GOLD_ACCENT, Enum.Material.Metal)
 
 	-- Left and Right radiant golden vault doors
 	doorLeft = createSunforgedDoorLeaf(gateModel, "Door_Left", true,
-		Vector3.new(14, 22, 3), CFrame.new(-7, gateY + 11, gateZ))
+		Vector3.new(16, 22, 3), CFrame.new(-8, gateY + 11, gateZ))
 	doorRight = createSunforgedDoorLeaf(gateModel, "Door_Right", false,
-		Vector3.new(14, 22, 3), CFrame.new(7, gateY + 11, gateZ))
+		Vector3.new(16, 22, 3), CFrame.new(8, gateY + 11, gateZ))
 
 	-- Magical Runic Solar Ward Barrier
 	local barrier = Instance.new("Part")
 	barrier.Name = "RunicBarrier"
-	barrier.Size = Vector3.new(27, 21.8, 0.4)
+	barrier.Size = Vector3.new(31, 21.8, 0.4)
 	barrier.CFrame = CFrame.new(0, gateY + 11, gateZ - 1.5)
 	barrier.Color = SOLAR_ORANGE
 	barrier.Material = Enum.Material.Neon
@@ -611,10 +681,10 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 
 	local bb = Instance.new("BillboardGui")
 	bb.Name = "GateStatusBillboard"
-	bb.Size = UDim2.new(0, 360, 0, 85)
+	bb.Size = UDim2.new(0, 380, 0, 85)
 	bb.StudsOffset = Vector3.new(0, 1, 0)
 	bb.AlwaysOnTop = true
-	bb.MaxDistance = 120
+	bb.MaxDistance = 140
 	bb.Parent = displayPart
 
 	local title = Instance.new("TextLabel")
@@ -653,7 +723,7 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 	prompt.Name = "OpenGatePrompt"
 	prompt.ActionText = "Examine Gate"
 	prompt.ObjectText = "Solar Sanctum"
-	prompt.MaxActivationDistance = 18
+	prompt.MaxActivationDistance = 20
 	prompt.HoldDuration = 0.5
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = promptPart
@@ -677,30 +747,30 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 	end)
 
 	-- ═══════════════════════════════════════════════════════════════════════════
-	-- ZONE 6: THE SOLAR THRONE ARENA (Z = -50 to 90, X = -70 to 70 at Y = 48)
+	-- ZONE 8: THE SOLAR THRONE ARENA (Z = -50 to 140, X = -75 to 75 at Y = 48)
 	-- Colossal celestial open-air arena under desert sun
 	-- ═══════════════════════════════════════════════════════════════════════════
-	makeFloor(dungeon, "Arena", -70, 70, -50, 90, 48)
-	makePart(dungeon, "Arena_SolarCenterDisc", Vector3.new(70, 0.2, 70), CFrame.new(0, 49.1, 20), GOLD_ACCENT, Enum.Material.Marble)
+	makeFloor(dungeon, "Arena", -75, 75, -50, 140, 48)
+	makePart(dungeon, "Arena_SolarCenterDisc", Vector3.new(70, 0.2, 70), CFrame.new(0, 49.1, 40), GOLD_ACCENT, Enum.Material.Marble)
 
 	-- Surrounding Colosseum Walls
-	local arenaHeight = 36
-	makeWallX(dungeon, "Arena_NorthWall", -70, 70, 90, 5, 0, arenaHeight, 48)
-	makeWallZ(dungeon, "Arena_WestWall", -70, -50, 90, 5, 0, arenaHeight, 48)
-	makeWallZ(dungeon, "Arena_EastWall", 70, -50, 90, 5, 0, arenaHeight, 48)
+	local arenaHeight = 38
+	makeWallX(dungeon, "Arena_NorthWall", -75, 75, 140, 5, 0, arenaHeight, 48)
+	makeWallZ(dungeon, "Arena_WestWall", -75, -50, 140, 5, 0, arenaHeight, 48)
+	makeWallZ(dungeon, "Arena_EastWall", 75, -50, 140, 5, 0, arenaHeight, 48)
 
 	-- South Wall flanking gate
-	makeWallX(dungeon, "Arena_South_L", -70, -14, -50, 5, 0, arenaHeight, 48)
-	makeWallX(dungeon, "Arena_South_R", 14, 70, -50, 5, 0, arenaHeight, 48)
+	makeWallX(dungeon, "Arena_South_L", -75, -18, -50, 5, 0, arenaHeight, 48)
+	makeWallX(dungeon, "Arena_South_R", 18, 75, -50, 5, 0, arenaHeight, 48)
 
 	-- Ring of 8 Colossal Sun Pillars
-	local pillarRadius = 50
+	local pillarRadius = 55
 	for angle = 0, 315, 45 do
 		local rad = math.rad(angle)
 		local px = math.cos(rad) * pillarRadius
-		local pz = 20 + math.sin(rad) * pillarRadius
-		if not (math.abs(px) < 10 and pz < -20) then
-			makeGoldenPillar(dungeon, Vector3.new(px, 48, pz), arenaHeight, 6)
+		local pz = 40 + math.sin(rad) * pillarRadius
+		if not (math.abs(px) < 12 and pz < -20) then
+			makeGoldenPillar(dungeon, Vector3.new(px, 48, pz), arenaHeight, 6.5)
 			makeSolarBrazier(dungeon, Vector3.new(px * 0.85, 48, pz * 0.85), SOLAR_ORANGE)
 		end
 	end
@@ -740,9 +810,13 @@ function SunforgedCitadelMapService.UpdateGateStatus(mobsRemaining: number, tota
 	end
 end
 
-function SunforgedCitadelMapService.OpenBossGate()
+function SunforgedCitadelMapService.OpenBossGate(onOpened: (() -> ())?)
 	if isGateOpen then return end
 	isGateOpen = true
+
+	if onOpened then
+		onGateOpenedCallback = onOpened
+	end
 
 	if gatePrompt then gatePrompt.Enabled = false end
 	if gateStatusLabel then
@@ -765,11 +839,11 @@ function SunforgedCitadelMapService.OpenBossGate()
 
 		local gateZ = -50
 		local gateY = 48
-		local leftHinge = CFrame.new(-14, gateY + 11, gateZ)
-		local rightHinge = CFrame.new(14, gateY + 11, gateZ)
+		local leftHinge = CFrame.new(-18, gateY + 11, gateZ)
+		local rightHinge = CFrame.new(18, gateY + 11, gateZ)
 
-		local openLeft = leftHinge * CFrame.Angles(0, math.rad(-95), 0) * CFrame.new(7, 0, 0)
-		local openRight = rightHinge * CFrame.Angles(0, math.rad(95), 0) * CFrame.new(-7, 0, 0)
+		local openLeft = leftHinge * CFrame.Angles(0, math.rad(-95), 0) * CFrame.new(8, 0, 0)
+		local openRight = rightHinge * CFrame.Angles(0, math.rad(95), 0) * CFrame.new(-8, 0, 0)
 
 		local t1 = TweenService:Create(doorLeft, TweenInfo.new(2.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { CFrame = openLeft })
 		local t2 = TweenService:Create(doorRight, TweenInfo.new(2.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { CFrame = openRight })
@@ -818,6 +892,8 @@ function SunforgedCitadelMapService.Cleanup()
 	isGateUnlocked = false
 	isGateOpen = false
 	onGateOpenedCallback = nil
+	shortcuts.shortcut_crypt_vault.isOpen = false
+	shortcuts.shortcut_transept_portcullis.isOpen = false
 end
 
 return SunforgedCitadelMapService

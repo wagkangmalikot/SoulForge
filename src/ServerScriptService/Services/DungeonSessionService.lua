@@ -38,30 +38,30 @@ local BOSS_SPAWN_CFRAME = CFrame.new(0, 1, 45) * CFrame.Angles(0, math.pi, 0)
 
 -- Staging Antechamber safe entrance platform (Z = -285)
 local ENTRANCE_POSITION = Vector3.new(0, 5, -285)
-local SUNFORGED_ENTRANCE_POSITION = Vector3.new(0, 5, -420)
-local SUNFORGED_BOSS_SPAWN_CFRAME = CFrame.new(0, 50, 20) * CFrame.Angles(0, math.pi, 0)
+local SUNFORGED_ENTRANCE_POSITION = Vector3.new(0, 5, -1300)
+local SUNFORGED_BOSS_SPAWN_CFRAME = CFrame.new(0, 50, 40) * CFrame.Angles(0, math.pi, 0)
 
 local SUNFORGED_ZONE_MOB_COORDINATES = {
-	-- Zone 1: Maze Entrance Ambush
-	{ Vector3.new(-6, 3, -375), Vector3.new(6, 3, -375), Vector3.new(-4, 3, -380), Vector3.new(4, 3, -380) },
-	-- Zone 2: West Canyon Detour
-	{ Vector3.new(-25, 3, -355), Vector3.new(-15, 3, -355), Vector3.new(-22, 3, -360), Vector3.new(-18, 3, -350) },
-	-- Zone 3: Central Maze Junction
-	{ Vector3.new(5, 3, -330), Vector3.new(-5, 3, -330), Vector3.new(0, 3, -335), Vector3.new(2, 3, -325) },
-	-- Zone 4: East Maze Fork
-	{ Vector3.new(35, 3, -345), Vector3.new(25, 3, -345), Vector3.new(30, 3, -350), Vector3.new(28, 3, -340) },
-	-- Zone 5: Maze Exit Guard
-	{ Vector3.new(-20, 3, -285), Vector3.new(0, 3, -285), Vector3.new(-10, 3, -280), Vector3.new(-5, 3, -290) },
-	-- Zone 6: Cathedral Threshold Sentinels
-	{ Vector3.new(-15, 3, -255), Vector3.new(15, 3, -255), Vector3.new(-10, 3, -250), Vector3.new(10, 3, -250) },
-	-- Zone 7: Cathedral Nave Guardians
-	{ Vector3.new(-12, 3, -210), Vector3.new(12, 3, -210), Vector3.new(-8, 3, -215), Vector3.new(8, 3, -215) },
-	-- Zone 8: Cathedral Altar Vanguard
-	{ Vector3.new(-15, 3, -165), Vector3.new(15, 3, -165), Vector3.new(0, 3, -160), Vector3.new(0, 3, -170) },
-	-- Zone 9: Spire Ascent Ramps
-	{ Vector3.new(-6, 25, -120), Vector3.new(6, 25, -120), Vector3.new(0, 30, -110), Vector3.new(0, 20, -130) },
+	-- Zone 1: Labyrinth Imperial Portal
+	{ Vector3.new(-6, 3, -1180), Vector3.new(6, 3, -1180), Vector3.new(-4, 3, -1185), Vector3.new(4, 3, -1185) },
+	-- Zone 2: West Crypts - Chamber of Urns
+	{ Vector3.new(-85, 3, -1100), Vector3.new(-75, 3, -1100), Vector3.new(-80, 3, -1110), Vector3.new(-70, 3, -1090) },
+	-- Zone 3: West Crypts - Vault of Shadows
+	{ Vector3.new(-85, 3, -980), Vector3.new(-75, 3, -980), Vector3.new(-90, 3, -975), Vector3.new(-70, 3, -985) },
+	-- Zone 4: Central Avenue Crossroads
+	{ Vector3.new(-5, 3, -1050), Vector3.new(5, 3, -1050), Vector3.new(0, 3, -1060), Vector3.new(0, 3, -1040) },
+	-- Zone 5: East Sunken Tombs - Hall of Runes
+	{ Vector3.new(75, 3, -1100), Vector3.new(85, 3, -1100), Vector3.new(80, 3, -1110), Vector3.new(90, 3, -1090) },
+	-- Zone 6: East Sunken Tombs - Reliquary
+	{ Vector3.new(75, 3, -980), Vector3.new(85, 3, -980), Vector3.new(70, 3, -975), Vector3.new(90, 3, -985) },
+	-- Zone 7: Grand Archives & Sunken Vaults
+	{ Vector3.new(-25, 3, -720), Vector3.new(25, 3, -720), Vector3.new(-10, 3, -735), Vector3.new(10, 3, -735) },
+	-- Zone 8: Grand Solar Cathedral Nave
+	{ Vector3.new(-18, 3, -480), Vector3.new(18, 3, -480), Vector3.new(-10, 3, -490), Vector3.new(10, 3, -490) },
+	-- Zone 9: Grand Solar Cathedral Altar
+	{ Vector3.new(-16, 3, -340), Vector3.new(16, 3, -340), Vector3.new(0, 3, -330), Vector3.new(0, 3, -350) },
 	-- Zone 10: Solar Sanctum Gate Praetorians
-	{ Vector3.new(-10, 50, -65), Vector3.new(10, 50, -65), Vector3.new(-6, 50, -60), Vector3.new(6, 50, -60) },
+	{ Vector3.new(-12, 50, -75), Vector3.new(12, 50, -75), Vector3.new(-6, 50, -70), Vector3.new(6, 50, -70) },
 }
 
 -- Trash mob placement definitions: 10 strategic zones across the dungeon
