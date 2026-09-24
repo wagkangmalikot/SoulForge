@@ -909,8 +909,8 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 	local stairMaxX = stairWidth / 2
 
 	-- Side Enclosure Walls running from Y = 1 to Y = 80
-	makeWallZ(dungeon, "Colonnade_WestWall", stairMinX, -280, -100, 4, 0, 80)
-	makeWallZ(dungeon, "Colonnade_EastWall", stairMaxX, -280, -100, 4, 0, 80)
+	makeWallZ(dungeon, "Colonnade_WestWall", stairMinX, -290, -100, 4, 0, 80)
+	makeWallZ(dungeon, "Colonnade_EastWall", stairMaxX, -290, -100, 4, 0, 80)
 
 	-- High vaulted sloped ceiling over Grand Stepped Colonnade
 	local colCeilingAngle = math.atan(47 / 180) -- gentle ~14.6 degrees
@@ -918,8 +918,10 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 	local colCeiling = makePart(dungeon, "Colonnade_Ceiling", Vector3.new(stairWidth + 8, 3, colCeilingLen),
 		CFrame.new(0, 56, -190) * CFrame.Angles(colCeilingAngle, 0, 0), MARBLE_WHITE, Enum.Material.Marble)
 
-	-- 45 gentle steps: 1 stud rise each, 4 studs depth = completely walkable by any character!
-	makeStairs(dungeon, "Colonnade_Ascent", stairMinX, stairMaxX, -280, -100, 1, 48, 45)
+	-- 45 gentle steps flush with Cathedral floor: startY = FLOOR_Y+1 (=2) matches Cathedral top surface
+	-- Landing platform at the base of the stairs (bridges Cathedral floor to stair entry)
+	makeFloor(dungeon, "Colonnade_Landing", stairMinX, stairMaxX, -290, -280)
+	makeStairs(dungeon, "Colonnade_Ascent", stairMinX, stairMaxX, -290, -100, FLOOR_Y + 1, 49, 45)
 
 	-- Stepped Colonnade Braziers along the climb
 	makeSolarBrazier(dungeon, Vector3.new(-12, 12, -240), SOLAR_ORANGE)
