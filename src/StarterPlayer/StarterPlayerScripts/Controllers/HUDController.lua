@@ -1960,6 +1960,7 @@ function HUDController.Start()
 			if not itemId then
 				return -- Nothing owned: nothing to use
 			end
+			potionCooldownEnd = os.clock() + POTION_USE_COOLDOWN
 			Net.Get("RequestUsePotion"):FireServer(itemId)
 		end)
 	end
