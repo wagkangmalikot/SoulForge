@@ -8,7 +8,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TeleportService = game:GetService("TeleportService")
-local TweenService = game:GetService("TweenService")
 
 local Net = require(ReplicatedStorage.Shared.Net)
 local ConsumablesData = require(ReplicatedStorage.Shared.Data.Consumables)
@@ -70,8 +69,12 @@ local function showStatus(msg: string, success: boolean)
 	end)
 end
 
-local function buildRow(parent: Instance, itemId: string, layoutOrder: number): Frame
+local function buildRow(parent: Instance, itemId: string, layoutOrder: number): Frame?
 	local item = ConsumablesData[itemId]
+	if not item then
+		warn(("ShopUIController: unknown itemId %q in POTION_ORDER"):format(tostring(itemId)))
+		return nil
+	end
 
 	local row = Instance.new("Frame")
 	row.Name = "Row_" .. itemId
@@ -108,8 +111,8 @@ local function buildRow(parent: Instance, itemId: string, layoutOrder: number): 
 	descLabel.Parent = row
 
 	local ownedLabel = Instance.new("TextLabel")
-	ownedLabel.Size = UDim2.new(0, 100, 0, 20)
-	ownedLabel.Position = UDim2.new(1, -220, 0, 8)
+	ownedLabel.Size = UDim2.new(0, 84, 0, 20)
+	ownedLabel.Position = UDim2.new(1, -234, 0, 8)
 	ownedLabel.BackgroundTransparency = 1
 	ownedLabel.Font = Enum.Font.GothamBold
 	ownedLabel.Text = "Owned: 0"
@@ -310,7 +313,12 @@ function ShopUIController.Start()
 	Net.Get("RequestConsumablesSync"):FireServer()
 
 	task.spawn(function()
-		local stallPart = workspace:WaitForChild("ShopkeeperStall")
+		local stallPart = workspace:WaitForChild("ShopkeeperStall", 5)
+		if not stallPart then
+			warn("ShopUIController: ShopkeeperStall not found on hub server within 5s")
+			return
+		end
+
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.ActionText = "Browse Wares"
 		prompt.ObjectText = "Shopkeeper"
