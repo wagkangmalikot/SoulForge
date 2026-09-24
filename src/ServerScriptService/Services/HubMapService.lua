@@ -1757,10 +1757,12 @@ function HubMapService.BuildHub(): Model
 		cc.Parent = Lighting
 	end)
 
-	-- ── SHOPKEEPER STALL (Health Potion Vendor) ──────────────────────────────
-	-- Positioned Southwest of the plaza (X = -48, Z = 46), mirroring the Forge
-	-- on the opposite side -- open ground, doesn't overlap any other landmark.
-	local stallPos = Vector3.new(-48, FLOOR_Y, 46)
+	-- ── 13. SHOPKEEPER STALL (Health Potion Vendor) ──────────────────────────
+	-- Positioned Southwest of the plaza (X = -48, Z = 75), south of the Tavern
+	-- (X = -48, Z = 46) -- same axis, pushed well clear of the Tavern's own
+	-- footprint (TavernWalls spans roughly Z:[33,59]) and well inside the South
+	-- wall/gate boundary (Z ~= 85, from plazaSize/2).
+	local stallPos = Vector3.new(-48, FLOOR_Y, 75)
 
 	-- Counter (waist-height serving table)
 	local stallCounter = makePart(hub, "StallCounter", Vector3.new(6.0, 1.1, 2.4), CFrame.new(stallPos + Vector3.new(0, 1.7, 0)), DARK_WOOD, Enum.Material.WoodPlanks)
@@ -1786,7 +1788,7 @@ function HubMapService.BuildHub(): Model
 	addMesh(waresCrate, Enum.MeshType.Brick)
 
 	-- A couple of potion-bottle stand-ins (small glowing spheres) on the counter
-	for i, px in {1.0, 1.8} do
+	for _, px in {1.0, 1.8} do
 		local bottle = makePart(hub, "StallPotionBottle", Vector3.new(0.4, 0.6, 0.4), CFrame.new(stallPos + Vector3.new(px, 2.55, 0)), Color3.fromRGB(200, 40, 60), Enum.Material.Glass, false)
 		addMesh(bottle, Enum.MeshType.Sphere, Vector3.new(0.8, 1.2, 0.8))
 		local bottleGlow = Instance.new("PointLight")
