@@ -154,22 +154,36 @@ local function createClassCard(parent: Instance, classId: string, xScale: number
 	classTitle.TextXAlignment = Enum.TextXAlignment.Left
 	classTitle.Parent = banner
 
+	-- Card width shrank from ~48.5% to ~31.5% of the row when Warrior was added,
+	-- and Tank/Warrior's descriptions run 200+ chars, so a fixed-height label can
+	-- easily need more lines than it has room for. Grown height (56->80, reclaimed
+	-- from traitsFrame below) buys real headroom; TextScaled+UITextSizeConstraint
+	-- shrinks the font as a fallback for whatever still doesn't fit; ClipsDescendants
+	-- is a last-resort guard so any remaining overflow clips instead of bleeding
+	-- into traitsFrame rather than visually overlapping it.
 	local desc = Instance.new("TextLabel")
-	desc.Size = UDim2.new(1, -20, 0, 56)
+	desc.Size = UDim2.new(1, -20, 0, 80)
 	desc.Position = UDim2.new(0, 10, 0, 44)
 	desc.BackgroundTransparency = 1
+	desc.ClipsDescendants = true
 	desc.Font = Enum.Font.GothamMedium
 	desc.Text = info.description
 	desc.TextColor3 = COLORS.slateLight
 	desc.TextSize = 12.5
+	desc.TextScaled = true
 	desc.TextWrapped = true
 	desc.TextXAlignment = Enum.TextXAlignment.Left
 	desc.TextYAlignment = Enum.TextYAlignment.Top
 	desc.Parent = card
 
+	local descTextConstraint = Instance.new("UITextSizeConstraint")
+	descTextConstraint.MinTextSize = 8
+	descTextConstraint.MaxTextSize = 12.5
+	descTextConstraint.Parent = desc
+
 	local traitsFrame = Instance.new("Frame")
-	traitsFrame.Size = UDim2.new(1, -20, 0, 100)
-	traitsFrame.Position = UDim2.new(0, 10, 0, 106)
+	traitsFrame.Size = UDim2.new(1, -20, 0, 86)
+	traitsFrame.Position = UDim2.new(0, 10, 0, 130)
 	traitsFrame.BackgroundTransparency = 1
 	traitsFrame.Parent = card
 
