@@ -288,13 +288,20 @@ function LevelUpService.Start()
 						char.CraftingMaterials
 					)
 				end
+			elseif cmd == "/sunforged" or cmd == "/citadel" or cmd == "/dungeon2" then
+				local DungeonEntryService = require(script.Parent.DungeonEntryService)
+				DungeonEntryService.EnterDungeon(player, "Sunforged")
+			elseif cmd == "/rockhide" or cmd == "/dungeon1" then
+				local DungeonEntryService = require(script.Parent.DungeonEntryService)
+				DungeonEntryService.EnterDungeon(player, "Rockhide")
 			elseif cmd == "/boss" or cmd == "/solarius" or cmd == "/bossfight" or cmd == "/opengate" then
 				local DungeonSessionService = require(script.Parent.DungeonSessionService)
 				if DungeonSessionService.OpenBossGateForTesting then
 					DungeonSessionService.OpenBossGateForTesting()
 				end
 				if player.Character then
-					local targetCF = CFrame.new(0, 52, -45)
+					local isCitadel = workspace:FindFirstChild("SunforgedCitadel") ~= nil
+					local targetCF = isCitadel and CFrame.new(0, 52, -45) or CFrame.new(0, 5, -20)
 					player.Character:PivotTo(targetCF)
 					local hrp = player.Character:FindFirstChild("HumanoidRootPart")
 					if hrp then

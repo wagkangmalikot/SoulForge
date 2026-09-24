@@ -61,9 +61,17 @@ if RunService:IsServer() then
 	end
 	folder.Parent = ReplicatedStorage
 else
-	local folder = ReplicatedStorage:WaitForChild("NetRemotes")
-	for _, remoteName in REMOTE_NAMES do
-		remotes[remoteName] = folder:WaitForChild(remoteName)
+	local folder = ReplicatedStorage:WaitForChild("NetRemotes", 10)
+	if folder then
+		for _, remoteName in REMOTE_NAMES do
+			remotes[remoteName] = folder:WaitForChild(remoteName, 5)
+		end
+	else
+		-- In Edit mode or fallback when server isn't running
+		for _, remoteName in REMOTE_NAMES do
+			remotes[remoteName] = Instance.new("RemoteEvent")
+			remotes[remoteName].Name = remoteName
+		end
 	end
 end
 

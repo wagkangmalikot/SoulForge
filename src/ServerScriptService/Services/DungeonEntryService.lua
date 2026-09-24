@@ -98,4 +98,6 @@ function DungeonEntryService.Start()
 	end)
 end
 
+DungeonEntryService.EnterDungeon = enterDungeon
+
 return DungeonEntryService

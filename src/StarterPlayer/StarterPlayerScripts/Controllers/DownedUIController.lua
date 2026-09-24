@@ -507,7 +507,8 @@ function DownedUIController.Start()
 
 			titleLabel.Text = "VICTORY ACHIEVED"
 			titleLabel.TextColor3 = Color3.fromRGB(255, 225, 90)
-			subtitleLabel.Text = "Rockhide the Earthbreaker has been vanquished!"
+			local isCitadel = workspace:FindFirstChild("SunforgedCitadel") ~= nil
+			subtitleLabel.Text = isCitadel and "Solarius, Sunforged Colossus has been vanquished!" or "Rockhide the Earthbreaker has been vanquished!"
 			subtitleLabel.TextColor3 = Color3.fromRGB(215, 205, 175)
 
 			rewHeader.Text = "REWARDS & SPOILS"

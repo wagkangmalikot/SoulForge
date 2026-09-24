@@ -182,7 +182,9 @@ local function ensureModelIntegrityAndRig(model: Model)
 		humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
 	end)
 
-	local torso = findLimbPart(model, {"torso", "uppertorso", "lowertorso", "body", "chest", "root"})
+	local torso = model:FindFirstChild("Torso")
+		or model:FindFirstChild("UpperTorso")
+		or findLimbPart(model, {"torso", "uppertorso", "lowertorso", "body", "chest"})
 		or primary
 
 	-- Classify limbs: keywords first, then geometric fallback based on object-space X/Y
@@ -213,15 +215,39 @@ local function ensureModelIntegrityAndRig(model: Model)
 		end
 	end
 
-	-- Connect limbs with Motor6D joints
-	local leftShoulder = getOrCreateMotor6D(leftArm, torso, "LeftShoulder")
-	local rightShoulder = getOrCreateMotor6D(rightArm, torso, "RightShoulder")
-	local leftHip = getOrCreateMotor6D(leftLeg, torso, "LeftHip")
-	local rightHip = getOrCreateMotor6D(rightLeg, torso, "RightHip")
-	local neck = getOrCreateMotor6D(head, torso, "Neck")
+	local isR15 = (humanoid and humanoid.RigType == Enum.HumanoidRigType.R15)
+		or model:FindFirstChild("UpperTorso") ~= nil
 
-	if primary ~= torso then
-		getOrCreateMotor6D(torso, primary, "RootJoint")
+	local leftShoulder: Motor6D? = nil
+	local rightShoulder: Motor6D? = nil
+	local leftHip: Motor6D? = nil
+	local rightHip: Motor6D? = nil
+	local neck: Motor6D? = nil
+
+	-- Search for existing named joints first (supporting both "Left Shoulder" and "LeftShoulder")
+	for _, desc in model:GetDescendants() do
+		if desc:IsA("Motor6D") then
+			local clean = string.lower(desc.Name):gsub("[%s_%-]", "")
+			if clean == "leftshoulder" then leftShoulder = desc
+			elseif clean == "rightshoulder" then rightShoulder = desc
+			elseif clean == "lefthip" then leftHip = desc
+			elseif clean == "righthip" then rightHip = desc
+			elseif clean == "neck" then neck = desc
+			end
+		end
+	end
+
+	if not isR15 then
+		-- Connect limbs with Motor6D joints (R6) if not already present
+		if not leftShoulder then leftShoulder = getOrCreateMotor6D(leftArm, torso, "LeftShoulder") end
+		if not rightShoulder then rightShoulder = getOrCreateMotor6D(rightArm, torso, "RightShoulder") end
+		if not leftHip then leftHip = getOrCreateMotor6D(leftLeg, torso, "LeftHip") end
+		if not rightHip then rightHip = getOrCreateMotor6D(rightLeg, torso, "RightHip") end
+		if not neck then neck = getOrCreateMotor6D(head, torso, "Neck") end
+
+		if primary ~= torso then
+			getOrCreateMotor6D(torso, primary, "RootJoint")
+		end
 	end
 
 	local jointed = {
@@ -244,18 +270,10 @@ local function ensureModelIntegrityAndRig(model: Model)
 			-- Static accessories not in the jointed tree get welded to their appropriate limb or torso
 			if not jointed[part] then
 				local alreadyWelded = false
-				for _, w in part:GetChildren() do
-					if w:IsA("WeldConstraint") or w:IsA("Weld") then
+				for _, desc in model:GetDescendants() do
+					if (desc:IsA("WeldConstraint") or desc:IsA("Weld") or desc:IsA("Motor6D")) and (desc.Part0 == part or desc.Part1 == part) then
 						alreadyWelded = true
 						break
-					end
-				end
-				if not alreadyWelded and part.Parent then
-					for _, w in part.Parent:GetChildren() do
-						if (w:IsA("WeldConstraint") or w:IsA("Weld")) and (w.Part0 == part or w.Part1 == part) then
-							alreadyWelded = true
-							break
-						end
 					end
 				end
 
@@ -388,6 +406,14 @@ local function setupMobAnimations(model: Model): (AnimationTrack?, AnimationTrac
 end
 
 local function buildSunbladeModel(targetId: string): Model
+	local assets = ReplicatedStorage:FindFirstChild("Assets")
+	local template = assets and assets:FindFirstChild("SunbladeTemplate")
+	if template then
+		local model = template:Clone()
+		model.Name = targetId
+		return model
+	end
+
 	local model = Instance.new("Model")
 	model.Name = targetId
 
@@ -514,6 +540,14 @@ local function buildSunbladeModel(targetId: string): Model
 end
 
 local function buildPyromancerModel(targetId: string): Model
+	local assets = ReplicatedStorage:FindFirstChild("Assets")
+	local template = assets and assets:FindFirstChild("PyromancerTemplate")
+	if template then
+		local model = template:Clone()
+		model.Name = targetId
+		return model
+	end
+
 	local model = Instance.new("Model")
 	model.Name = targetId
 
@@ -744,7 +778,7 @@ function MonsterAIService.SpawnMobs(
 		hpBillboard.Name = "MobHP"
 		hpBillboard.Size = UDim2.new(0, 96, 0, 22)
 		local _, mobExtents = model:GetBoundingBox()
-		local mobHeightOffset = math.clamp((mobExtents.Y / 2) + 0.8, 2.2, 3.8)
+		local mobHeightOffset = math.clamp((mobExtents.Y / 2) + 0.8, 2.2, 5.5)
 		hpBillboard.StudsOffset = Vector3.new(0, mobHeightOffset, 0)
 		hpBillboard.AlwaysOnTop = false
 		hpBillboard.LightInfluence = 0

@@ -671,8 +671,8 @@ function HUDController.Start()
 	bossNameLabel.TextSize = 15.5
 	bossNameLabel.TextColor3 = Color3.fromRGB(255, 220, 110)
 	bossNameLabel.TextStrokeColor3 = Color3.fromRGB(15, 15, 22)
-	bossNameLabel.TextStrokeTransparency = 0.2
-	bossNameLabel.Text = "💀 ROCKHIDE THE EARTHBREAKER"
+	local isCitadelInitial = workspace:FindFirstChild("SunforgedCitadel") ~= nil
+	bossNameLabel.Text = isCitadelInitial and "☀️ SOLARIUS, SUNFORGED COLOSSUS" or "💀 ROCKHIDE THE EARTHBREAKER"
 	bossNameLabel.Parent = bossHeader
 
 	-- Boss Bar Background Plate
@@ -778,10 +778,23 @@ function HUDController.Start()
 		end
 	end)
 
+	local BOSS_DISPLAY_NAMES = {
+		Rockhide = "💀 ROCKHIDE THE EARTHBREAKER",
+		Solarius = "☀️ SOLARIUS, SUNFORGED COLOSSUS",
+	}
+
 	local bossGhostTween: Tween? = nil
-	Net.Get("BossStateChanged").OnClientEvent:Connect(function(_bossId, _phaseIndex, current, max)
+	Net.Get("BossStateChanged").OnClientEvent:Connect(function(bossId, _phaseIndex, current, max)
 		if current > 0 and max > 0 then
 			bossHealthContainer.Visible = true
+			if bossId and BOSS_DISPLAY_NAMES[bossId] then
+				bossNameLabel.Text = BOSS_DISPLAY_NAMES[bossId]
+			elseif bossId and type(bossId) == "string" and #bossId > 0 then
+				bossNameLabel.Text = "⚔️ " .. string.upper(bossId)
+			else
+				local isCitadel = workspace:FindFirstChild("SunforgedCitadel") ~= nil
+				bossNameLabel.Text = isCitadel and "☀️ SOLARIUS, SUNFORGED COLOSSUS" or "💀 ROCKHIDE THE EARTHBREAKER"
+			end
 			local curClamped = math.max(0, current)
 			local maxSafe = math.max(1, max)
 			local pct = math.clamp(curClamped / maxSafe, 0, 1)

@@ -825,11 +825,22 @@ local function ensureModelIntegrityAndRig(model: Model)
 					targetLimb = head
 				end
 
-				local weld = Instance.new("WeldConstraint")
-				weld.Name = "IntegrityWeld_" .. part.Name
-				weld.Part0 = targetLimb
-				weld.Part1 = part
-				weld.Parent = targetLimb
+				-- Only add an integrity weld if this sub-part doesn't already have an authored weld
+				local hasWeld = false
+				for _, inst in model:GetDescendants() do
+					if inst:IsA("WeldConstraint") and (inst.Part0 == part or inst.Part1 == part) then
+						hasWeld = true
+						break
+					end
+				end
+
+				if not hasWeld then
+					local weld = Instance.new("WeldConstraint")
+					weld.Name = "IntegrityWeld_" .. part.Name
+					weld.Part0 = targetLimb
+					weld.Part1 = part
+					weld.Parent = targetLimb
+				end
 			end
 		end
 	end
@@ -1218,10 +1229,53 @@ local function createBossModel(bossId: string, spawnCFrame: CFrame): Model
 	return model
 end
 
+local function attachBossNameplate(model: Model, bossId: string)
+	local head = model:FindFirstChild("Head") or model.PrimaryPart
+	if not head then return end
+
+	local existing = head:FindFirstChild("BossOverheadNameplate")
+	if existing then existing:Destroy() end
+
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "BossOverheadNameplate"
+	bb.Size = UDim2.new(0, 380, 0, 70)
+	bb.StudsOffset = Vector3.new(0, (bossId == "Solarius" and 6.0 or 4.5), 0)
+	bb.AlwaysOnTop = false
+	bb.MaxDistance = 160
+	bb.Parent = head
+
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Name = "BossName"
+	nameLabel.Size = UDim2.new(1, 0, 0.55, 0)
+	nameLabel.Position = UDim2.new(0, 0, 0, 0)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Font = Enum.Font.GothamBold
+	nameLabel.TextSize = 22
+	nameLabel.TextColor3 = (bossId == "Solarius") and Color3.fromRGB(255, 220, 80) or Color3.fromRGB(255, 180, 70)
+	nameLabel.TextStrokeColor3 = Color3.fromRGB(15, 15, 20)
+	nameLabel.TextStrokeTransparency = 0.15
+	nameLabel.Text = (bossId == "Solarius") and "☀️ SOLARIUS, SUNFORGED COLOSSUS" or "💀 ROCKHIDE THE EARTHBREAKER"
+	nameLabel.Parent = bb
+
+	local subLabel = Instance.new("TextLabel")
+	subLabel.Name = "BossSub"
+	subLabel.Size = UDim2.new(1, 0, 0.45, 0)
+	subLabel.Position = UDim2.new(0, 0, 0.52, 0)
+	subLabel.BackgroundTransparency = 1
+	subLabel.Font = Enum.Font.GothamMedium
+	subLabel.TextSize = 14
+	subLabel.TextColor3 = (bossId == "Solarius") and Color3.fromRGB(255, 240, 160) or Color3.fromRGB(200, 205, 215)
+	subLabel.TextStrokeColor3 = Color3.fromRGB(10, 10, 15)
+	subLabel.TextStrokeTransparency = 0.25
+	subLabel.Text = (bossId == "Solarius") and "[Tier 2 Citadel Boss • Lv. 30]" or "[Tier 1 Stronghold Boss • Lv. 5]"
+	subLabel.Parent = bb
+end
+
 function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (() -> ())?, onAggro: (() -> ())?)
 	local bossData = require(ReplicatedStorage.Shared.Data.Bosses[bossId])
 
 	local model = createBossModel(bossId, spawnCFrame)
+	attachBossNameplate(model, bossId)
 	local primary, joints = ensureModelIntegrityAndRig(model)
 	local walkTrack, attackTrack = setupBossAnimations(model)
 
@@ -2242,6 +2296,8 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 					task.wait(0.35)
 					resetAllJoints(joints, 0.3)
 					task.wait(0.2)
+
+				elseif attackId == "Solarius_Supernova" then
 					-- ── 6. SUPERNOVA ENRAGE (Room-Wide Solar Flare) ───────────
 					local windupDur = math.max(0.5, telegraphDur - 0.4)
 
