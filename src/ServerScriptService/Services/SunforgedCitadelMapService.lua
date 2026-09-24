@@ -681,7 +681,7 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 	-- Colossal celestial open-air arena under desert sun
 	-- ═══════════════════════════════════════════════════════════════════════════
 	makeFloor(dungeon, "Arena", -70, 70, -50, 90, 48)
-	makePart(dungeon, "Arena_SolarCenterDisc", Vector3.new(70, 2.1, 70), CFrame.new(0, 47, 20), GOLD_ACCENT, Enum.Material.Marble)
+	makePart(dungeon, "Arena_SolarCenterDisc", Vector3.new(70, 0.2, 70), CFrame.new(0, 49.1, 20), GOLD_ACCENT, Enum.Material.Marble)
 
 	-- Surrounding Colosseum Walls
 	local arenaHeight = 36

@@ -67,6 +67,83 @@ local function getOrCreateMotor6D(limb: BasePart?, parentPart: BasePart, jointNa
 	return motor
 end
 
+-- Raycasts downward from above pos to find the exact floor surface Y
+local function getGroundY(pos: Vector3, fallbackY: number?): number
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Exclude
+	rayParams.RespectCanCollide = true
+
+	local ignore = {}
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p.Character then
+			table.insert(ignore, p.Character)
+		end
+	end
+	for _, inst in ipairs(CollectionService:GetTagged("Enemy")) do
+		table.insert(ignore, inst)
+	end
+	for _, m in ipairs(workspace:GetChildren()) do
+		if m:IsA("Model") and (m:FindFirstChildOfClass("Humanoid") or string.find(m.Name, "Mob") or string.find(m.Name, "Minion") or string.find(m.Name, "Boss") or string.find(m.Name, "Solarius") or string.find(m.Name, "Rockhide")) then
+			table.insert(ignore, m)
+		end
+	end
+	rayParams.FilterDescendantsInstances = ignore
+
+	local origin = Vector3.new(pos.X, pos.Y + 8, pos.Z)
+	local result = workspace:Raycast(origin, Vector3.new(0, -60, 0), rayParams)
+	if result then
+		return result.Position.Y
+	end
+	return fallbackY or (pos.Y >= 35 and 49.0 or (pos.Y >= 15 and pos.Y or 1.0))
+end
+
+-- Calculates the vertical distance from model.PrimaryPart down to the lowest part of its feet/limbs
+local function getFootOffset(model: Model, defaultOffset: number?): number
+	local primary = model.PrimaryPart
+	if not primary then
+		return defaultOffset or 2.5
+	end
+
+	local minY = math.huge
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") then
+			local pName = string.lower(part.Name)
+			-- Exclude held weapons, floating crystals, wings, and effects from foot calculation
+			if pName ~= "_bossauralight"
+				and not string.find(pName, "sword")
+				and not string.find(pName, "blade")
+				and not string.find(pName, "staff")
+				and not string.find(pName, "scepter")
+				and not string.find(pName, "weapon")
+				and not string.find(pName, "gem")
+				and not string.find(pName, "halo")
+				and not string.find(pName, "wing")
+				and not string.find(pName, "effect")
+				and not string.find(pName, "floating")
+			then
+				local cf = part.CFrame
+				local sz = part.Size
+				-- Calculate world-space half height along world Y taking rotation into account
+				local halfY = 0.5 * (
+					math.abs(cf.RightVector.Y) * sz.X +
+					math.abs(cf.UpVector.Y) * sz.Y +
+					math.abs(cf.LookVector.Y) * sz.Z
+				)
+				local bottomY = cf.Position.Y - halfY
+				if bottomY < minY then
+					minY = bottomY
+				end
+			end
+		end
+	end
+
+	if minY == math.huge then
+		return defaultOffset or 2.5
+	end
+
+	return primary.Position.Y - minY
+end
+
 -- Auto-rigs and locks model integrity:
 -- 1. Classifies limbs (arms, legs, head, torso) geometrically and by keywords
 -- 2. Connects limbs via Motor6D joints so walking and attack animations can rotate them
@@ -164,13 +241,39 @@ local function ensureModelIntegrityAndRig(model: Model)
 			part.CanCollide = false
 			part.Massless = true
 
-			-- Static accessories not in the jointed tree get welded to torso
+			-- Static accessories not in the jointed tree get welded to their appropriate limb or torso
 			if not jointed[part] then
-				local weld = Instance.new("WeldConstraint")
-				weld.Name = "IntegrityWeld_" .. part.Name
-				weld.Part0 = torso
-				weld.Part1 = part
-				weld.Parent = torso
+				local alreadyWelded = false
+				for _, w in part:GetChildren() do
+					if w:IsA("WeldConstraint") or w:IsA("Weld") then
+						alreadyWelded = true
+						break
+					end
+				end
+				if not alreadyWelded and part.Parent then
+					for _, w in part.Parent:GetChildren() do
+						if (w:IsA("WeldConstraint") or w:IsA("Weld")) and (w.Part0 == part or w.Part1 == part) then
+							alreadyWelded = true
+							break
+						end
+					end
+				end
+
+				if not alreadyWelded then
+					local targetLimb = torso
+					local pName = string.lower(part.Name)
+					if (string.find(pName, "sword") or string.find(pName, "blade") or string.find(pName, "staff") or string.find(pName, "scepter") or string.find(pName, "gem") or string.find(pName, "shield")) and rightArm then
+						targetLimb = rightArm
+					elseif (string.find(pName, "head") or string.find(pName, "visor") or string.find(pName, "crest") or string.find(pName, "halo")) and head then
+						targetLimb = head
+					end
+
+					local weld = Instance.new("WeldConstraint")
+					weld.Name = "IntegrityWeld_" .. part.Name
+					weld.Part0 = targetLimb
+					weld.Part1 = part
+					weld.Parent = targetLimb
+				end
 			end
 		end
 	end
@@ -590,11 +693,18 @@ function MonsterAIService.SpawnMobs(
 			end
 		end
 
-		-- Elevate slightly above floor and face toward entrance corridor (-Z) BEFORE welding
-		model:PivotTo(CFrame.new(pos + Vector3.new(0, 0.5, 0)) * CFrame.Angles(0, math.pi, 0))
+		-- Calculate foot offset and floor height so mob stands flush on ground
+		local footOffset = getFootOffset(model)
+		local floorY = getGroundY(pos, pos.Y)
+		local spawnPos = Vector3.new(pos.X, floorY + footOffset + 0.05, pos.Z)
+
+		model:PivotTo(CFrame.new(spawnPos) * CFrame.Angles(0, math.pi, 0))
 
 		-- Auto-rig limbs and secure integrity
 		local primary, joints = ensureModelIntegrityAndRig(model)
+		if primary then
+			primary.CFrame = CFrame.new(spawnPos) * CFrame.Angles(0, math.pi, 0)
+		end
 		CollectionService:AddTag(model, "Enemy")
 		model.Parent = workspace
 
@@ -891,8 +1001,11 @@ function MonsterAIService.SpawnMobs(
 
 					local step = math.min(mobWalkSpeed * 0.22, dist - mobAttackRadius + 0.5)
 					local dir = (flatTarget - myPos).Unit
-					local nextPos = myPos + dir * step
-					local targetCFrame = CFrame.lookAt(nextPos, flatTarget) * CFrame.Angles(0, math.pi, 0)
+					local rawNextPos = myPos + dir * step
+					local nextFloorY = getGroundY(rawNextPos, myPos.Y - footOffset)
+					local nextPos = Vector3.new(rawNextPos.X, nextFloorY + footOffset + 0.05, rawNextPos.Z)
+					local targetLookAt = Vector3.new(flatTarget.X, nextPos.Y, flatTarget.Z)
+					local targetCFrame = CFrame.lookAt(nextPos, targetLookAt) * CFrame.Angles(0, math.pi, 0)
 
 					if currentTween then
 						currentTween:Cancel()
@@ -915,7 +1028,10 @@ function MonsterAIService.SpawnMobs(
 					if currentTween then
 						currentTween:Cancel()
 					end
-					model.PrimaryPart.CFrame = CFrame.lookAt(myPos, flatTarget) * CFrame.Angles(0, math.pi, 0)
+					local currentFloorY = getGroundY(myPos, myPos.Y - footOffset)
+					local standingPos = Vector3.new(myPos.X, currentFloorY + footOffset + 0.05, myPos.Z)
+					local targetLookAt = Vector3.new(flatTarget.X, standingPos.Y, flatTarget.Z)
+					model.PrimaryPart.CFrame = CFrame.lookAt(standingPos, targetLookAt) * CFrame.Angles(0, math.pi, 0)
 				end
 
 				-- 3. Attack Execution

@@ -22,50 +22,64 @@ local BOSS_PHASE2_SPEED = 14.5
 local function getGroundY(pos: Vector3, fallbackY: number?): number
 	local rayParams = RaycastParams.new()
 	rayParams.FilterType = Enum.RaycastFilterType.Exclude
+	rayParams.RespectCanCollide = true
+
 	local ignore = {}
 	for _, p in ipairs(Players:GetPlayers()) do
 		if p.Character then table.insert(ignore, p.Character) end
 	end
+	for _, inst in ipairs(CollectionService:GetTagged("Enemy")) do
+		table.insert(ignore, inst)
+	end
 	for _, m in ipairs(workspace:GetChildren()) do
-		if m:IsA("Model") and (string.find(m.Name, "Boss") or string.find(m.Name, "Rockhide") or m:FindFirstChild("Humanoid")) then
+		if m:IsA("Model") and (string.find(m.Name, "Boss") or string.find(m.Name, "Rockhide") or string.find(m.Name, "Solarius") or string.find(m.Name, "TrashMob") or string.find(m.Name, "Minion") or m:FindFirstChildOfClass("Humanoid")) then
 			table.insert(ignore, m)
 		end
 	end
 	rayParams.FilterDescendantsInstances = ignore
 
-	local origin = Vector3.new(pos.X, math.max(pos.Y + 20, 35), pos.Z)
-	local result = workspace:Raycast(origin, Vector3.new(0, -100, 0), rayParams)
+	local origin = Vector3.new(pos.X, pos.Y + 8, pos.Z)
+	local result = workspace:Raycast(origin, Vector3.new(0, -60, 0), rayParams)
 	if result then
 		return result.Position.Y
 	end
-	return fallbackY or 1.0 -- exact dungeon floor level from DungeonMapService
+	return fallbackY or (pos.Y >= 35 and 49.0 or 1.0)
 end
 
--- Calculates the vertical distance from the boss's PrimaryPart down to the lowest point of any of its BaseParts
-local function getFootOffset(model: Model): number
+-- Calculates the vertical distance from the boss's PrimaryPart down to the lowest point of its feet/legs
+local function getFootOffset(model: Model, defaultOffset: number?): number
 	local primary = model.PrimaryPart
-	if not primary then return 6 end
+	if not primary then return defaultOffset or 6 end
 
 	local minY = math.huge
 	for _, part in model:GetDescendants() do
-		if part:IsA("BasePart") and part.Name ~= "_BossAuraLight" then
-			local cf = part.CFrame
-			local sz = part.Size
-			-- Calculate world-space half height along world Y taking rotation into account
-			local halfY = 0.5 * (
-				math.abs(cf.RightVector.Y) * sz.X +
-				math.abs(cf.UpVector.Y) * sz.Y +
-				math.abs(cf.LookVector.Y) * sz.Z
-			)
-			local bottomY = cf.Position.Y - halfY
-			if bottomY < minY then
-				minY = bottomY
+		if part:IsA("BasePart") then
+			local pName = string.lower(part.Name)
+			if pName ~= "_bossauralight"
+				and not string.find(pName, "sword")
+				and not string.find(pName, "blade")
+				and not string.find(pName, "halo")
+				and not string.find(pName, "wing")
+				and not string.find(pName, "effect")
+			then
+				local cf = part.CFrame
+				local sz = part.Size
+				-- Calculate world-space half height along world Y taking rotation into account
+				local halfY = 0.5 * (
+					math.abs(cf.RightVector.Y) * sz.X +
+					math.abs(cf.UpVector.Y) * sz.Y +
+					math.abs(cf.LookVector.Y) * sz.Z
+				)
+				local bottomY = cf.Position.Y - halfY
+				if bottomY < minY then
+					minY = bottomY
+				end
 			end
 		end
 	end
 
 	if minY == math.huge then
-		return 6
+		return defaultOffset or 6
 	end
 
 	return primary.Position.Y - minY
@@ -1104,16 +1118,97 @@ local function createBossModel(bossId: string, spawnCFrame: CFrame): Model
 		rLeg.Material = Enum.Material.Metal
 		rLeg.Parent = model
 	else
+		-- Rockhide, Earthbreaker Colossus (procedural earth golem model if template is missing)
 		model = Instance.new("Model")
 		model.Name = bossId
 
 		local torso = Instance.new("Part")
 		torso.Name = "Torso"
-		torso.Size = Vector3.new(6, 10, 6)
-		torso.Color = Color3.fromRGB(80, 78, 75)
+		torso.Size = Vector3.new(8, 10, 6)
+		torso.Color = Color3.fromRGB(90, 85, 80)
+		torso.Material = Enum.Material.Slate
 		torso.Parent = model
-
 		model.PrimaryPart = torso
+
+		-- Glowing Earth Crystal Core in chest
+		local core = Instance.new("Part")
+		core.Name = "EarthCore"
+		core.Size = Vector3.new(4, 4, 1.2)
+		core.CFrame = torso.CFrame * CFrame.new(0, 1.2, -3.1)
+		core.Color = Color3.fromRGB(130, 220, 70)
+		core.Material = Enum.Material.Neon
+		core.Parent = model
+		local wCore = Instance.new("WeldConstraint")
+		wCore.Part0 = torso
+		wCore.Part1 = core
+		wCore.Parent = torso
+
+		-- Rugged Stone Head with Horns
+		local head = Instance.new("Part")
+		head.Name = "Head"
+		head.Size = Vector3.new(4.5, 4, 4.2)
+		head.CFrame = torso.CFrame * CFrame.new(0, 6.8, 0)
+		head.Color = Color3.fromRGB(105, 100, 95)
+		head.Material = Enum.Material.Slate
+		head.Parent = model
+
+		local hornL = Instance.new("Part")
+		hornL.Name = "HornL"
+		hornL.Size = Vector3.new(1.2, 3.5, 1.2)
+		hornL.CFrame = head.CFrame * CFrame.new(-2.2, 2.2, -0.5) * CFrame.Angles(0, 0, math.rad(30))
+		hornL.Color = Color3.fromRGB(70, 65, 60)
+		hornL.Material = Enum.Material.Rock
+		hornL.Parent = model
+		local wHornL = Instance.new("WeldConstraint")
+		wHornL.Part0 = head
+		wHornL.Part1 = hornL
+		wHornL.Parent = head
+
+		local hornR = Instance.new("Part")
+		hornR.Name = "HornR"
+		hornR.Size = Vector3.new(1.2, 3.5, 1.2)
+		hornR.CFrame = head.CFrame * CFrame.new(2.2, 2.2, -0.5) * CFrame.Angles(0, 0, math.rad(-30))
+		hornR.Color = Color3.fromRGB(70, 65, 60)
+		hornR.Material = Enum.Material.Rock
+		hornR.Parent = model
+		local wHornR = Instance.new("WeldConstraint")
+		wHornR.Part0 = head
+		wHornR.Part1 = hornR
+		wHornR.Parent = head
+
+		-- Massive Stone Fist Arms
+		local lArm = Instance.new("Part")
+		lArm.Name = "LeftUpperArm"
+		lArm.Size = Vector3.new(3.6, 9.5, 3.6)
+		lArm.CFrame = torso.CFrame * CFrame.new(-5.8, 0, 0)
+		lArm.Color = Color3.fromRGB(85, 80, 75)
+		lArm.Material = Enum.Material.Slate
+		lArm.Parent = model
+
+		local rArm = Instance.new("Part")
+		rArm.Name = "RightUpperArm"
+		rArm.Size = Vector3.new(3.6, 9.5, 3.6)
+		rArm.CFrame = torso.CFrame * CFrame.new(5.8, 0, 0)
+		rArm.Color = Color3.fromRGB(85, 80, 75)
+		rArm.Material = Enum.Material.Slate
+		rArm.Parent = model
+
+		-- Heavy Pillar Legs
+		local lLeg = Instance.new("Part")
+		lLeg.Name = "LeftUpperLeg"
+		lLeg.Size = Vector3.new(3.4, 8.5, 3.4)
+		lLeg.CFrame = torso.CFrame * CFrame.new(-2.2, -8.5, 0)
+		lLeg.Color = Color3.fromRGB(80, 75, 70)
+		lLeg.Material = Enum.Material.Slate
+		lLeg.Parent = model
+
+		local rLeg = Instance.new("Part")
+		rLeg.Name = "RightUpperLeg"
+		rLeg.Size = Vector3.new(3.4, 8.5, 3.4)
+		rLeg.CFrame = torso.CFrame * CFrame.new(2.2, -8.5, 0)
+		rLeg.Color = Color3.fromRGB(80, 75, 70)
+		rLeg.Material = Enum.Material.Slate
+		rLeg.Parent = model
 	end
 
 	model:PivotTo(spawnCFrame)
@@ -1132,8 +1227,8 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 
 	-- Calculate dynamic vertical distance from PrimaryPart to bottom of feet
 	local footOffset = getFootOffset(model)
-	local spawnFloorY = getGroundY(spawnCFrame.Position)
-	local adjustedSpawnPos = Vector3.new(spawnCFrame.X, spawnFloorY + footOffset, spawnCFrame.Z)
+	local spawnFloorY = getGroundY(spawnCFrame.Position, (spawnCFrame.Y >= 35 and 49.0 or 1.0))
+	local adjustedSpawnPos = Vector3.new(spawnCFrame.X, spawnFloorY + footOffset + 0.05, spawnCFrame.Z)
 	local adjustedCFrame = CFrame.new(adjustedSpawnPos) * spawnCFrame.Rotation
 	model:PivotTo(adjustedCFrame)
 	if primary then
@@ -1517,14 +1612,14 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 					local rawNextPos = myPos + dir * step
 
 					-- Keep boss strictly inside colosseum arena boundaries and resting flush on the floor
-					local targetFloorY = getGroundY(rawNextPos)
+					local targetFloorY = getGroundY(rawNextPos, (rawNextPos.Y >= 35 and 49.0 or 1.0))
 					local nextPos = Vector3.new(
 						math.clamp(rawNextPos.X, -50, 50),
-						targetFloorY + footOffset,
+						targetFloorY + footOffset + 0.05,
 						math.clamp(rawNextPos.Z, -20, 95)
 					)
 
-					local targetLookAt = Vector3.new(flatTarget.X, targetFloorY + footOffset, flatTarget.Z)
+					local targetLookAt = Vector3.new(flatTarget.X, targetFloorY + footOffset + 0.05, flatTarget.Z)
 					local targetCFrame = CFrame.lookAt(nextPos, targetLookAt) * CFrame.Angles(0, math.pi, 0)
 					if currentTween then
 						currentTween:Cancel()
@@ -1546,8 +1641,8 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 					if currentTween then
 						currentTween:Cancel()
 					end
-					local currentFloorY = getGroundY(myPos)
-					local standingY = currentFloorY + footOffset
+					local currentFloorY = getGroundY(myPos, (myPos.Y >= 35 and 49.0 or 1.0))
+					local standingY = currentFloorY + footOffset + 0.05
 					local lookTarget = Vector3.new(flatTarget.X, standingY, flatTarget.Z)
 					model.PrimaryPart.CFrame = CFrame.lookAt(Vector3.new(myPos.X, standingY, myPos.Z), lookTarget) * CFrame.Angles(0, math.pi, 0)
 				end
@@ -1570,8 +1665,8 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 				end
 
 				-- Face player before initiating attack
-				local currentFloorY = getGroundY(myPos)
-				local standingY = currentFloorY + footOffset
+				local currentFloorY = getGroundY(myPos, (myPos.Y >= 35 and 49.0 or 1.0))
+				local standingY = currentFloorY + footOffset + 0.05
 				local lookTarget = Vector3.new(flatTarget.X, standingY, flatTarget.Z)
 				model.PrimaryPart.CFrame = CFrame.lookAt(Vector3.new(myPos.X, standingY, myPos.Z), lookTarget) * CFrame.Angles(0, math.pi, 0)
 
@@ -1593,8 +1688,8 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 
 				-- Determine telegraph location based on attack type, snapped flush to arena floor
 				local facing = (flatTarget - myPos).Magnitude > 0.5 and (flatTarget - myPos).Unit or Vector3.zAxis
-				local myGroundY = getGroundY(myPos) + 0.12
-				local targetGroundY = getGroundY(targetPos) + 0.12
+				local myGroundY = getGroundY(myPos, (myPos.Y >= 35 and 49.0 or 1.0)) + 0.12
+				local targetGroundY = getGroundY(targetPos, (targetPos.Y >= 35 and 49.0 or 1.0)) + 0.12
 				local floorY = myGroundY
 				local telegraphPos = Vector3.new(myPos.X, myGroundY, myPos.Z)
 
@@ -1607,15 +1702,15 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 					)
 				elseif attackId == "Rockhide_SweepingBackhand" or attackId == "Solarius_RadiantSlash" or attackId == "Solarius_Sunburst" or attack.type == "Cleave" or attack.type == "Sweep" then
 					local cleavePos = myPos + facing * 8
-					floorY = getGroundY(cleavePos) + 0.12
+					floorY = getGroundY(cleavePos, (cleavePos.Y >= 35 and 49.0 or 1.0)) + 0.12
 					telegraphPos = Vector3.new(cleavePos.X, floorY, cleavePos.Z)
 				elseif attack.type == "Charge" then
 					local chargeDist = attack.chargeDistance or 20
 					local rawChargeEnd = myPos + facing * chargeDist
-					local chargeFloorY = getGroundY(rawChargeEnd)
+					local chargeFloorY = getGroundY(rawChargeEnd, (rawChargeEnd.Y >= 35 and 49.0 or 1.0))
 					local chargeEnd = Vector3.new(
 						math.clamp(rawChargeEnd.X, -50, 50),
-						chargeFloorY + footOffset,
+						chargeFloorY + footOffset + 0.05,
 						math.clamp(rawChargeEnd.Z, -20, 95)
 					)
 					floorY = chargeFloorY + 0.12
@@ -1625,7 +1720,7 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 					telegraphPos = Vector3.new(myPos.X, floorY, myPos.Z)
 				else
 					local slamCenter = myPos + facing * 4
-					floorY = getGroundY(slamCenter) + 0.12
+					floorY = getGroundY(slamCenter, (slamCenter.Y >= 35 and 49.0 or 1.0)) + 0.12
 					telegraphPos = Vector3.new(slamCenter.X, floorY, slamCenter.Z)
 				end
 
@@ -1647,7 +1742,7 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 					if not alive then break end
 
 					-- Leap: boss leaps through the sky directly toward telegraphPos
-					local landingPos = Vector3.new(telegraphPos.X, getGroundY(telegraphPos) + footOffset, telegraphPos.Z)
+					local landingPos = Vector3.new(telegraphPos.X, getGroundY(telegraphPos, (telegraphPos.Y >= 35 and 49.0 or 1.0)) + footOffset + 0.05, telegraphPos.Z)
 					local leapApex = math.max(9, (landingPos - myPos).Magnitude * 0.32)
 					local leapStartTime = os.clock()
 					local leapDur = 0.42
@@ -1838,13 +1933,13 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 					-- Dash forward
 					local chargeDist = attack.chargeDistance or 20
 					local rawChargeEnd = myPos + facing * chargeDist
-					local chargeFloorY = getGroundY(rawChargeEnd)
+					local chargeFloorY = getGroundY(rawChargeEnd, (rawChargeEnd.Y >= 35 and 49.0 or 1.0))
 					local chargeEnd = Vector3.new(
 						math.clamp(rawChargeEnd.X, -50, 50),
-						chargeFloorY + footOffset,
+						chargeFloorY + footOffset + 0.05,
 						math.clamp(rawChargeEnd.Z, -20, 95)
 					)
-					local chargeLookTarget = Vector3.new(chargeEnd.X + facing.X, chargeFloorY + footOffset, chargeEnd.Z + facing.Z)
+					local chargeLookTarget = Vector3.new(chargeEnd.X + facing.X, chargeFloorY + footOffset + 0.05, chargeEnd.Z + facing.Z)
 					local chargeCFrame = CFrame.lookAt(chargeEnd, chargeLookTarget) * CFrame.Angles(0, math.pi, 0)
 					playSound("ChargeRush", "rbxasset://sounds/action_jump.mp3", model.PrimaryPart, 1.8, 0.5)
 
