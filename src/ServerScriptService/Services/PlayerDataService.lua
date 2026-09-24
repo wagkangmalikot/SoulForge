@@ -52,6 +52,7 @@ local DEFAULT_DATA = {
 			SunstoneCore = 99999,
 			AncientRune = 99999,
 		},
+		Consumables = {},
 		Gold = 9999999,
 		Name = "",                    -- set at character creation (spec 2b), TextService-filtered
 		HasCreatedCharacter = false,  -- gates whether the creation screen shows on join
@@ -215,6 +216,10 @@ local function onPlayerAdded(player: Player)
 		charData.CraftingMaterials.LeatherStrap = math.max(charData.CraftingMaterials.LeatherStrap or 0, 99999)
 		charData.CraftingMaterials.SunstoneCore = math.max(charData.CraftingMaterials.SunstoneCore or 0, 99999)
 		charData.CraftingMaterials.AncientRune = math.max(charData.CraftingMaterials.AncientRune or 0, 99999)
+
+		if not charData.Consumables then
+			charData.Consumables = {}
+		end
 
 		charData.Gold = math.max(charData.Gold or 0, 9999999)
 	end
