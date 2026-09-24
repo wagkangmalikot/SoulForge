@@ -146,23 +146,23 @@ function LevelUpUIController.Start()
 	headerIcon.Parent = modalFrame
 
 	local headerTitle = Instance.new("TextLabel")
-	headerTitle.Size = UDim2.new(1, -100, 0, 24)
+	headerTitle.Size = UDim2.new(1, -100, 0, 26)
 	headerTitle.Position = UDim2.new(0, 54, 0, 8)
 	headerTitle.BackgroundTransparency = 1
 	headerTitle.TextColor3 = Color3.fromRGB(255, 225, 100)
 	headerTitle.Font = Enum.Font.GothamBlack
-	headerTitle.TextSize = 20
+	headerTitle.TextSize = 24
 	headerTitle.TextXAlignment = Enum.TextXAlignment.Left
-	headerTitle.Text = "SHRINE OF ASCENSION"
+	headerTitle.Text = "LEVEL ASCENSION"
 	headerTitle.Parent = modalFrame
 
 	local headerSub = Instance.new("TextLabel")
 	headerSub.Size = UDim2.new(1, -100, 0, 18)
-	headerSub.Position = UDim2.new(0, 54, 0, 32)
+	headerSub.Position = UDim2.new(0, 54, 0, 34)
 	headerSub.BackgroundTransparency = 1
 	headerSub.TextColor3 = Color3.fromRGB(175, 185, 205)
 	headerSub.Font = Enum.Font.GothamMedium
-	headerSub.TextSize = 14.5
+	headerSub.TextSize = 15
 	headerSub.TextXAlignment = Enum.TextXAlignment.Left
 	headerSub.Text = "Channel banked experience into power and talent points"
 	headerSub.Parent = modalFrame
@@ -170,12 +170,12 @@ function LevelUpUIController.Start()
 	-- Close Button [✕]
 	local closeButton = Instance.new("TextButton")
 	closeButton.Name = "CloseButton"
-	closeButton.Size = UDim2.new(0, 34, 0, 34)
-	closeButton.Position = UDim2.new(1, -46, 0, 10)
+	closeButton.Size = UDim2.new(0, 38, 0, 38)
+	closeButton.Position = UDim2.new(1, -48, 0, 8)
 	closeButton.BackgroundColor3 = Color3.fromRGB(180, 45, 45)
 	closeButton.TextColor3 = Color3.new(1, 1, 1)
 	closeButton.Font = Enum.Font.GothamBold
-	closeButton.TextSize = 18
+	closeButton.TextSize = 20
 	closeButton.Text = "✕"
 	closeButton.BorderSizePixel = 0
 	closeButton.Parent = modalFrame
@@ -296,7 +296,7 @@ function LevelUpUIController.Start()
 	p1Text.BackgroundTransparency = 1
 	p1Text.TextColor3 = Color3.fromRGB(255, 225, 90)
 	p1Text.Font = Enum.Font.GothamBold
-	p1Text.TextSize = 14.5
+	p1Text.TextSize = 15.5
 	p1Text.Text = "⭐ +1 Talent Skill Point"
 	p1Text.Parent = perk1
 
@@ -322,30 +322,30 @@ function LevelUpUIController.Start()
 	p2Text.BackgroundTransparency = 1
 	p2Text.TextColor3 = Color3.fromRGB(120, 240, 155)
 	p2Text.Font = Enum.Font.GothamBold
-	p2Text.TextSize = 14.5
+	p2Text.TextSize = 15.5
 	p2Text.Text = "💚 +Max Health & Power"
 	p2Text.Parent = perk2
 
 	-- ── 4. Experience Progress Gauge & Breakdown ───────────────────────────────
 	local expHeaderL = Instance.new("TextLabel")
-	expHeaderL.Size = UDim2.new(0.5, 0, 0, 18)
+	expHeaderL.Size = UDim2.new(0.5, 0, 0, 20)
 	expHeaderL.Position = UDim2.new(0, 14, 0, 174)
 	expHeaderL.BackgroundTransparency = 1
 	expHeaderL.TextColor3 = Color3.fromRGB(180, 190, 205)
 	expHeaderL.Font = Enum.Font.GothamBold
-	expHeaderL.TextSize = 14
+	expHeaderL.TextSize = 15
 	expHeaderL.TextXAlignment = Enum.TextXAlignment.Left
 	expHeaderL.Text = "ASCENSION PROGRESS"
 	expHeaderL.Parent = modalFrame
 
 	local expHeaderR = Instance.new("TextLabel")
 	expHeaderR.Name = "ExpHeaderStatus"
-	expHeaderR.Size = UDim2.new(0.5, 0, 0, 18)
+	expHeaderR.Size = UDim2.new(0.5, 0, 0, 20)
 	expHeaderR.Position = UDim2.new(0.5, -14, 0, 174)
 	expHeaderR.BackgroundTransparency = 1
 	expHeaderR.TextColor3 = Color3.fromRGB(255, 220, 80)
 	expHeaderR.Font = Enum.Font.GothamBold
-	expHeaderR.TextSize = 14.5
+	expHeaderR.TextSize = 15.5
 	expHeaderR.TextXAlignment = Enum.TextXAlignment.Right
 	expHeaderR.Text = "430 / 50 EXP (Ready!)"
 	expHeaderR.Parent = modalFrame
@@ -442,11 +442,11 @@ function LevelUpUIController.Start()
 	local btnTitle = Instance.new("TextLabel")
 	btnTitle.Name = "ButtonTitle"
 	btnTitle.Size = UDim2.new(1, 0, 0, 24)
-	btnTitle.Position = UDim2.new(0, 0, 0, 7)
+	btnTitle.Position = UDim2.new(0, 0, 0, 6)
 	btnTitle.BackgroundTransparency = 1
 	btnTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 	btnTitle.Font = Enum.Font.GothamBlack
-	btnTitle.TextSize = 18
+	btnTitle.TextSize = 20
 	btnTitle.Text = "✨ ASCEND TO LEVEL 2"
 	btnTitle.Parent = confirmButton
 
@@ -457,7 +457,7 @@ function LevelUpUIController.Start()
 	btnSub.BackgroundTransparency = 1
 	btnSub.TextColor3 = Color3.fromRGB(220, 255, 220)
 	btnSub.Font = Enum.Font.GothamBold
-	btnSub.TextSize = 13.5
+	btnSub.TextSize = 14.5
 	btnSub.Text = "SPEND 50 EXP  •  RECEIVE +1 TALENT POINT"
 	btnSub.Parent = confirmButton
 

@@ -9,8 +9,8 @@ local PartyService = require(script.Parent.PartyService)
 local DungeonEntryService = {}
 
 local function enterDungeon(player: Player, dungeonId: string)
-	if dungeonId ~= "Rockhide" then
-		return -- only Rockhide's dungeon exists in this slice
+	if dungeonId ~= "Rockhide" and dungeonId ~= "Sunforged" then
+		return
 	end
 
 	local party = PartyService.GetParty(player)
@@ -35,14 +35,33 @@ local function enterDungeon(player: Player, dungeonId: string)
 		-- Directly transition the server into the dungeon session for seamless testing:
 		ReplicatedStorage:SetAttribute("IsDungeon", true)
 		local DungeonSessionService = require(script.Parent.DungeonSessionService)
-		local HUB_ONLY_SCENERY = {"RockhidePortal", "LevelUpShrine", "SpawnLocation", "SoulforgeHub"}
+		local HUB_ONLY_SCENERY = {"RockhidePortal", "SunforgedPortal", "LevelUpShrine", "SpawnLocation", "SoulforgeHub"}
 		for _, name in HUB_ONLY_SCENERY do
 			local instance = workspace:FindFirstChild(name)
 			if instance then
 				instance:Destroy()
 			end
 		end
+
+		-- Start the dungeon session first so dungeon geometry (floors, walls, collision) is fully generated
 		DungeonSessionService.Start(dungeonId, memberUserIds)
+
+		local entranceTarget = (dungeonId == "Sunforged") and Vector3.new(0, 5.5, -1300) or Vector3.new(0, 5, -285)
+		local targetCF = CFrame.new(entranceTarget)
+		for _, p in players do
+			if p.Character then
+				p.Character:PivotTo(targetCF)
+				local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+				if hrp then
+					hrp.AssemblyLinearVelocity = Vector3.zero
+					hrp.AssemblyAngularVelocity = Vector3.zero
+				end
+				pcall(function()
+					Net.Get("TeleportClient"):FireClient(p, targetCF)
+				end)
+			end
+		end
+
 		return
 	end
 

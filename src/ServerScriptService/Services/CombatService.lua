@@ -355,18 +355,41 @@ function CombatService.ApplyDamageToPlayer(player: Player, amount: number)
 	if not humanoid then
 		return
 	end
+
+	-- Calculate total armor and damage reduction from equipped gear
+	local profile = PlayerDataService.GetProfile(player)
+	local totalArmor = 0
+	local damageReduction = 0
+	if profile and profile.Data and profile.Data.Character and profile.Data.Character.EquippedEquipment then
+		for _, pieceId in pairs(profile.Data.Character.EquippedEquipment) do
+			local itm = EquipmentData.Items[pieceId]
+			if itm and itm.stats then
+				if itm.stats.armor then
+					totalArmor += itm.stats.armor
+				end
+				if itm.stats.damageReduction then
+					damageReduction += itm.stats.damageReduction
+				end
+			end
+		end
+	end
+
+	local armorFactor = 100 / (100 + math.max(0, totalArmor))
+	local reductionFactor = 1 - math.clamp(damageReduction, 0, 0.75)
+	local mitigatedDamage = math.max(1, math.round(amount * armorFactor * reductionFactor))
+
 	-- ArcaneBarrier shield: absorb as much damage as possible before hitting health
 	local shield = arcaneShields[player.UserId]
 	if shield and os.clock() < shield.expiresAt and shield.amount > 0 then
-		local absorbed = math.min(shield.amount, amount)
+		local absorbed = math.min(shield.amount, mitigatedDamage)
 		shield.amount -= absorbed
-		amount -= absorbed
+		mitigatedDamage -= absorbed
 		if shield.amount <= 0 then
 			arcaneShields[player.UserId] = nil
 		end
 	end
-	if amount > 0 then
-		humanoid.Health = math.max(0, humanoid.Health - amount)
+	if mitigatedDamage > 0 then
+		humanoid.Health = math.max(0, humanoid.Health - mitigatedDamage)
 	end
 	Net.Get("HealthChanged"):FireAllClients(player.UserId, humanoid.Health, humanoid.MaxHealth)
 end

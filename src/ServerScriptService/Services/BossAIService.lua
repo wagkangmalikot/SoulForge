@@ -22,50 +22,64 @@ local BOSS_PHASE2_SPEED = 14.5
 local function getGroundY(pos: Vector3, fallbackY: number?): number
 	local rayParams = RaycastParams.new()
 	rayParams.FilterType = Enum.RaycastFilterType.Exclude
+	rayParams.RespectCanCollide = true
+
 	local ignore = {}
 	for _, p in ipairs(Players:GetPlayers()) do
 		if p.Character then table.insert(ignore, p.Character) end
 	end
+	for _, inst in ipairs(CollectionService:GetTagged("Enemy")) do
+		table.insert(ignore, inst)
+	end
 	for _, m in ipairs(workspace:GetChildren()) do
-		if m:IsA("Model") and (string.find(m.Name, "Boss") or string.find(m.Name, "Rockhide") or m:FindFirstChild("Humanoid")) then
+		if m:IsA("Model") and (string.find(m.Name, "Boss") or string.find(m.Name, "Rockhide") or string.find(m.Name, "Solarius") or string.find(m.Name, "TrashMob") or string.find(m.Name, "Minion") or m:FindFirstChildOfClass("Humanoid")) then
 			table.insert(ignore, m)
 		end
 	end
 	rayParams.FilterDescendantsInstances = ignore
 
-	local origin = Vector3.new(pos.X, math.max(pos.Y + 20, 35), pos.Z)
-	local result = workspace:Raycast(origin, Vector3.new(0, -100, 0), rayParams)
+	local origin = Vector3.new(pos.X, pos.Y + 8, pos.Z)
+	local result = workspace:Raycast(origin, Vector3.new(0, -60, 0), rayParams)
 	if result then
 		return result.Position.Y
 	end
-	return fallbackY or 1.0 -- exact dungeon floor level from DungeonMapService
+	return fallbackY or (pos.Y >= 35 and 49.0 or 1.0)
 end
 
--- Calculates the vertical distance from the boss's PrimaryPart down to the lowest point of any of its BaseParts
-local function getFootOffset(model: Model): number
+-- Calculates the vertical distance from the boss's PrimaryPart down to the lowest point of its feet/legs
+local function getFootOffset(model: Model, defaultOffset: number?): number
 	local primary = model.PrimaryPart
-	if not primary then return 6 end
+	if not primary then return defaultOffset or 6 end
 
 	local minY = math.huge
 	for _, part in model:GetDescendants() do
-		if part:IsA("BasePart") and part.Name ~= "_BossAuraLight" then
-			local cf = part.CFrame
-			local sz = part.Size
-			-- Calculate world-space half height along world Y taking rotation into account
-			local halfY = 0.5 * (
-				math.abs(cf.RightVector.Y) * sz.X +
-				math.abs(cf.UpVector.Y) * sz.Y +
-				math.abs(cf.LookVector.Y) * sz.Z
-			)
-			local bottomY = cf.Position.Y - halfY
-			if bottomY < minY then
-				minY = bottomY
+		if part:IsA("BasePart") then
+			local pName = string.lower(part.Name)
+			if pName ~= "_bossauralight"
+				and not string.find(pName, "sword")
+				and not string.find(pName, "blade")
+				and not string.find(pName, "halo")
+				and not string.find(pName, "wing")
+				and not string.find(pName, "effect")
+			then
+				local cf = part.CFrame
+				local sz = part.Size
+				-- Calculate world-space half height along world Y taking rotation into account
+				local halfY = 0.5 * (
+					math.abs(cf.RightVector.Y) * sz.X +
+					math.abs(cf.UpVector.Y) * sz.Y +
+					math.abs(cf.LookVector.Y) * sz.Z
+				)
+				local bottomY = cf.Position.Y - halfY
+				if bottomY < minY then
+					minY = bottomY
+				end
 			end
 		end
 	end
 
 	if minY == math.huge then
-		return 6
+		return defaultOffset or 6
 	end
 
 	return primary.Position.Y - minY
@@ -927,17 +941,274 @@ local function createBossModel(bossId: string, spawnCFrame: CFrame): Model
 	if template then
 		model = template:Clone()
 		model.Name = bossId
+	elseif bossId == "Solarius" then
+		-- ── SOLARIUS, THE SUNFORGED COLOSSUS (Tier 2 Boss Model) ────────────
+		model = Instance.new("Model")
+		model.Name = "Solarius"
+
+		local torso = Instance.new("Part")
+		torso.Name = "Torso"
+		torso.Size = Vector3.new(7, 11, 5)
+		torso.Color = Color3.fromRGB(215, 175, 55)
+		torso.Material = Enum.Material.Metal
+		torso.Parent = model
+		model.PrimaryPart = torso
+
+		-- Solar Chestplate Inlay & Core
+		local chestSun = Instance.new("Part")
+		chestSun.Name = "ChestSun"
+		chestSun.Size = Vector3.new(4.5, 4.5, 1)
+		chestSun.CFrame = torso.CFrame * CFrame.new(0, 1.5, -2.6)
+		chestSun.Color = Color3.fromRGB(255, 140, 30)
+		chestSun.Material = Enum.Material.Neon
+		chestSun.Parent = model
+		local wChest = Instance.new("WeldConstraint")
+		wChest.Part0 = torso
+		wChest.Part1 = chestSun
+		wChest.Parent = torso
+
+		local coreEmbers = Instance.new("ParticleEmitter")
+		coreEmbers.Name = "CoreEmbers"
+		coreEmbers.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		coreEmbers.Rate = 12
+		coreEmbers.Speed = NumberRange.new(2, 4)
+		coreEmbers.Lifetime = NumberRange.new(0.6, 1.2)
+		coreEmbers.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.8), NumberSequenceKeypoint.new(1, 0) })
+		coreEmbers.Color = ColorSequence.new(Color3.fromRGB(255, 230, 80), Color3.fromRGB(255, 100, 20))
+		coreEmbers.LightEmission = 0.9
+		coreEmbers.Parent = chestSun
+
+		-- Radiant Head with Solar Halo & Crown
+		local head = Instance.new("Part")
+		head.Name = "Head"
+		head.Size = Vector3.new(4, 4.5, 4)
+		head.CFrame = torso.CFrame * CFrame.new(0, 7.8, 0)
+		head.Color = Color3.fromRGB(235, 195, 75)
+		head.Material = Enum.Material.Metal
+		head.Parent = model
+
+		local visor = Instance.new("Part")
+		visor.Name = "Visor"
+		visor.Size = Vector3.new(3.2, 0.6, 0.8)
+		visor.CFrame = head.CFrame * CFrame.new(0, 0.2, -2.1)
+		visor.Color = Color3.fromRGB(60, 220, 255)
+		visor.Material = Enum.Material.Neon
+		visor.Parent = model
+		local wVisor = Instance.new("WeldConstraint")
+		wVisor.Part0 = head
+		wVisor.Part1 = visor
+		wVisor.Parent = head
+
+		local halo = Instance.new("Part")
+		halo.Name = "SolarHalo"
+		halo.Size = Vector3.new(8.5, 8.5, 0.5)
+		halo.CFrame = head.CFrame * CFrame.new(0, 1.5, 1.6)
+		halo.Color = Color3.fromRGB(255, 175, 40)
+		halo.Material = Enum.Material.Neon
+		halo.Parent = model
+		local wHalo = Instance.new("WeldConstraint")
+		wHalo.Part0 = head
+		wHalo.Part1 = halo
+		wHalo.Parent = head
+
+		-- Radiant Wings of Light on Upper Back
+		local wingTL = Instance.new("Part")
+		wingTL.Name = "SolarWing_TL"
+		wingTL.Size = Vector3.new(0.6, 13, 2.4)
+		wingTL.CFrame = torso.CFrame * CFrame.new(-3.6, 5.5, 2.4) * CFrame.Angles(math.rad(15), math.rad(-20), math.rad(-35))
+		wingTL.Color = Color3.fromRGB(255, 215, 60)
+		wingTL.Material = Enum.Material.Neon
+		wingTL.Parent = model
+		local wWingTL = Instance.new("WeldConstraint")
+		wWingTL.Part0 = torso
+		wWingTL.Part1 = wingTL
+		wWingTL.Parent = torso
+
+		local wingTR = Instance.new("Part")
+		wingTR.Name = "SolarWing_TR"
+		wingTR.Size = Vector3.new(0.6, 13, 2.4)
+		wingTR.CFrame = torso.CFrame * CFrame.new(3.6, 5.5, 2.4) * CFrame.Angles(math.rad(15), math.rad(20), math.rad(35))
+		wingTR.Color = Color3.fromRGB(255, 215, 60)
+		wingTR.Material = Enum.Material.Neon
+		wingTR.Parent = model
+		local wWingTR = Instance.new("WeldConstraint")
+		wWingTR.Part0 = torso
+		wWingTR.Part1 = wingTR
+		wWingTR.Parent = torso
+
+		local wingBL = Instance.new("Part")
+		wingBL.Name = "SolarWing_BL"
+		wingBL.Size = Vector3.new(0.5, 9, 2.0)
+		wingBL.CFrame = torso.CFrame * CFrame.new(-3.0, 1.8, 2.2) * CFrame.Angles(math.rad(10), math.rad(-15), math.rad(-60))
+		wingBL.Color = Color3.fromRGB(255, 175, 40)
+		wingBL.Material = Enum.Material.Neon
+		wingBL.Parent = model
+		local wWingBL = Instance.new("WeldConstraint")
+		wWingBL.Part0 = torso
+		wWingBL.Part1 = wingBL
+		wWingBL.Parent = torso
+
+		local wingBR = Instance.new("Part")
+		wingBR.Name = "SolarWing_BR"
+		wingBR.Size = Vector3.new(0.5, 9, 2.0)
+		wingBR.CFrame = torso.CFrame * CFrame.new(3.0, 1.8, 2.2) * CFrame.Angles(math.rad(10), math.rad(15), math.rad(60))
+		wingBR.Color = Color3.fromRGB(255, 175, 40)
+		wingBR.Material = Enum.Material.Neon
+		wingBR.Parent = model
+		local wWingBR = Instance.new("WeldConstraint")
+		wWingBR.Part0 = torso
+		wWingBR.Part1 = wingBR
+		wWingBR.Parent = torso
+
+		-- Massive Pauldron Limbs & Arms
+		local lArm = Instance.new("Part")
+		lArm.Name = "LeftUpperArm"
+		lArm.Size = Vector3.new(3.5, 10, 3.5)
+		lArm.CFrame = torso.CFrame * CFrame.new(-5.5, 0, 0)
+		lArm.Color = Color3.fromRGB(180, 140, 40)
+		lArm.Material = Enum.Material.Metal
+		lArm.Parent = model
+
+		local rArm = Instance.new("Part")
+		rArm.Name = "RightUpperArm"
+		rArm.Size = Vector3.new(3.5, 10, 3.5)
+		rArm.CFrame = torso.CFrame * CFrame.new(5.5, 0, 0)
+		rArm.Color = Color3.fromRGB(180, 140, 40)
+		rArm.Material = Enum.Material.Metal
+		rArm.Parent = model
+
+		-- Dawnbreaker Sunforged Greatsword in Right Arm
+		local sword = Instance.new("Part")
+		sword.Name = "SunforgedGreatsword"
+		sword.Size = Vector3.new(1.8, 17, 0.9)
+		sword.CFrame = rArm.CFrame * CFrame.new(0, -6, -2) * CFrame.Angles(math.rad(45), 0, 0)
+		sword.Color = Color3.fromRGB(255, 215, 75)
+		sword.Material = Enum.Material.Neon
+		sword.Parent = model
+		local wSword = Instance.new("WeldConstraint")
+		wSword.Part0 = rArm
+		wSword.Part1 = sword
+		wSword.Parent = rArm
+
+		local swordEmbers = Instance.new("ParticleEmitter")
+		swordEmbers.Name = "SwordEmbers"
+		swordEmbers.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		swordEmbers.Rate = 16
+		swordEmbers.Speed = NumberRange.new(2, 4)
+		swordEmbers.Lifetime = NumberRange.new(0.6, 1.2)
+		swordEmbers.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(1, 0) })
+		swordEmbers.Color = ColorSequence.new(Color3.fromRGB(255, 235, 90), Color3.fromRGB(255, 130, 25))
+		swordEmbers.LightEmission = 0.9
+		swordEmbers.Parent = sword
+
+		-- Heavy Armored Legs
+		local lLeg = Instance.new("Part")
+		lLeg.Name = "LeftUpperLeg"
+		lLeg.Size = Vector3.new(3.2, 9, 3.2)
+		lLeg.CFrame = torso.CFrame * CFrame.new(-2, -9.5, 0)
+		lLeg.Color = Color3.fromRGB(160, 120, 35)
+		lLeg.Material = Enum.Material.Metal
+		lLeg.Parent = model
+
+		local rLeg = Instance.new("Part")
+		rLeg.Name = "RightUpperLeg"
+		rLeg.Size = Vector3.new(3.2, 9, 3.2)
+		rLeg.CFrame = torso.CFrame * CFrame.new(2, -9.5, 0)
+		rLeg.Color = Color3.fromRGB(160, 120, 35)
+		rLeg.Material = Enum.Material.Metal
+		rLeg.Parent = model
 	else
+		-- Rockhide, Earthbreaker Colossus (procedural earth golem model if template is missing)
 		model = Instance.new("Model")
 		model.Name = bossId
 
 		local torso = Instance.new("Part")
 		torso.Name = "Torso"
-		torso.Size = Vector3.new(6, 10, 6)
-		torso.Color = Color3.fromRGB(80, 78, 75)
+		torso.Size = Vector3.new(8, 10, 6)
+		torso.Color = Color3.fromRGB(90, 85, 80)
+		torso.Material = Enum.Material.Slate
 		torso.Parent = model
-
 		model.PrimaryPart = torso
+
+		-- Glowing Earth Crystal Core in chest
+		local core = Instance.new("Part")
+		core.Name = "EarthCore"
+		core.Size = Vector3.new(4, 4, 1.2)
+		core.CFrame = torso.CFrame * CFrame.new(0, 1.2, -3.1)
+		core.Color = Color3.fromRGB(130, 220, 70)
+		core.Material = Enum.Material.Neon
+		core.Parent = model
+		local wCore = Instance.new("WeldConstraint")
+		wCore.Part0 = torso
+		wCore.Part1 = core
+		wCore.Parent = torso
+
+		-- Rugged Stone Head with Horns
+		local head = Instance.new("Part")
+		head.Name = "Head"
+		head.Size = Vector3.new(4.5, 4, 4.2)
+		head.CFrame = torso.CFrame * CFrame.new(0, 6.8, 0)
+		head.Color = Color3.fromRGB(105, 100, 95)
+		head.Material = Enum.Material.Slate
+		head.Parent = model
+
+		local hornL = Instance.new("Part")
+		hornL.Name = "HornL"
+		hornL.Size = Vector3.new(1.2, 3.5, 1.2)
+		hornL.CFrame = head.CFrame * CFrame.new(-2.2, 2.2, -0.5) * CFrame.Angles(0, 0, math.rad(30))
+		hornL.Color = Color3.fromRGB(70, 65, 60)
+		hornL.Material = Enum.Material.Rock
+		hornL.Parent = model
+		local wHornL = Instance.new("WeldConstraint")
+		wHornL.Part0 = head
+		wHornL.Part1 = hornL
+		wHornL.Parent = head
+
+		local hornR = Instance.new("Part")
+		hornR.Name = "HornR"
+		hornR.Size = Vector3.new(1.2, 3.5, 1.2)
+		hornR.CFrame = head.CFrame * CFrame.new(2.2, 2.2, -0.5) * CFrame.Angles(0, 0, math.rad(-30))
+		hornR.Color = Color3.fromRGB(70, 65, 60)
+		hornR.Material = Enum.Material.Rock
+		hornR.Parent = model
+		local wHornR = Instance.new("WeldConstraint")
+		wHornR.Part0 = head
+		wHornR.Part1 = hornR
+		wHornR.Parent = head
+
+		-- Massive Stone Fist Arms
+		local lArm = Instance.new("Part")
+		lArm.Name = "LeftUpperArm"
+		lArm.Size = Vector3.new(3.6, 9.5, 3.6)
+		lArm.CFrame = torso.CFrame * CFrame.new(-5.8, 0, 0)
+		lArm.Color = Color3.fromRGB(85, 80, 75)
+		lArm.Material = Enum.Material.Slate
+		lArm.Parent = model
+
+		local rArm = Instance.new("Part")
+		rArm.Name = "RightUpperArm"
+		rArm.Size = Vector3.new(3.6, 9.5, 3.6)
+		rArm.CFrame = torso.CFrame * CFrame.new(5.8, 0, 0)
+		rArm.Color = Color3.fromRGB(85, 80, 75)
+		rArm.Material = Enum.Material.Slate
+		rArm.Parent = model
+
+		-- Heavy Pillar Legs
+		local lLeg = Instance.new("Part")
+		lLeg.Name = "LeftUpperLeg"
+		lLeg.Size = Vector3.new(3.4, 8.5, 3.4)
+		lLeg.CFrame = torso.CFrame * CFrame.new(-2.2, -8.5, 0)
+		lLeg.Color = Color3.fromRGB(80, 75, 70)
+		lLeg.Material = Enum.Material.Slate
+		lLeg.Parent = model
+
+		local rLeg = Instance.new("Part")
+		rLeg.Name = "RightUpperLeg"
+		rLeg.Size = Vector3.new(3.4, 8.5, 3.4)
+		rLeg.CFrame = torso.CFrame * CFrame.new(2.2, -8.5, 0)
+		rLeg.Color = Color3.fromRGB(80, 75, 70)
+		rLeg.Material = Enum.Material.Slate
+		rLeg.Parent = model
 	end
 
 	model:PivotTo(spawnCFrame)
@@ -956,8 +1227,8 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 
 	-- Calculate dynamic vertical distance from PrimaryPart to bottom of feet
 	local footOffset = getFootOffset(model)
-	local spawnFloorY = getGroundY(spawnCFrame.Position)
-	local adjustedSpawnPos = Vector3.new(spawnCFrame.X, spawnFloorY + footOffset, spawnCFrame.Z)
+	local spawnFloorY = getGroundY(spawnCFrame.Position, (spawnCFrame.Y >= 35 and 49.0 or 1.0))
+	local adjustedSpawnPos = Vector3.new(spawnCFrame.X, spawnFloorY + footOffset + 0.05, spawnCFrame.Z)
 	local adjustedCFrame = CFrame.new(adjustedSpawnPos) * spawnCFrame.Rotation
 	model:PivotTo(adjustedCFrame)
 	if primary then
@@ -1341,14 +1612,14 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 					local rawNextPos = myPos + dir * step
 
 					-- Keep boss strictly inside colosseum arena boundaries and resting flush on the floor
-					local targetFloorY = getGroundY(rawNextPos)
+					local targetFloorY = getGroundY(rawNextPos, (rawNextPos.Y >= 35 and 49.0 or 1.0))
 					local nextPos = Vector3.new(
 						math.clamp(rawNextPos.X, -50, 50),
-						targetFloorY + footOffset,
+						targetFloorY + footOffset + 0.05,
 						math.clamp(rawNextPos.Z, -20, 95)
 					)
 
-					local targetLookAt = Vector3.new(flatTarget.X, targetFloorY + footOffset, flatTarget.Z)
+					local targetLookAt = Vector3.new(flatTarget.X, targetFloorY + footOffset + 0.05, flatTarget.Z)
 					local targetCFrame = CFrame.lookAt(nextPos, targetLookAt) * CFrame.Angles(0, math.pi, 0)
 					if currentTween then
 						currentTween:Cancel()
@@ -1370,8 +1641,8 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 					if currentTween then
 						currentTween:Cancel()
 					end
-					local currentFloorY = getGroundY(myPos)
-					local standingY = currentFloorY + footOffset
+					local currentFloorY = getGroundY(myPos, (myPos.Y >= 35 and 49.0 or 1.0))
+					local standingY = currentFloorY + footOffset + 0.05
 					local lookTarget = Vector3.new(flatTarget.X, standingY, flatTarget.Z)
 					model.PrimaryPart.CFrame = CFrame.lookAt(Vector3.new(myPos.X, standingY, myPos.Z), lookTarget) * CFrame.Angles(0, math.pi, 0)
 				end
@@ -1394,8 +1665,8 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 				end
 
 				-- Face player before initiating attack
-				local currentFloorY = getGroundY(myPos)
-				local standingY = currentFloorY + footOffset
+				local currentFloorY = getGroundY(myPos, (myPos.Y >= 35 and 49.0 or 1.0))
+				local standingY = currentFloorY + footOffset + 0.05
 				local lookTarget = Vector3.new(flatTarget.X, standingY, flatTarget.Z)
 				model.PrimaryPart.CFrame = CFrame.lookAt(Vector3.new(myPos.X, standingY, myPos.Z), lookTarget) * CFrame.Angles(0, math.pi, 0)
 
@@ -1417,39 +1688,39 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 
 				-- Determine telegraph location based on attack type, snapped flush to arena floor
 				local facing = (flatTarget - myPos).Magnitude > 0.5 and (flatTarget - myPos).Unit or Vector3.zAxis
-				local myGroundY = getGroundY(myPos) + 0.12
-				local targetGroundY = getGroundY(targetPos) + 0.12
+				local myGroundY = getGroundY(myPos, (myPos.Y >= 35 and 49.0 or 1.0)) + 0.12
+				local targetGroundY = getGroundY(targetPos, (targetPos.Y >= 35 and 49.0 or 1.0)) + 0.12
 				local floorY = myGroundY
 				local telegraphPos = Vector3.new(myPos.X, myGroundY, myPos.Z)
 
-				if attackId == "Rockhide_OverheadSlam" or attack.type == "TargetedAoe" then
+				if attackId == "Rockhide_OverheadSlam" or attackId == "Solarius_SolarSmite" or attack.type == "TargetedAoe" then
 					floorY = targetGroundY
 					telegraphPos = Vector3.new(
 						math.clamp(targetPos.X, -46, 46),
 						floorY,
 						math.clamp(targetPos.Z, -18, 90)
 					)
-				elseif attackId == "Rockhide_SweepingBackhand" or attack.type == "Cleave" or attack.type == "Sweep" then
-					local cleavePos = myPos + facing * 7
-					floorY = getGroundY(cleavePos) + 0.12
+				elseif attackId == "Rockhide_SweepingBackhand" or attackId == "Solarius_RadiantSlash" or attackId == "Solarius_Sunburst" or attack.type == "Cleave" or attack.type == "Sweep" then
+					local cleavePos = myPos + facing * 8
+					floorY = getGroundY(cleavePos, (cleavePos.Y >= 35 and 49.0 or 1.0)) + 0.12
 					telegraphPos = Vector3.new(cleavePos.X, floorY, cleavePos.Z)
 				elseif attack.type == "Charge" then
 					local chargeDist = attack.chargeDistance or 20
 					local rawChargeEnd = myPos + facing * chargeDist
-					local chargeFloorY = getGroundY(rawChargeEnd)
+					local chargeFloorY = getGroundY(rawChargeEnd, (rawChargeEnd.Y >= 35 and 49.0 or 1.0))
 					local chargeEnd = Vector3.new(
 						math.clamp(rawChargeEnd.X, -50, 50),
-						chargeFloorY + footOffset,
+						chargeFloorY + footOffset + 0.05,
 						math.clamp(rawChargeEnd.Z, -20, 95)
 					)
 					floorY = chargeFloorY + 0.12
 					telegraphPos = Vector3.new(chargeEnd.X, floorY, chargeEnd.Z)
-				elseif attack.type == "Pound" then
+				elseif attack.type == "Pound" or attackId == "Solarius_SweepingCleave" or attackId == "Solarius_BlindingAura" or attackId == "Solarius_Supernova" then
 					floorY = myGroundY
 					telegraphPos = Vector3.new(myPos.X, floorY, myPos.Z)
 				else
 					local slamCenter = myPos + facing * 4
-					floorY = getGroundY(slamCenter) + 0.12
+					floorY = getGroundY(slamCenter, (slamCenter.Y >= 35 and 49.0 or 1.0)) + 0.12
 					telegraphPos = Vector3.new(slamCenter.X, floorY, slamCenter.Z)
 				end
 
@@ -1471,7 +1742,7 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 					if not alive then break end
 
 					-- Leap: boss leaps through the sky directly toward telegraphPos
-					local landingPos = Vector3.new(telegraphPos.X, getGroundY(telegraphPos) + footOffset, telegraphPos.Z)
+					local landingPos = Vector3.new(telegraphPos.X, getGroundY(telegraphPos, (telegraphPos.Y >= 35 and 49.0 or 1.0)) + footOffset + 0.05, telegraphPos.Z)
 					local leapApex = math.max(9, (landingPos - myPos).Magnitude * 0.32)
 					local leapStartTime = os.clock()
 					local leapDur = 0.42
@@ -1662,13 +1933,13 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 					-- Dash forward
 					local chargeDist = attack.chargeDistance or 20
 					local rawChargeEnd = myPos + facing * chargeDist
-					local chargeFloorY = getGroundY(rawChargeEnd)
+					local chargeFloorY = getGroundY(rawChargeEnd, (rawChargeEnd.Y >= 35 and 49.0 or 1.0))
 					local chargeEnd = Vector3.new(
 						math.clamp(rawChargeEnd.X, -50, 50),
-						chargeFloorY + footOffset,
+						chargeFloorY + footOffset + 0.05,
 						math.clamp(rawChargeEnd.Z, -20, 95)
 					)
-					local chargeLookTarget = Vector3.new(chargeEnd.X + facing.X, chargeFloorY + footOffset, chargeEnd.Z + facing.Z)
+					local chargeLookTarget = Vector3.new(chargeEnd.X + facing.X, chargeFloorY + footOffset + 0.05, chargeEnd.Z + facing.Z)
 					local chargeCFrame = CFrame.lookAt(chargeEnd, chargeLookTarget) * CFrame.Angles(0, math.pi, 0)
 					playSound("ChargeRush", "rbxasset://sounds/action_jump.mp3", model.PrimaryPart, 1.8, 0.5)
 
@@ -1826,6 +2097,188 @@ function BossAIService.SpawnBoss(bossId: string, spawnCFrame: CFrame, onDeath: (
 					task.wait(0.50)
 					resetAllJoints(joints, 0.50)
 					task.wait(0.25)
+
+				elseif attackId == "Solarius_RadiantSlash" then
+					-- ── SOLARIUS: RADIANT SLASH ──
+					local windupDur = math.max(0.18, telegraphDur - 0.22)
+					poseArms(joints, CFrame.Angles(math.rad(60), math.rad(-40), math.rad(-25)), CFrame.Angles(math.rad(20), 0, math.rad(15)), 0.22)
+					poseTorso(joints, CFrame.Angles(0, math.rad(-30), 0), 0.22)
+					poseNeck(joints, CFrame.Angles(0, math.rad(20), 0), 0.22)
+					playSound("SolarCharge", "rbxasset://sounds/swordslash.wav", model.PrimaryPart, 2.2, 1.2)
+					task.wait(windupDur)
+					if not alive then break end
+
+					poseTorso(joints, CFrame.Angles(0, math.rad(45), 0), 0.10)
+					poseArms(joints, CFrame.Angles(math.rad(45), math.rad(70), math.rad(20)), CFrame.Angles(math.rad(-15), 0, 0), 0.10)
+					playSound("RadiantSlash", "rbxasset://sounds/swordslash.wav", model.PrimaryPart, 2.5, 0.9)
+					spawnCleaveArc(model.PrimaryPart.Position, facing, attack.radius, 0.35)
+					spawnShockwaveRing(Vector3.new(telegraphPos.X, floorY + 0.15, telegraphPos.Z), 2, attack.radius * 0.7, Color3.fromRGB(255, 200, 50), 0.5, 0.3)
+					Net.Get("BossEffect"):FireAllClients("medShake", telegraphPos, { intensity = 0.5, duration = 0.3 })
+
+					for _, player in CombatService.PlayersInRadius(telegraphPos, attack.radius) do
+						CombatService.ApplyDamageToPlayer(player, attack.damage)
+						applyKnockback(player, model.PrimaryPart.Position, 28, 12)
+					end
+					task.wait(0.3)
+					resetAllJoints(joints, 0.25)
+					task.wait(0.15)
+
+				elseif attackId == "Solarius_SweepingCleave" then
+					-- ── SOLARIUS: SWEEPING CLEAVE ──
+					local windupDur = math.max(0.2, telegraphDur - 0.25)
+					poseArms(joints, CFrame.Angles(math.rad(80), math.rad(-60), math.rad(-30)), CFrame.Angles(math.rad(-30), 0, math.rad(-15)), 0.25)
+					poseTorso(joints, CFrame.Angles(math.rad(-10), math.rad(-45), 0), 0.25)
+					task.wait(windupDur)
+					if not alive then break end
+
+					playSound("SweepingCleave", "rbxasset://sounds/swordslash.wav", model.PrimaryPart, 2.6, 0.75)
+					poseTorso(joints, CFrame.Angles(0, math.rad(180), 0), 0.12)
+					poseArms(joints, CFrame.Angles(math.rad(30), math.rad(90), math.rad(45)), CFrame.Angles(math.rad(30), math.rad(-90), math.rad(-45)), 0.12)
+					spawnShockwaveRing(Vector3.new(telegraphPos.X, floorY + 0.15, telegraphPos.Z), 3, attack.radius, Color3.fromRGB(255, 160, 30), 0.8, 0.5)
+					spawnGroundScorch(Vector3.new(telegraphPos.X, floorY + 0.1, telegraphPos.Z), attack.radius * 0.7, Color3.fromRGB(255, 130, 20), 4.0)
+					Net.Get("BossEffect"):FireAllClients("heavyShake", telegraphPos, { intensity = 0.7, duration = 0.4 })
+
+					for _, player in CombatService.PlayersInRadius(telegraphPos, attack.radius) do
+						CombatService.ApplyDamageToPlayer(player, attack.damage)
+						applyKnockback(player, model.PrimaryPart.Position, 38, 16)
+					end
+					task.wait(0.35)
+					resetAllJoints(joints, 0.3)
+					task.wait(0.2)
+
+				elseif attackId == "Solarius_SolarSmite" then
+					-- ── SOLARIUS: SOLAR SMITE (PILLARS OF SUNLIGHT) ──
+					local windupDur = math.max(0.3, telegraphDur - 0.35)
+					poseArms(joints, CFrame.Angles(math.rad(-120), 0, math.rad(10)), CFrame.Angles(math.rad(-100), 0, math.rad(-10)), 0.3)
+					poseNeck(joints, CFrame.Angles(math.rad(-35), 0, 0), 0.3)
+					playSound("SmiteCharge", "rbxasset://sounds/action_jump.mp3", model.PrimaryPart, 2.0, 1.4)
+					task.wait(windupDur)
+					if not alive then break end
+
+					poseArms(joints, CFrame.Angles(math.rad(70), 0, 0), CFrame.Angles(math.rad(70), 0, 0), 0.1)
+					poseTorso(joints, CFrame.Angles(math.rad(25), 0, 0), 0.1)
+					playSound("SmiteImpact", "rbxasset://sounds/action_explode.mp3", model.PrimaryPart, 2.8, 0.7)
+
+					for i = 1, 3 do
+						local offsetAngle = (i / 3) * 2 * math.pi
+						local pPos = (i == 1) and telegraphPos or (telegraphPos + Vector3.new(math.cos(offsetAngle) * 10, 0, math.sin(offsetAngle) * 10))
+						local groundP = Vector3.new(pPos.X, getGroundY(pPos) + 0.12, pPos.Z)
+						spawnFirePillar(groundP, 30, Color3.fromRGB(255, 215, 60), 1.4)
+						spawnShockwaveRing(groundP + Vector3.new(0, 0.1, 0), 2, attack.radius * 0.6, Color3.fromRGB(255, 230, 80), 0.7, 0.4)
+					end
+					Net.Get("BossEffect"):FireAllClients("heavyShake", telegraphPos, { intensity = 0.9, duration = 0.6 })
+
+					for _, player in CombatService.PlayersInRadius(telegraphPos, attack.radius) do
+						CombatService.ApplyDamageToPlayer(player, attack.damage)
+						applyKnockback(player, telegraphPos, 35, 18)
+					end
+					task.wait(0.4)
+					resetAllJoints(joints, 0.3)
+					task.wait(0.2)
+
+				elseif attackId == "Solarius_Sunburst" then
+					-- ── SOLARIUS: SUNBURST (RADIANT PROJECTILE ORBS) ──
+					local windupDur = math.max(0.25, telegraphDur - 0.3)
+					poseArms(joints, CFrame.Angles(math.rad(-45), math.rad(30), 0), CFrame.Angles(math.rad(-45), math.rad(-30), 0), 0.25)
+					playSound("SunburstCharge", "rbxasset://sounds/swordslash.wav", model.PrimaryPart, 2.2, 1.3)
+					task.wait(windupDur)
+					if not alive then break end
+
+					for i = -1, 1 do
+						local spreadAngle = i * 0.35
+						local burstDir = (CFrame.Angles(0, spreadAngle, 0) * CFrame.new(facing)).Position.Unit
+						task.spawn(function()
+							local orb = Instance.new("Part")
+							orb.Name = "SunburstDisc"
+							orb.Shape = Enum.PartType.Ball
+							orb.Size = Vector3.new(2.8, 2.8, 2.8)
+							orb.CFrame = CFrame.lookAt(model.PrimaryPart.Position + Vector3.new(0, 4, 0), model.PrimaryPart.Position + burstDir * 10)
+							orb.Color = Color3.fromRGB(255, 200, 40)
+							orb.Material = Enum.Material.Neon
+							orb.CanCollide = false
+							orb.Anchored = true
+							orb.Parent = workspace
+
+							local trail = Instance.new("ParticleEmitter")
+							trail.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+							trail.Rate = 20
+							trail.Speed = NumberRange.new(2, 4)
+							trail.Lifetime = NumberRange.new(0.3, 0.6)
+							trail.Color = ColorSequence.new(Color3.fromRGB(255, 230, 80), Color3.fromRGB(255, 100, 20))
+							trail.Parent = orb
+
+							for step = 1, 20 do
+								orb.CFrame = orb.CFrame + burstDir * 3.5
+								for _, player in CombatService.PlayersInRadius(orb.Position, 5) do
+									CombatService.ApplyDamageToPlayer(player, attack.damage)
+									applyKnockback(player, orb.Position, 30, 10)
+								end
+								task.wait(0.03)
+							end
+							orb:Destroy()
+						end)
+					end
+					playSound("SunburstLaunch", "rbxasset://sounds/action_explode.mp3", model.PrimaryPart, 2.4, 1.1)
+					task.wait(0.4)
+					resetAllJoints(joints, 0.25)
+					task.wait(0.15)
+
+				elseif attackId == "Solarius_BlindingAura" then
+					-- ── SOLARIUS: BLINDING AURA ──
+					local windupDur = math.max(0.25, telegraphDur - 0.3)
+					poseArms(joints, CFrame.Angles(0, 0, math.rad(-75)), CFrame.Angles(0, 0, math.rad(75)), 0.3)
+					poseNeck(joints, CFrame.Angles(math.rad(-25), 0, 0), 0.3)
+					task.wait(windupDur)
+					if not alive then break end
+
+					playSound("BlindingFlash", "rbxasset://sounds/action_explode.mp3", model.PrimaryPart, 2.5, 0.9)
+					spawnShockwaveRing(Vector3.new(telegraphPos.X, floorY + 0.2, telegraphPos.Z), 4, attack.radius, Color3.fromRGB(255, 255, 160), 0.8, 0.9)
+					Net.Get("BossEffect"):FireAllClients("heavyShake", telegraphPos, { intensity = 0.8, duration = 0.5 })
+
+					for _, player in CombatService.PlayersInRadius(telegraphPos, attack.radius) do
+						CombatService.ApplyDamageToPlayer(player, attack.damage)
+						applyKnockback(player, model.PrimaryPart.Position, 45, 18)
+					end
+					task.wait(0.35)
+					resetAllJoints(joints, 0.3)
+					task.wait(0.2)
+					-- ── 6. SUPERNOVA ENRAGE (Room-Wide Solar Flare) ───────────
+					local windupDur = math.max(0.5, telegraphDur - 0.4)
+
+					-- Ascend slightly & hover arms outward channeling radiant power
+					poseArms(joints, CFrame.Angles(0, 0, math.rad(-85)), CFrame.Angles(0, 0, math.rad(85)), 0.6)
+					poseTorso(joints, CFrame.Angles(math.rad(-15), 0, 0), 0.6)
+					poseNeck(joints, CFrame.Angles(math.rad(-40), 0, 0), 0.6)
+
+					Net.Get("BossEffect"):FireAllClients("heavyShake", telegraphPos, { intensity = 1.4, duration = windupDur })
+					playSound("SupernovaCharge", "rbxasset://sounds/action_explode.mp3", model.PrimaryPart, 2.5, 0.6)
+
+					-- Solar charge visual orbs
+					for i = 1, 8 do
+						local angle = (i / 8) * 2 * math.pi
+						local orbPos = telegraphPos + Vector3.new(math.cos(angle) * 12, 12, math.sin(angle) * 12)
+						spawnBurstOrb(orbPos, 6, Color3.fromRGB(255, 180, 50), windupDur)
+					end
+
+					task.wait(windupDur)
+					if not alive then break end
+
+					-- Cataclysmic Solar Explosion
+					playSound("SupernovaBlast", "rbxasset://sounds/action_explode.mp3", model.PrimaryPart, 3.0, 0.4)
+					Net.Get("BossEffect"):FireAllClients("heavyShake", telegraphPos, { intensity = 1.8, duration = 1.5 })
+
+					local impactFloor = getGroundY(telegraphPos) + 0.12
+					spawnShockwaveRing(Vector3.new(telegraphPos.X, impactFloor + 0.2, telegraphPos.Z), 4, attack.radius, Color3.fromRGB(255, 220, 80), 1.2, 0.9)
+					spawnGroundScorch(Vector3.new(telegraphPos.X, impactFloor + 0.1, telegraphPos.Z), attack.radius * 0.9, Color3.fromRGB(255, 120, 30), 6.0)
+
+					for _, player in CombatService.PlayersInRadius(telegraphPos, attack.radius) do
+						CombatService.ApplyDamageToPlayer(player, attack.damage)
+						applyKnockback(player, telegraphPos, 50, 25)
+					end
+
+					task.wait(0.60)
+					resetAllJoints(joints, 0.50)
+					task.wait(0.30)
 				end
 
 				isAttacking = false

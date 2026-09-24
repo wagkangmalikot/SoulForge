@@ -32,6 +32,7 @@ local REMOTE_NAMES = {
 	"WeaponAttack",            -- server -> client: {userId, attackType} -- triggers sword swing / shield bash visuals
 	"RequestUnlockSkill",      -- client -> server: {skillId} -- spends 1 SkillPoint to unlock a skill in the tree
 	"RequestEquipSkill",       -- client -> server: {skillId, slotIndex} -- equips an unlocked skill to slot 1-4
+	"RequestResetSkills",      -- client -> server: (no args) -- resets skills and refunds spent points (Hub only)
 	"SkillDataChanged",        -- server -> client: {skillPoints, unlockedSkills, equippedSkills} -- syncs skill tree state
 	"DungeonObjectiveChanged", -- server -> client: {objectiveText, currentKills, totalRequired, isUnlocked, isOpen}
 	"RequestOpenBossGate",     -- client -> server: asks server to open the unlocked boss gate
@@ -43,6 +44,7 @@ local REMOTE_NAMES = {
 	"RequestCraftItem",       -- client -> server: {setId} -- request to craft a gear set
 	"CraftingResult",         -- server -> client: {success, message, storedEquipment, craftingMaterials}
 	"OpenCraftingUI",         -- server -> client: triggers crafting panel (fired from ProximityPrompt)
+	"TeleportClient",         -- server -> client: {targetCFrame} -- instantly syncs client character transform
 }
 
 

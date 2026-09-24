@@ -35,6 +35,11 @@ local function tryLevelUp(player: Player)
 
 	local SkillTreeService = require(script.Parent.SkillTreeService)
 	SkillTreeService.SyncSkills(player)
+
+	local WeaponService = require(script.Parent.WeaponService)
+	if player.Character then
+		WeaponService.EquipWeapons(player.Character)
+	end
 end
 
 function LevelUpService.Start()
@@ -72,6 +77,9 @@ function LevelUpService.Start()
 						char.CraftingMaterials
 					)
 				end
+			elseif cmd == "/reskill" or cmd == "/respec" then
+				local SkillTreeService = require(script.Parent.SkillTreeService)
+				SkillTreeService.ResetSkills(player)
 			elseif cmd == "/rockhide" or cmd == "/testrockhide" then
 				local profile = PlayerDataService.GetProfile(player)
 				if profile and profile.Data.Character then
@@ -110,6 +118,62 @@ function LevelUpService.Start()
 						char.StoredEquipment,
 						char.CraftingMaterials
 					)
+				end
+			elseif cmd == "/sunforged" or cmd == "/testsunforged" or cmd == "/sun" then
+				local profile = PlayerDataService.GetProfile(player)
+				if profile and profile.Data.Character then
+					local char = profile.Data.Character
+					local isMage = (char.ClassId == "Mage")
+					local sunforgedPieces = isMage
+						and {"SunforgedStaff", "SunforgedHood", "SunforgedRobes", "SunforgedWraps", "SunforgedSlippers"}
+						or {"SunforgedSword", "SunforgedHelm", "SunforgedChest", "SunforgedArms", "SunforgedFeet"}
+					char.EquippedEquipment = isMage and {
+						Weapon = "SunforgedStaff",
+						Head = "SunforgedHood",
+						Body = "SunforgedRobes",
+						Arms = "SunforgedWraps",
+						Feet = "SunforgedSlippers",
+					} or {
+						Weapon = "SunforgedSword",
+						Head = "SunforgedHelm",
+						Body = "SunforgedChest",
+						Arms = "SunforgedArms",
+						Feet = "SunforgedFeet",
+					}
+					char.EquippedWeapon = isMage and "SunforgedStaff" or "SunforgedSword"
+					char.StoredEquipment = char.StoredEquipment or {}
+					for _, piece in ipairs(sunforgedPieces) do
+						if not table.find(char.StoredEquipment, piece) then
+							table.insert(char.StoredEquipment, piece)
+						end
+					end
+					local WeaponService = require(script.Parent.WeaponService)
+					if player.Character then
+						WeaponService.EquipWeapons(player.Character)
+					end
+					Net.Get("EquipmentDataChanged"):FireClient(
+						player,
+						char.EquippedEquipment,
+						char.StoredEquipment,
+						char.CraftingMaterials
+					)
+				end
+			elseif string.sub(cmd, 1, 4) == "/lvl" or string.sub(cmd, 1, 9) == "/setlevel" then
+				local targetLvl = tonumber(string.match(cmd, "%d+"))
+				if targetLvl and targetLvl >= 1 then
+					local profile = PlayerDataService.GetProfile(player)
+					if profile and profile.Data.Character then
+						local char = profile.Data.Character
+						char.Level = math.clamp(targetLvl, 1, 100)
+						char.SkillPoints = math.max(char.SkillPoints or 0, char.Level)
+						Net.Get("CharacterDataChanged"):FireClient(player, char.Level, char.UnspentEXP, char.ClassId)
+						local SkillTreeService = require(script.Parent.SkillTreeService)
+						SkillTreeService.SyncSkills(player)
+						local WeaponService = require(script.Parent.WeaponService)
+						if player.Character then
+							WeaponService.EquipWeapons(player.Character)
+						end
+					end
 				end
 			elseif cmd == "/standard" or cmd == "/teststandard" or cmd == "/starter" then
 				local profile = PlayerDataService.GetProfile(player)
@@ -223,6 +287,31 @@ function LevelUpService.Start()
 						char.StoredEquipment,
 						char.CraftingMaterials
 					)
+				end
+			elseif cmd == "/boss" or cmd == "/solarius" or cmd == "/bossfight" or cmd == "/opengate" then
+				local DungeonSessionService = require(script.Parent.DungeonSessionService)
+				if DungeonSessionService.OpenBossGateForTesting then
+					DungeonSessionService.OpenBossGateForTesting()
+				end
+				if player.Character then
+					local targetCF = CFrame.new(0, 52, -45)
+					player.Character:PivotTo(targetCF)
+					local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+					if hrp then
+						hrp.AssemblyLinearVelocity = Vector3.zero
+						hrp.AssemblyAngularVelocity = Vector3.zero
+					end
+					Net.Get("TeleportClient"):FireClient(player, targetCF)
+				end
+			elseif cmd == "/clearmobs" or cmd == "/killmobs" or cmd == "/slayall" then
+				local CombatService = require(script.Parent.CombatService)
+				for _, desc in workspace:GetChildren() do
+					if desc:IsA("Model") and string.find(desc.Name, "TrashMob") then
+						local enemyHandle = CombatService.GetEnemy(desc.Name)
+						if enemyHandle and enemyHandle.onDamaged then
+							enemyHandle.onDamaged(999999, player)
+						end
+					end
 				end
 			end
 		end)

@@ -7,9 +7,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Net = require(ReplicatedStorage.Shared.Net)
 local Skills = require(ReplicatedStorage.Shared.Data.Skills)
+local Classes = require(ReplicatedStorage.Shared.Data.Classes)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 
 local SkillTreeService = {}
+
+local function isDungeonActive(): boolean
+	return ReplicatedStorage:GetAttribute("IsDungeon") == true
+end
 
 function SkillTreeService.SyncSkills(player: Player)
 	local profile = PlayerDataService.GetProfile(player)
@@ -35,6 +40,11 @@ local function hasSkill(skillList: {string}, skillId: string): boolean
 end
 
 local function onUnlockSkill(player: Player, skillId: string)
+	if isDungeonActive() then
+		warn(("[SkillTreeService] %s attempted to unlock skill '%s' while inside dungeon (skills locked)"):format(player.Name, tostring(skillId)))
+		return
+	end
+
 	if type(skillId) ~= "string" then
 		return
 	end
@@ -84,6 +94,11 @@ local function onUnlockSkill(player: Player, skillId: string)
 end
 
 local function onEquipSkill(player: Player, skillId: string, slotIndex: number)
+	if isDungeonActive() then
+		warn(("[SkillTreeService] %s attempted to equip skill '%s' while inside dungeon (loadout locked)"):format(player.Name, tostring(skillId)))
+		return
+	end
+
 	if type(skillId) ~= "string" or type(slotIndex) ~= "number" then
 		return
 	end
@@ -115,9 +130,50 @@ local function onEquipSkill(player: Player, skillId: string, slotIndex: number)
 	SkillTreeService.SyncSkills(player)
 end
 
+function SkillTreeService.ResetSkills(player: Player): boolean
+	if isDungeonActive() then
+		warn(("[SkillTreeService] %s attempted to reset/reskill while inside dungeon (reskills locked)"):format(player.Name))
+		return false
+	end
+
+	local profile = PlayerDataService.GetProfile(player)
+	if not profile or not profile.Data or not profile.Data.Character then
+		return false
+	end
+
+	local char = profile.Data.Character
+	local classId = char.ClassId or "Tank"
+	local classDef = Classes[classId] or Classes.Tank
+	local startingSkills = classDef.startingSkills or {"Taunt"}
+
+	local currentUnlocked = char.UnlockedSkills or startingSkills
+	local refundedPoints = 0
+
+	for _, skillId in ipairs(currentUnlocked) do
+		local isStarting = false
+		for _, sId in ipairs(startingSkills) do
+			if sId == skillId then
+				isStarting = true
+				break
+			end
+		end
+		if not isStarting then
+			refundedPoints += 1
+		end
+	end
+
+	char.SkillPoints = (char.SkillPoints or 0) + refundedPoints
+	char.UnlockedSkills = table.clone(startingSkills)
+	char.EquippedSkills = table.clone(startingSkills)
+
+	SkillTreeService.SyncSkills(player)
+	return true
+end
+
 function SkillTreeService.Start()
 	Net.Get("RequestUnlockSkill").OnServerEvent:Connect(onUnlockSkill)
 	Net.Get("RequestEquipSkill").OnServerEvent:Connect(onEquipSkill)
+	Net.Get("RequestResetSkills").OnServerEvent:Connect(SkillTreeService.ResetSkills)
 
 	-- Sync skills whenever a player's character is loaded/spawned
 	Players.PlayerAdded:Connect(function(player)

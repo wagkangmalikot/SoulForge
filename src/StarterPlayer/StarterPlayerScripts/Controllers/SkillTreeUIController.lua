@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local SoundService = game:GetService("SoundService")
 local UserInputService = game:GetService("UserInputService")
+local TeleportService = game:GetService("TeleportService")
 
 local Net = require(ReplicatedStorage.Shared.Net)
 local Skills = require(ReplicatedStorage.Shared.Data.Skills)
@@ -28,9 +29,13 @@ local titleLabel: TextLabel? = nil
 local pointsPill: Frame? = nil
 local pillLabel: TextLabel? = nil
 local pointsValueLabel: TextLabel? = nil
+local reskillBtn: TextButton? = nil
+local reskillBtnText: TextLabel? = nil
+local dungeonStatusBadge: Frame? = nil
+local dungeonStatusLabel: TextLabel? = nil
 local closeBtn: TextButton? = nil
 local branchTabsContainer: Frame? = nil
-local branchesContainer: Frame? = nil
+local branchesContainer: ScrollingFrame? = nil
 local bottomFrame: Frame? = nil
 local equippedSlotsContainer: Frame? = nil
 local bottomPromptLabel: TextLabel? = nil
@@ -40,6 +45,21 @@ local unlockedSkills: {string} = {"Taunt"}
 local equippedSkills: {string} = {"Taunt"}
 local isSelectingSlotForSkill: string? = nil
 local currentClassId: string = "Tank"
+local isConfirmingReset = false
+local resetConfirmThread: thread? = nil
+
+local function isInDungeon(): boolean
+	if ReplicatedStorage:GetAttribute("IsDungeon") == true then
+		return true
+	end
+	local ok, td = pcall(function()
+		return TeleportService:GetLocalPlayerTeleportData()
+	end)
+	if ok and td and td.isDungeon then
+		return true
+	end
+	return false
+end
 
 local BRANCH_ORDER_BY_CLASS = {
 	Tank = {"Bulwark", "Sentinel"},
@@ -47,7 +67,7 @@ local BRANCH_ORDER_BY_CLASS = {
 	Warrior = {"Juggernaut", "Bloodlust"},
 }
 
-local activeMobileBranch: string = BRANCH_ORDER_BY_CLASS.Tank[1]
+local activeBranch: string = "ALL"
 
 -- Icon + display name shown in the modal's title bar, keyed by ReplicatedStorage.Shared.Data.Classes's own keys.
 local CLASS_TITLE_INFO = {
@@ -74,6 +94,7 @@ local BRANCH_COLORS = {
 		accent = Color3.fromRGB(110, 190, 255),
 		icon = "🛡️",
 		name = "BULWARK",
+		shortName = "Bulwark",
 		displayName = "BULWARK SPECIALIZATION",
 		tagline = "Damage mitigation, sustain & party barriers",
 	},
@@ -86,6 +107,7 @@ local BRANCH_COLORS = {
 		accent = Color3.fromRGB(255, 120, 100),
 		icon = "⚔️",
 		name = "JUGGERNAUT",
+		shortName = "Juggernaut",
 		displayName = "JUGGERNAUT SPECIALIZATION",
 		tagline = "Offense, heavy threat generation & stagger",
 	},
@@ -98,6 +120,7 @@ local BRANCH_COLORS = {
 		accent = Color3.fromRGB(255, 150, 70),
 		icon = "🔥",
 		name = "PYROMANCY",
+		shortName = "Pyro",
 		displayName = "PYROMANCY SPECIALIZATION",
 		tagline = "Explosive single-target and area fire damage",
 	},
@@ -110,6 +133,7 @@ local BRANCH_COLORS = {
 		accent = Color3.fromRGB(140, 220, 255),
 		icon = "❄️",
 		name = "FROSTWEAVE",
+		shortName = "Frost",
 		displayName = "FROSTWEAVE SPECIALIZATION",
 		tagline = "Sustained frost damage that lingers on enemies",
 	},
@@ -120,8 +144,9 @@ local BRANCH_COLORS = {
 		cardBg = Color3.fromRGB(30, 20, 52),
 		border = Color3.fromRGB(120, 65, 215),
 		accent = Color3.fromRGB(210, 170, 255),
-		icon = "✨",
+		icon = "🔮",
 		name = "ARCANE MASTERY",
+		shortName = "Arcane",
 		displayName = "ARCANE MASTERY SPECIALIZATION",
 		tagline = "Barriers, burst damage & arcane control",
 	},
@@ -248,6 +273,34 @@ end
 
 local refreshUI: () -> ()
 
+local function updateResetButton()
+	if not reskillBtn or not reskillBtnText then
+		return
+	end
+	local inDungeon = isInDungeon()
+	if inDungeon then
+		reskillBtn.Visible = false
+		if dungeonStatusBadge then
+			dungeonStatusBadge.Visible = true
+		end
+		return
+	end
+	reskillBtn.Visible = true
+	if dungeonStatusBadge then
+		dungeonStatusBadge.Visible = false
+	end
+	local isMob = isMobileViewport()
+	if isConfirmingReset then
+		reskillBtn.BackgroundColor3 = Color3.fromRGB(190, 45, 35)
+		reskillBtnText.Text = "CONFIRM?"
+		reskillBtnText.TextColor3 = Color3.fromRGB(255, 240, 200)
+	else
+		reskillBtn.BackgroundColor3 = Color3.fromRGB(42, 48, 62)
+		reskillBtnText.Text = isMob and "↺ RESET" or "↺ RESPEC"
+		reskillBtnText.TextColor3 = Color3.fromRGB(220, 235, 255)
+	end
+end
+
 local function updateResponsiveScale()
 	if not modalScale or not modalFrame then
 		return
@@ -258,6 +311,7 @@ local function updateResponsiveScale()
 	end
 	local vp = camera.ViewportSize
 	local isMob = isMobileViewport()
+	local inDungeon = isInDungeon()
 
 	if isMob then
 		-- Mobile layout: full-screen touch fit respecting Roblox topbar insets
@@ -269,25 +323,35 @@ local function updateResponsiveScale()
 			headerBar.Size = UDim2.new(1, 0, 0, 52)
 		end
 		if titleLabel then
-			titleLabel.Size = UDim2.new(0.52, 0, 1, 0)
-			titleLabel.Position = UDim2.new(0, 16, 0, 0)
-			titleLabel.TextSize = 20
+			titleLabel.Size = UDim2.new(0.40, 0, 1, 0)
+			titleLabel.Position = UDim2.new(0, 12, 0, 0)
+			titleLabel.TextSize = 18
 			titleLabel.Text = getClassTitleText(true)
 		end
 		if pointsPill then
-			pointsPill.Size = UDim2.new(0, 156, 0, 36)
-			pointsPill.Position = UDim2.new(1, -206, 0.5, -18)
+			pointsPill.Size = UDim2.new(0, 130, 0, 34)
+			pointsPill.Position = UDim2.new(1, -182, 0.5, -17)
 		end
 		if pillLabel then
-			pillLabel.Size = UDim2.new(0.60, 0, 1, 0)
-			pillLabel.Position = UDim2.new(0, 8, 0, 0)
-			pillLabel.TextSize = 14.5
+			pillLabel.Size = UDim2.new(0.55, 0, 1, 0)
+			pillLabel.Position = UDim2.new(0, 6, 0, 0)
+			pillLabel.TextSize = 13
 			pillLabel.Text = "POINTS:"
 		end
 		if pointsValueLabel then
-			pointsValueLabel.Size = UDim2.new(0.40, 0, 1, 0)
-			pointsValueLabel.Position = UDim2.new(0.60, 0, 0, 0)
-			pointsValueLabel.TextSize = 21
+			pointsValueLabel.Size = UDim2.new(0.45, 0, 1, 0)
+			pointsValueLabel.Position = UDim2.new(0.55, 0, 0, 0)
+			pointsValueLabel.TextSize = 19
+		end
+		if reskillBtn then
+			reskillBtn.Size = UDim2.new(0, 80, 0, 34)
+			reskillBtn.Position = UDim2.new(1, -268, 0.5, -17)
+			reskillBtn.Visible = not inDungeon
+		end
+		if dungeonStatusBadge then
+			dungeonStatusBadge.Size = UDim2.new(0, 140, 0, 32)
+			dungeonStatusBadge.Position = UDim2.new(1, -190, 0.5, -16)
+			dungeonStatusBadge.Visible = inDungeon
 		end
 		if closeBtn then
 			closeBtn.Size = UDim2.new(0, 36, 0, 36)
@@ -334,25 +398,35 @@ local function updateResponsiveScale()
 			headerBar.Size = UDim2.new(1, 0, 0, 60)
 		end
 		if titleLabel then
-			titleLabel.Size = UDim2.new(0.55, 0, 1, 0)
+			titleLabel.Size = UDim2.new(0.46, 0, 1, 0)
 			titleLabel.Position = UDim2.new(0, 18, 0, 0)
 			titleLabel.TextSize = 24
 			titleLabel.Text = getClassTitleText(false)
 		end
 		if pointsPill then
-			pointsPill.Size = UDim2.new(0, 205, 0, 38)
-			pointsPill.Position = UDim2.new(1, -265, 0.5, -19)
+			pointsPill.Size = UDim2.new(0, 190, 0, 38)
+			pointsPill.Position = UDim2.new(1, -250, 0.5, -19)
 		end
 		if pillLabel then
-			pillLabel.Size = UDim2.new(0.68, 0, 1, 0)
+			pillLabel.Size = UDim2.new(0.66, 0, 1, 0)
 			pillLabel.Position = UDim2.new(0, 10, 0, 0)
-			pillLabel.TextSize = 15
+			pillLabel.TextSize = 14.5
 			pillLabel.Text = "SKILL POINTS:"
 		end
 		if pointsValueLabel then
-			pointsValueLabel.Size = UDim2.new(0.32, 0, 1, 0)
-			pointsValueLabel.Position = UDim2.new(0.68, 0, 0, 0)
+			pointsValueLabel.Size = UDim2.new(0.34, 0, 1, 0)
+			pointsValueLabel.Position = UDim2.new(0.66, 0, 0, 0)
 			pointsValueLabel.TextSize = 22
+		end
+		if reskillBtn then
+			reskillBtn.Size = UDim2.new(0, 110, 0, 38)
+			reskillBtn.Position = UDim2.new(1, -370, 0.5, -19)
+			reskillBtn.Visible = not inDungeon
+		end
+		if dungeonStatusBadge then
+			dungeonStatusBadge.Size = UDim2.new(0, 190, 0, 36)
+			dungeonStatusBadge.Position = UDim2.new(1, -450, 0.5, -18)
+			dungeonStatusBadge.Visible = inDungeon
 		end
 		if closeBtn then
 			closeBtn.Size = UDim2.new(0, 40, 0, 40)
@@ -362,14 +436,14 @@ local function updateResponsiveScale()
 		end
 
 		if branchTabsContainer then
-			branchTabsContainer.Visible = false
-			branchTabsContainer.Size = UDim2.new(1, -24, 0, 38)
-			branchTabsContainer.Position = UDim2.new(0, 12, 0, 64)
+			branchTabsContainer.Visible = true
+			branchTabsContainer.Size = UDim2.new(1, -24, 0, 40)
+			branchTabsContainer.Position = UDim2.new(0, 12, 0, 66)
 		end
 
 		if branchesContainer then
-			branchesContainer.Position = UDim2.new(0, 12, 0, 68)
-			branchesContainer.Size = UDim2.new(1, -24, 1, -172)
+			branchesContainer.Position = UDim2.new(0, 12, 0, 112)
+			branchesContainer.Size = UDim2.new(1, -24, 1, -216)
 		end
 
 		if bottomFrame then
@@ -504,6 +578,8 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	btnSubtext.TextWrapped = true
 	btnSubtext.Parent = actionBtn
 
+	local inDungeon = isInDungeon()
+
 	if unlocked then
 		if equippedSlot then
 			actionBtn.BackgroundColor3 = Color3.fromRGB(24, 88, 50)
@@ -512,6 +588,14 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 			btnTitle.Text = "✓ EQUIPPED"
 			btnSubtext.TextColor3 = Color3.fromRGB(165, 240, 190)
 			btnSubtext.Text = ("[ Slot %d ]"):format(equippedSlot)
+			actionBtn.AutoButtonColor = false
+		elseif inDungeon then
+			actionBtn.BackgroundColor3 = Color3.fromRGB(28, 30, 36)
+			btnStroke.Color = Color3.fromRGB(50, 54, 64)
+			btnTitle.TextColor3 = Color3.fromRGB(135, 140, 150)
+			btnTitle.Text = "🔒 LOCKED"
+			btnSubtext.TextColor3 = Color3.fromRGB(220, 100, 100)
+			btnSubtext.Text = "Locked in Dungeon"
 			actionBtn.AutoButtonColor = false
 		else
 			if isSelectingSlotForSkill == skillId then
@@ -540,16 +624,26 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 			end
 		end
 	elseif canUnlock then
-		actionBtn.BackgroundColor3 = Color3.fromRGB(32, 140, 72)
-		btnStroke.Color = Color3.fromRGB(255, 215, 80)
-		btnTitle.TextColor3 = Color3.new(1, 1, 1)
-		btnTitle.Text = "✨ UNLOCK"
-		btnSubtext.TextColor3 = Color3.fromRGB(255, 235, 150)
-		btnSubtext.Text = "Cost: 1 Skill Point"
-		actionBtn.Activated:Connect(function()
-			playUISound("rbxasset://sounds/electronicpingshort.wav", 1.1, 0.6)
-			Net.Get("RequestUnlockSkill"):FireServer(skillId)
-		end)
+		if inDungeon then
+			actionBtn.BackgroundColor3 = Color3.fromRGB(28, 30, 36)
+			btnStroke.Color = Color3.fromRGB(50, 54, 64)
+			btnTitle.TextColor3 = Color3.fromRGB(135, 140, 150)
+			btnTitle.Text = "🔒 LOCKED"
+			btnSubtext.TextColor3 = Color3.fromRGB(220, 100, 100)
+			btnSubtext.Text = "Locked in Dungeon"
+			actionBtn.AutoButtonColor = false
+		else
+			actionBtn.BackgroundColor3 = Color3.fromRGB(32, 140, 72)
+			btnStroke.Color = Color3.fromRGB(255, 215, 80)
+			btnTitle.TextColor3 = Color3.new(1, 1, 1)
+			btnTitle.Text = "✨ UNLOCK"
+			btnSubtext.TextColor3 = Color3.fromRGB(255, 235, 150)
+			btnSubtext.Text = "Cost: 1 Skill Point"
+			actionBtn.Activated:Connect(function()
+				playUISound("rbxasset://sounds/electronicpingshort.wav", 1.1, 0.6)
+				Net.Get("RequestUnlockSkill"):FireServer(skillId)
+			end)
+		end
 	else
 		actionBtn.BackgroundColor3 = Color3.fromRGB(30, 32, 38)
 		btnStroke.Color = Color3.fromRGB(52, 56, 66)
@@ -582,7 +676,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.TextColor3 = unlocked and Color3.fromRGB(255, 255, 255) or (canUnlock and Color3.fromRGB(255, 220, 120) or Color3.fromRGB(175, 180, 192))
 	titleLabel.Font = Enum.Font.GothamBold
-	titleLabel.TextSize = isMobile and 21 or 24
+	titleLabel.TextSize = isMobile and 22 or 25
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.TextTruncate = Enum.TextTruncate.None
 	titleLabel.Text = skill.displayName or skillId
@@ -633,7 +727,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	tText.BackgroundTransparency = 1
 	tText.TextColor3 = unlocked and Color3.fromRGB(255, 235, 170) or Color3.fromRGB(180, 188, 200)
 	tText.Font = Enum.Font.GothamBold
-	tText.TextSize = isMobile and 14 or 15
+	tText.TextSize = isMobile and 15 or 16
 	tText.Text = TIER_TITLES[skill.tier or 1] or "TIER I"
 	tText.Parent = tierPill
 
@@ -660,7 +754,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	cdText.BackgroundTransparency = 1
 	cdText.TextColor3 = Color3.fromRGB(125, 205, 255)
 	cdText.Font = Enum.Font.GothamBold
-	cdText.TextSize = isMobile and 14 or 15
+	cdText.TextSize = isMobile and 15 or 16
 	cdText.Text = ("⏱ %ds CD"):format(skill.cooldown or 0)
 	cdText.Parent = cdPill
 
@@ -688,7 +782,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 		dmgText.BackgroundTransparency = 1
 		dmgText.TextColor3 = Color3.fromRGB(255, 135, 125)
 		dmgText.Font = Enum.Font.GothamBold
-		dmgText.TextSize = isMobile and 14 or 15
+		dmgText.TextSize = isMobile and 15 or 16
 		dmgText.Text = ("⚔ %d Dmg"):format(skill.damage)
 		dmgText.Parent = dmgPill
 	end
@@ -717,7 +811,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 		healText.BackgroundTransparency = 1
 		healText.TextColor3 = Color3.fromRGB(135, 245, 165)
 		healText.Font = Enum.Font.GothamBold
-		healText.TextSize = isMobile and 14 or 15
+		healText.TextSize = isMobile and 15 or 16
 		healText.Text = ("💚 %d Heal"):format(skill.healAmount)
 		healText.Parent = healPill
 	end
@@ -746,7 +840,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 		durText.BackgroundTransparency = 1
 		durText.TextColor3 = Color3.fromRGB(255, 220, 95)
 		durText.Font = Enum.Font.GothamBold
-		durText.TextSize = isMobile and 14 or 15
+		durText.TextSize = isMobile and 15 or 16
 		durText.Text = ("🛡 %ds"):format(skill.duration)
 		durText.Parent = durPill
 	end
@@ -772,7 +866,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 		slowText.BackgroundTransparency = 1
 		slowText.TextColor3 = Color3.fromRGB(210, 170, 255)
 		slowText.Font = Enum.Font.GothamBold
-		slowText.TextSize = isMobile and 14 or 15
+		slowText.TextSize = isMobile and 15 or 16
 		slowText.Text = ("🔮 Slow %d%%"):format(skill.slowPercent)
 		slowText.Parent = slowPill
 	end
@@ -798,7 +892,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 		burnText.BackgroundTransparency = 1
 		burnText.TextColor3 = Color3.fromRGB(255, 140, 60)
 		burnText.Font = Enum.Font.GothamBold
-		burnText.TextSize = isMobile and 14 or 15
+		burnText.TextSize = isMobile and 15 or 16
 		burnText.Text = ("🔥 Burn %d×%d"):format(skill.burnTickDamage or 0, skill.burnTicks)
 		burnText.Parent = burnPill
 	end
@@ -824,7 +918,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 		shieldText.BackgroundTransparency = 1
 		shieldText.TextColor3 = Color3.fromRGB(200, 160, 255)
 		shieldText.Font = Enum.Font.GothamBold
-		shieldText.TextSize = isMobile and 14 or 15
+		shieldText.TextSize = isMobile and 15 or 16
 		shieldText.Text = ("🛡 %d Shield"):format(skill.shieldAmount)
 		shieldText.Parent = shieldPill
 	end
@@ -837,7 +931,7 @@ local function buildNodeCard(skillId: string, parent: Instance, branchName: stri
 	descLabel.BackgroundTransparency = 1
 	descLabel.TextColor3 = Color3.fromRGB(205, 214, 228)
 	descLabel.Font = Enum.Font.Gotham
-	descLabel.TextSize = isMobile and 16 or 17
+	descLabel.TextSize = isMobile and 16.5 or 18
 	descLabel.TextWrapped = true
 	descLabel.TextXAlignment = Enum.TextXAlignment.Left
 	descLabel.TextYAlignment = Enum.TextYAlignment.Top
@@ -884,13 +978,28 @@ refreshUI = function()
 	end
 
 	local isMobile = isMobileViewport()
+	local inDungeon = isInDungeon()
+
+	if inDungeon then
+		isSelectingSlotForSkill = nil
+	end
+
+	updateResetButton()
+	updateResponsiveScale()
 
 	if pointsValueLabel then
 		pointsValueLabel.Text = tostring(skillPoints)
 	end
 
 	if bottomPromptLabel then
-		if isMobile then
+		if inDungeon then
+			bottomPromptLabel.Visible = true
+			bottomPromptLabel.Position = UDim2.new(0, 12, 0, isMobile and 2 or 5)
+			bottomPromptLabel.Size = UDim2.new(1, -20, 0, isMobile and 18 or 22)
+			bottomPromptLabel.TextSize = isMobile and 12 or 14
+			bottomPromptLabel.Text = "🔒 DUNGEON ACTIVE: Reskilling and skill equipping are disabled. Prepare your build at the Hub!"
+			bottomPromptLabel.TextColor3 = Color3.fromRGB(255, 115, 115)
+		elseif isMobile then
 			if isSelectingSlotForSkill then
 				local targetSkill = Skills[isSelectingSlotForSkill]
 				local skillName = targetSkill and targetSkill.displayName or isSelectingSlotForSkill
@@ -935,220 +1044,289 @@ refreshUI = function()
 		end
 	end
 
-	-- ── Branch Tabs (Visible on Mobile to give 100% width and zero cut-off) ───
-	if branchTabsContainer then
-		branchTabsContainer.Visible = isMobile
-		branchTabsContainer:ClearAllChildren()
+	-- ── Branch Tabs (Rendered on BOTH Mobile and Desktop) ───────────────────
+	local classData = Classes[currentClassId] or Classes.Tank
+	local branchList = BRANCH_ORDER_BY_CLASS[currentClassId] or BRANCH_ORDER_BY_CLASS.Tank
+	local numBranches = #branchList
 
-		if isMobile then
-			local tabLayout = Instance.new("UIListLayout")
-			tabLayout.FillDirection = Enum.FillDirection.Horizontal
-			tabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-			tabLayout.Padding = UDim.new(0, 8)
-			tabLayout.Parent = branchTabsContainer
-
-			local classData = Classes[currentClassId] or Classes.Tank
-			for _, branchName in ipairs(BRANCH_ORDER_BY_CLASS[currentClassId] or BRANCH_ORDER_BY_CLASS.Tank) do
-				local colStyle = BRANCH_COLORS[branchName] or BRANCH_COLORS.Juggernaut
-				local isSelected = (activeMobileBranch == branchName)
-				local branchInfo = classData and classData.branches and classData.branches[branchName]
-				local unlockedCount = 0
-				local totalCount = 3
-				if branchInfo then
-					totalCount = #branchInfo.skills
-					for _, sId in ipairs(branchInfo.skills) do
-						if isSkillUnlocked(sId) then
-							unlockedCount += 1
-						end
-					end
-				end
-
-				local tabBtn = Instance.new("TextButton")
-				tabBtn.Name = "Tab_" .. branchName
-				tabBtn.Size = UDim2.new(0.485, 0, 1, 0)
-				tabBtn.BackgroundColor3 = isSelected and colStyle.border or Color3.fromRGB(24, 28, 38)
-				tabBtn.BorderSizePixel = 0
-				tabBtn.Font = Enum.Font.GothamBold
-				tabBtn.TextSize = 16.5
-				tabBtn.TextColor3 = isSelected and Color3.new(1, 1, 1) or Color3.fromRGB(160, 170, 185)
-				tabBtn.Text = ("%s %s (%d/%d)"):format(colStyle.icon, colStyle.name, unlockedCount, totalCount)
-				tabBtn.Parent = branchTabsContainer
-
-				local tCorner = Instance.new("UICorner")
-				tCorner.CornerRadius = UDim.new(0, 8)
-				tCorner.Parent = tabBtn
-
-				local tStroke = Instance.new("UIStroke")
-				tStroke.Color = isSelected and Color3.fromRGB(255, 215, 80) or Color3.fromRGB(50, 56, 68)
-				tStroke.Thickness = isSelected and 2.0 or 1.0
-				tStroke.Parent = tabBtn
-
-				tabBtn.Activated:Connect(function()
-					playUISound("rbxasset://sounds/electronicpingshort.wav", 1.4, 0.3)
-					activeMobileBranch = branchName
-					refreshUI()
-				end)
-			end
+	-- Ensure activeBranch is valid
+	local isValidBranch = (activeBranch == "ALL")
+	for _, b in ipairs(branchList) do
+		if b == activeBranch then
+			isValidBranch = true
+			break
 		end
 	end
+	if not isValidBranch then
+		activeBranch = isMobile and branchList[1] or "ALL"
+	end
 
-	-- ── Render Branch Columns (Dual-Column on Desktop, Single-Branch on Mobile)
-	if branchesContainer then
-		branchesContainer:ClearAllChildren()
+	if branchTabsContainer then
+		branchTabsContainer.Visible = true
+		branchTabsContainer:ClearAllChildren()
 
-		local classData = Classes[currentClassId] or Classes.Tank
-		if classData and classData.branches then
-			local branchesToShow = isMobile and {activeMobileBranch} or (BRANCH_ORDER_BY_CLASS[currentClassId] or BRANCH_ORDER_BY_CLASS.Tank)
+		local tabLayout = Instance.new("UIListLayout")
+		tabLayout.FillDirection = Enum.FillDirection.Horizontal
+		tabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		tabLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+		tabLayout.Padding = UDim.new(0, isMobile and 6 or 10)
+		tabLayout.Parent = branchTabsContainer
 
-			local branchesLayout = Instance.new("UIListLayout")
-			branchesLayout.FillDirection = Enum.FillDirection.Horizontal
-			branchesLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-			branchesLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-			branchesLayout.Padding = UDim.new(0, 16)
-			branchesLayout.Parent = branchesContainer
-
-			for _, branchName in ipairs(branchesToShow) do
-				local branchInfo = classData.branches[branchName]
-				if not branchInfo then
-					continue
-				end
-
-				local colStyle = BRANCH_COLORS[branchName] or BRANCH_COLORS.Juggernaut
-
-				local unlockedCount = 0
+		-- Build tab definitions
+		local tabDefs = {}
+		for _, branchName in ipairs(branchList) do
+			local colStyle = BRANCH_COLORS[branchName] or BRANCH_COLORS.Juggernaut
+			local branchInfo = classData and classData.branches and classData.branches[branchName]
+			local unlockedCount = 0
+			local totalCount = 3
+			if branchInfo then
+				totalCount = #branchInfo.skills
 				for _, sId in ipairs(branchInfo.skills) do
 					if isSkillUnlocked(sId) then
 						unlockedCount += 1
 					end
 				end
+			end
+			local label = ("%s %s (%d/%d)"):format(colStyle.icon, isMobile and (colStyle.shortName or colStyle.name) or colStyle.name, unlockedCount, totalCount)
+			table.insert(tabDefs, {
+				id = branchName,
+				text = label,
+				color = colStyle.border,
+				accent = colStyle.accent,
+			})
+		end
 
-				local column = Instance.new("Frame")
-				column.Name = "Branch_" .. branchName
-				column.Size = isMobile and UDim2.new(1, 0, 1, 0) or UDim2.new(0.488, 0, 1, 0)
-				column.BackgroundColor3 = colStyle.bg
-				column.BorderSizePixel = 0
-				column.Parent = branchesContainer
+		if not isMobile then
+			table.insert(tabDefs, {
+				id = "ALL",
+				text = ("🌐 ALL TREES (%d)"):format(numBranches),
+				color = Color3.fromRGB(65, 80, 105),
+				accent = Color3.fromRGB(255, 215, 80),
+			})
+		end
 
-				local colCorner = Instance.new("UICorner")
-				colCorner.CornerRadius = UDim.new(0, 10)
-				colCorner.Parent = column
+		local tabCount = #tabDefs
+		for _, tDef in ipairs(tabDefs) do
+			local isSelected = (activeBranch == tDef.id)
+			local tabBtn = Instance.new("TextButton")
+			tabBtn.Name = "Tab_" .. tDef.id
+			tabBtn.Size = UDim2.new(1 / tabCount, -(isMobile and 6 or 10), 1, 0)
+			tabBtn.BackgroundColor3 = isSelected and (tDef.color or Color3.fromRGB(45, 55, 75)) or Color3.fromRGB(24, 28, 38)
+			tabBtn.BorderSizePixel = 0
+			tabBtn.Font = Enum.Font.GothamBold
+			tabBtn.TextSize = isMobile and (tabCount >= 3 and 14.5 or 16) or 16.5
+			tabBtn.TextColor3 = isSelected and Color3.new(1, 1, 1) or Color3.fromRGB(165, 175, 190)
+			tabBtn.Text = tDef.text
+			tabBtn.Parent = branchTabsContainer
 
-				local colStroke = Instance.new("UIStroke")
-				colStroke.Color = colStyle.border
-				colStroke.Thickness = 1.6
-				colStroke.Parent = column
+			local tCorner = Instance.new("UICorner")
+			tCorner.CornerRadius = UDim.new(0, 8)
+			tCorner.Parent = tabBtn
 
-				-- Branch Header Banner
-				local colHeader = Instance.new("Frame")
-				colHeader.Size = UDim2.new(1, 0, 0, isMobile and 30 or 60)
-				colHeader.BackgroundColor3 = isMobile and Color3.fromRGB(15, 18, 25) or colStyle.border
-				colHeader.BorderSizePixel = 0
-				colHeader.Parent = column
+			local tStroke = Instance.new("UIStroke")
+			tStroke.Color = isSelected and Color3.fromRGB(255, 215, 80) or Color3.fromRGB(50, 56, 68)
+			tStroke.Thickness = isSelected and 2.0 or 1.0
+			tStroke.Parent = tabBtn
 
-				local headCorner = Instance.new("UICorner")
-				headCorner.CornerRadius = UDim.new(0, isMobile and 6 or 10)
-				headCorner.Parent = colHeader
+			tabBtn.Activated:Connect(function()
+				playUISound("rbxasset://sounds/electronicpingshort.wav", 1.4, 0.3)
+				activeBranch = tDef.id
+				refreshUI()
+			end)
+		end
+	end
 
-				if not isMobile then
-					local colTitle = Instance.new("TextLabel")
-					colTitle.Size = UDim2.new(1, -110, 0, 28)
-					colTitle.Position = UDim2.new(0, 14, 0, 4)
-					colTitle.BackgroundTransparency = 1
-					colTitle.TextColor3 = Color3.new(1, 1, 1)
-					colTitle.Font = Enum.Font.GothamBold
-					colTitle.TextSize = 20
-					colTitle.TextXAlignment = Enum.TextXAlignment.Left
-					colTitle.Text = colStyle.displayName
-					colTitle.Parent = colHeader
+	-- ── Render Branch Columns ───────────────────────────────────────────────
+	if branchesContainer then
+		branchesContainer:ClearAllChildren()
 
-					local colDesc = Instance.new("TextLabel")
-					colDesc.Size = UDim2.new(1, -110, 0, 22)
-					colDesc.Position = UDim2.new(0, 14, 0, 32)
-					colDesc.BackgroundTransparency = 1
-					colDesc.TextColor3 = Color3.fromRGB(225, 232, 245)
-					colDesc.Font = Enum.Font.Gotham
-					colDesc.TextSize = 15
-					colDesc.TextXAlignment = Enum.TextXAlignment.Left
-					colDesc.Text = colStyle.tagline
-					colDesc.Parent = colHeader
+		local branchesToShow = {}
+		if isMobile then
+			branchesToShow = {activeBranch == "ALL" and branchList[1] or activeBranch}
+		else
+			if activeBranch == "ALL" then
+				branchesToShow = branchList
+			else
+				branchesToShow = {activeBranch}
+			end
+		end
 
-					-- Branch Mastery Progress Pill (e.g. 1 / 3)
-					local progPill = Instance.new("Frame")
-					progPill.Size = UDim2.new(0, 88, 0, 32)
-					progPill.Position = UDim2.new(1, -98, 0.5, -16)
-					progPill.BackgroundColor3 = Color3.fromRGB(15, 20, 28)
-					progPill.BorderSizePixel = 0
-					progPill.Parent = colHeader
+		local isSingleBranchView = (#branchesToShow == 1)
 
-					local pCorner = Instance.new("UICorner")
-					pCorner.CornerRadius = UDim.new(0, 6)
-					pCorner.Parent = progPill
+		local branchesLayout = Instance.new("UIListLayout")
+		branchesLayout.FillDirection = Enum.FillDirection.Horizontal
+		branchesLayout.HorizontalAlignment = isSingleBranchView and Enum.HorizontalAlignment.Center or Enum.HorizontalAlignment.Left
+		branchesLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+		branchesLayout.Padding = UDim.new(0, 16)
+		branchesLayout.Parent = branchesContainer
 
-					local pStroke = Instance.new("UIStroke")
-					pStroke.Color = colStyle.accent
-					pStroke.Thickness = 1.2
-					pStroke.Parent = progPill
+		if not isSingleBranchView and #branchesToShow >= 3 then
+			branchesContainer.AutomaticCanvasSize = Enum.AutomaticSize.X
+			branchesContainer.ScrollBarThickness = 6
+		else
+			branchesContainer.AutomaticCanvasSize = Enum.AutomaticSize.None
+			branchesContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+			branchesContainer.ScrollBarThickness = 0
+		end
 
-					local progLabel = Instance.new("TextLabel")
-					progLabel.Size = UDim2.new(1, 0, 1, 0)
-					progLabel.BackgroundTransparency = 1
-					progLabel.TextColor3 = Color3.fromRGB(255, 235, 170)
-					progLabel.Font = Enum.Font.GothamBold
-					progLabel.TextSize = 15.5
-					progLabel.Text = ("%d / %d"):format(unlockedCount, #branchInfo.skills)
-					progLabel.Parent = progPill
-				else
-					local colDesc = Instance.new("TextLabel")
-					colDesc.Size = UDim2.new(1, -16, 1, 0)
-					colDesc.Position = UDim2.new(0, 8, 0, 0)
-					colDesc.BackgroundTransparency = 1
-					colDesc.TextColor3 = colStyle.accent
-					colDesc.Font = Enum.Font.GothamMedium
-					colDesc.TextSize = 13.5
-					colDesc.TextXAlignment = Enum.TextXAlignment.Center
-					colDesc.Text = "✧ " .. colStyle.tagline
-					colDesc.Parent = colHeader
+		for _, branchName in ipairs(branchesToShow) do
+			local branchInfo = classData and classData.branches and classData.branches[branchName]
+			if not branchInfo then
+				continue
+			end
+
+			local colStyle = BRANCH_COLORS[branchName] or BRANCH_COLORS.Juggernaut
+
+			local unlockedCount = 0
+			for _, sId in ipairs(branchInfo.skills) do
+				if isSkillUnlocked(sId) then
+					unlockedCount += 1
 				end
+			end
 
-				-- ScrollingFrame for Nodes: GUARANTEED NEVER TO CUT OFF TEXT ON MOBILE OR DESKTOP
-				local nodesList = Instance.new("ScrollingFrame")
-				nodesList.Name = "NodesList"
-				nodesList.Size = UDim2.new(1, -12, 1, isMobile and -36 or -70)
-				nodesList.Position = UDim2.new(0, 6, 0, isMobile and 34 or 64)
-				nodesList.BackgroundTransparency = 1
-				nodesList.BorderSizePixel = 0
-				nodesList.ScrollBarThickness = 5
-				nodesList.ScrollBarImageColor3 = Color3.fromRGB(195, 160, 70)
-				nodesList.CanvasSize = UDim2.new(0, 0, 0, 0)
-				nodesList.AutomaticCanvasSize = Enum.AutomaticSize.Y
-				nodesList.ScrollingDirection = Enum.ScrollingDirection.Y
-				nodesList.ElasticBehavior = Enum.ElasticBehavior.WhenScrollable
-				nodesList.ClipsDescendants = true
-				nodesList.Parent = column
+			local column = Instance.new("Frame")
+			column.Name = "Branch_" .. branchName
+			if isMobile then
+				column.Size = UDim2.new(1, 0, 1, 0)
+			elseif isSingleBranchView then
+				column.Size = UDim2.new(0, 680, 1, 0)
+			else
+				if #branchesToShow == 2 then
+					column.Size = UDim2.new(0.488, 0, 1, 0)
+				else
+					column.Size = UDim2.new(0, 520, 1, 0)
+				end
+			end
+			column.BackgroundColor3 = colStyle.bg
+			column.BorderSizePixel = 0
+			column.Parent = branchesContainer
 
-				local nLayout = Instance.new("UIListLayout")
-				nLayout.SortOrder = Enum.SortOrder.LayoutOrder
-				nLayout.FillDirection = Enum.FillDirection.Vertical
-				nLayout.Padding = UDim.new(0, 6)
-				nLayout.Parent = nodesList
+			local colCorner = Instance.new("UICorner")
+			colCorner.CornerRadius = UDim.new(0, 10)
+			colCorner.Parent = column
 
-				-- Sort skills deterministically by Tier 1 -> Tier 2 -> Tier 3
-				local sortedSkills = table.clone(branchInfo.skills)
-				table.sort(sortedSkills, function(a, b)
-					local skillA = Skills[a]
-					local skillB = Skills[b]
-					local tierA = skillA and skillA.tier or 1
-					local tierB = skillB and skillB.tier or 1
-					return tierA < tierB
-				end)
+			local colStroke = Instance.new("UIStroke")
+			colStroke.Color = colStyle.border
+			colStroke.Thickness = 1.6
+			colStroke.Parent = column
 
-				for idx, skillId in ipairs(sortedSkills) do
-					buildNodeCard(skillId, nodesList, branchName, isMobile)
+			-- Branch Header Banner
+			local colHeader = Instance.new("Frame")
+			colHeader.Size = UDim2.new(1, 0, 0, isMobile and 30 or 52)
+			colHeader.BackgroundColor3 = isMobile and Color3.fromRGB(15, 18, 25) or colStyle.border
+			colHeader.BorderSizePixel = 0
+			colHeader.Parent = column
 
-					if idx < #sortedSkills then
-						local thisUnlocked = isSkillUnlocked(skillId)
-						buildTierConnector(idx + 1, thisUnlocked, colStyle.primary, nodesList, isMobile)
-					end
+			local headCorner = Instance.new("UICorner")
+			headCorner.CornerRadius = UDim.new(0, isMobile and 6 or 10)
+			headCorner.Parent = colHeader
+
+			if not isMobile then
+				local colTitle = Instance.new("TextLabel")
+				colTitle.Size = UDim2.new(1, -110, 0, 26)
+				colTitle.Position = UDim2.new(0, 14, 0, 2)
+				colTitle.BackgroundTransparency = 1
+				colTitle.TextColor3 = Color3.new(1, 1, 1)
+				colTitle.Font = Enum.Font.GothamBold
+				colTitle.TextSize = 19
+				colTitle.TextXAlignment = Enum.TextXAlignment.Left
+				colTitle.Text = colStyle.displayName
+				colTitle.Parent = colHeader
+
+				local colDesc = Instance.new("TextLabel")
+				colDesc.Size = UDim2.new(1, -110, 0, 20)
+				colDesc.Position = UDim2.new(0, 14, 0, 28)
+				colDesc.BackgroundTransparency = 1
+				colDesc.TextColor3 = Color3.fromRGB(225, 232, 245)
+				colDesc.Font = Enum.Font.Gotham
+				colDesc.TextSize = 14
+				colDesc.TextXAlignment = Enum.TextXAlignment.Left
+				colDesc.Text = colStyle.tagline
+				colDesc.Parent = colHeader
+
+				-- Branch Mastery Progress Pill (e.g. 1 / 3)
+				local progPill = Instance.new("Frame")
+				progPill.Size = UDim2.new(0, 88, 0, 30)
+				progPill.Position = UDim2.new(1, -98, 0.5, -15)
+				progPill.BackgroundColor3 = Color3.fromRGB(15, 20, 28)
+				progPill.BorderSizePixel = 0
+				progPill.Parent = colHeader
+
+				local pCorner = Instance.new("UICorner")
+				pCorner.CornerRadius = UDim.new(0, 6)
+				pCorner.Parent = progPill
+
+				local pStroke = Instance.new("UIStroke")
+				pStroke.Color = colStyle.accent
+				pStroke.Thickness = 1.2
+				pStroke.Parent = progPill
+
+				local progLabel = Instance.new("TextLabel")
+				progLabel.Size = UDim2.new(1, 0, 1, 0)
+				progLabel.BackgroundTransparency = 1
+				progLabel.TextColor3 = Color3.fromRGB(255, 235, 170)
+				progLabel.Font = Enum.Font.GothamBold
+				progLabel.TextSize = 15
+				progLabel.Text = ("%d / %d"):format(unlockedCount, #branchInfo.skills)
+				progLabel.Parent = progPill
+			else
+				local colDesc = Instance.new("TextLabel")
+				colDesc.Size = UDim2.new(1, -16, 1, 0)
+				colDesc.Position = UDim2.new(0, 8, 0, 0)
+				colDesc.BackgroundTransparency = 1
+				colDesc.TextColor3 = colStyle.accent
+				colDesc.Font = Enum.Font.GothamMedium
+				colDesc.TextSize = 13.5
+				colDesc.TextXAlignment = Enum.TextXAlignment.Center
+				colDesc.Text = "✧ " .. colStyle.tagline
+				colDesc.Parent = colHeader
+			end
+
+			-- ScrollingFrame for Nodes: GUARANTEED NEVER TO CUT OFF TEXT ON MOBILE OR DESKTOP
+			local nodesList = Instance.new("ScrollingFrame")
+			nodesList.Name = "NodesList"
+			nodesList.Size = UDim2.new(1, -12, 1, isMobile and -36 or -60)
+			nodesList.Position = UDim2.new(0, 6, 0, isMobile and 34 or 56)
+			nodesList.BackgroundTransparency = 1
+			nodesList.BorderSizePixel = 0
+			nodesList.ScrollBarThickness = 6
+			nodesList.ScrollBarImageColor3 = Color3.fromRGB(195, 160, 70)
+			nodesList.CanvasSize = UDim2.new(0, 0, 0, 0)
+			nodesList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+			nodesList.ScrollingDirection = Enum.ScrollingDirection.Y
+			nodesList.ElasticBehavior = Enum.ElasticBehavior.WhenScrollable
+			nodesList.ClipsDescendants = true
+			nodesList.Parent = column
+
+			local listPad = Instance.new("UIPadding")
+			listPad.PaddingTop = UDim.new(0, 4)
+			listPad.PaddingBottom = UDim.new(0, 28)
+			listPad.PaddingLeft = UDim.new(0, 2)
+			listPad.PaddingRight = UDim.new(0, 4)
+			listPad.Parent = nodesList
+
+			local nLayout = Instance.new("UIListLayout")
+			nLayout.SortOrder = Enum.SortOrder.LayoutOrder
+			nLayout.FillDirection = Enum.FillDirection.Vertical
+			nLayout.Padding = UDim.new(0, 6)
+			nLayout.Parent = nodesList
+
+			-- Sort skills deterministically by Tier 1 -> Tier 2 -> Tier 3
+			local sortedSkills = table.clone(branchInfo.skills)
+			table.sort(sortedSkills, function(a, b)
+				local skillA = Skills[a]
+				local skillB = Skills[b]
+				local tierA = skillA and skillA.tier or 1
+				local tierB = skillB and skillB.tier or 1
+				return tierA < tierB
+			end)
+
+			for idx, skillId in ipairs(sortedSkills) do
+				buildNodeCard(skillId, nodesList, branchName, isMobile)
+
+				if idx < #sortedSkills then
+					local thisUnlocked = isSkillUnlocked(skillId)
+					buildTierConnector(idx + 1, thisUnlocked, colStyle.primary, nodesList, isMobile)
 				end
 			end
 		end
@@ -1259,6 +1437,9 @@ refreshUI = function()
 			slotBtn.Parent = slotBox
 
 			slotBtn.Activated:Connect(function()
+				if isInDungeon() then
+					return
+				end
 				if isSelectingSlotForSkill then
 					playUISound("rbxasset://sounds/electronicpingshort.wav", 1.3, 0.5)
 					Net.Get("RequestEquipSkill"):FireServer(isSelectingSlotForSkill, slotIndex)
@@ -1390,15 +1571,15 @@ function SkillTreeUIController.Start()
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.TextColor3 = Color3.fromRGB(255, 235, 180)
 	titleLabel.Font = Enum.Font.GothamBold
-	titleLabel.TextSize = 24
+	titleLabel.TextSize = 26
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.Text = getClassTitleText(false)
 	titleLabel.Parent = headerBar
 
 	-- Skill Points Badge Pill
 	pointsPill = Instance.new("Frame")
-	pointsPill.Size = UDim2.new(0, 205, 0, 38)
-	pointsPill.Position = UDim2.new(1, -265, 0.5, -19)
+	pointsPill.Size = UDim2.new(0, 215, 0, 38)
+	pointsPill.Position = UDim2.new(1, -275, 0.5, -19)
 	pointsPill.BackgroundColor3 = Color3.fromRGB(32, 38, 50)
 	pointsPill.BorderSizePixel = 0
 	pointsPill.Parent = headerBar
@@ -1418,7 +1599,7 @@ function SkillTreeUIController.Start()
 	pillLabel.BackgroundTransparency = 1
 	pillLabel.TextColor3 = Color3.fromRGB(220, 228, 238)
 	pillLabel.Font = Enum.Font.GothamBold
-	pillLabel.TextSize = 15
+	pillLabel.TextSize = 16.5
 	pillLabel.Text = "SKILL POINTS:"
 	pillLabel.Parent = pointsPill
 
@@ -1428,9 +1609,92 @@ function SkillTreeUIController.Start()
 	pointsValueLabel.BackgroundTransparency = 1
 	pointsValueLabel.TextColor3 = Color3.fromRGB(255, 220, 70)
 	pointsValueLabel.Font = Enum.Font.GothamBold
-	pointsValueLabel.TextSize = 22
+	pointsValueLabel.TextSize = 24
 	pointsValueLabel.Text = "0"
 	pointsValueLabel.Parent = pointsPill
+
+	-- Reset / Respec Skills Button (Hub Only)
+	reskillBtn = Instance.new("TextButton")
+	reskillBtn.Name = "ReskillBtn"
+	reskillBtn.Size = UDim2.new(0, 115, 0, 38)
+	reskillBtn.Position = UDim2.new(1, -385, 0.5, -19)
+	reskillBtn.BackgroundColor3 = Color3.fromRGB(42, 48, 62)
+	reskillBtn.BorderSizePixel = 0
+	reskillBtn.AutoButtonColor = true
+	reskillBtn.Parent = headerBar
+
+	local reskillCorner = Instance.new("UICorner")
+	reskillCorner.CornerRadius = UDim.new(0, 8)
+	reskillCorner.Parent = reskillBtn
+
+	local reskillStroke = Instance.new("UIStroke")
+	reskillStroke.Color = Color3.fromRGB(80, 110, 160)
+	reskillStroke.Thickness = 1.2
+	reskillStroke.Parent = reskillBtn
+
+	reskillBtnText = Instance.new("TextLabel")
+	reskillBtnText.Size = UDim2.new(1, 0, 1, 0)
+	reskillBtnText.BackgroundTransparency = 1
+	reskillBtnText.TextColor3 = Color3.fromRGB(220, 235, 255)
+	reskillBtnText.Font = Enum.Font.GothamBold
+	reskillBtnText.TextSize = 15.5
+	reskillBtnText.Text = "↺ RESPEC"
+	reskillBtnText.Parent = reskillBtn
+
+	reskillBtn.Activated:Connect(function()
+		if isInDungeon() then
+			return
+		end
+		if not isConfirmingReset then
+			isConfirmingReset = true
+			updateResetButton()
+			if resetConfirmThread then
+				task.cancel(resetConfirmThread)
+			end
+			resetConfirmThread = task.delay(3, function()
+				isConfirmingReset = false
+				updateResetButton()
+			end)
+		else
+			isConfirmingReset = false
+			if resetConfirmThread then
+				task.cancel(resetConfirmThread)
+				resetConfirmThread = nil
+			end
+			updateResetButton()
+			playUISound("rbxasset://sounds/electronicpingshort.wav", 1.2, 0.6)
+			Net.Get("RequestResetSkills"):FireServer()
+			isSelectingSlotForSkill = nil
+		end
+	end)
+
+	-- Dungeon Status Locked Badge (Dungeon Only)
+	dungeonStatusBadge = Instance.new("Frame")
+	dungeonStatusBadge.Name = "DungeonStatusBadge"
+	dungeonStatusBadge.Size = UDim2.new(0, 195, 0, 36)
+	dungeonStatusBadge.Position = UDim2.new(1, -460, 0.5, -18)
+	dungeonStatusBadge.BackgroundColor3 = Color3.fromRGB(56, 18, 18)
+	dungeonStatusBadge.BorderSizePixel = 0
+	dungeonStatusBadge.Visible = false
+	dungeonStatusBadge.Parent = headerBar
+
+	local dsbCorner = Instance.new("UICorner")
+	dsbCorner.CornerRadius = UDim.new(0, 8)
+	dsbCorner.Parent = dungeonStatusBadge
+
+	local dsbStroke = Instance.new("UIStroke")
+	dsbStroke.Color = Color3.fromRGB(215, 65, 65)
+	dsbStroke.Thickness = 1.2
+	dsbStroke.Parent = dungeonStatusBadge
+
+	dungeonStatusLabel = Instance.new("TextLabel")
+	dungeonStatusLabel.Size = UDim2.new(1, 0, 1, 0)
+	dungeonStatusLabel.BackgroundTransparency = 1
+	dungeonStatusLabel.TextColor3 = Color3.fromRGB(255, 180, 180)
+	dungeonStatusLabel.Font = Enum.Font.GothamBold
+	dungeonStatusLabel.TextSize = 14.5
+	dungeonStatusLabel.Text = "🔒 LOADOUT LOCKED"
+	dungeonStatusLabel.Parent = dungeonStatusBadge
 
 	-- Close Button [X]
 	closeBtn = Instance.new("TextButton")
@@ -1439,7 +1703,7 @@ function SkillTreeUIController.Start()
 	closeBtn.BackgroundColor3 = Color3.fromRGB(185, 45, 45)
 	closeBtn.TextColor3 = Color3.new(1, 1, 1)
 	closeBtn.Font = Enum.Font.GothamBold
-	closeBtn.TextSize = 20
+	closeBtn.TextSize = 22
 	closeBtn.Text = "X"
 	closeBtn.BorderSizePixel = 0
 	closeBtn.Parent = headerBar
@@ -1452,21 +1716,28 @@ function SkillTreeUIController.Start()
 		SkillTreeUIController.Close()
 	end)
 
-	-- Mobile Branch Switcher Tabs Container
+	-- Branch Switcher Tabs Container (Desktop & Mobile)
 	branchTabsContainer = Instance.new("Frame")
 	branchTabsContainer.Name = "BranchTabsContainer"
-	branchTabsContainer.Size = UDim2.new(1, -24, 0, 38)
-	branchTabsContainer.Position = UDim2.new(0, 12, 0, 64)
+	branchTabsContainer.Size = UDim2.new(1, -24, 0, 40)
+	branchTabsContainer.Position = UDim2.new(0, 12, 0, 66)
 	branchTabsContainer.BackgroundTransparency = 1
-	branchTabsContainer.Visible = false
+	branchTabsContainer.Visible = true
 	branchTabsContainer.Parent = modalFrame
 
-	-- Center Branches Container
-	branchesContainer = Instance.new("Frame")
+	-- Center Branches Container (ScrollingFrame supporting multi-branch scrolling)
+	branchesContainer = Instance.new("ScrollingFrame")
 	branchesContainer.Name = "BranchesContainer"
-	branchesContainer.Size = UDim2.new(1, -24, 1, -172)
-	branchesContainer.Position = UDim2.new(0, 12, 0, 68)
+	branchesContainer.Size = UDim2.new(1, -24, 1, -216)
+	branchesContainer.Position = UDim2.new(0, 12, 0, 112)
 	branchesContainer.BackgroundTransparency = 1
+	branchesContainer.BorderSizePixel = 0
+	branchesContainer.ScrollBarThickness = 6
+	branchesContainer.ScrollBarImageColor3 = Color3.fromRGB(195, 155, 65)
+	branchesContainer.ElasticBehavior = Enum.ElasticBehavior.WhenScrollable
+	branchesContainer.ScrollingDirection = Enum.ScrollingDirection.X
+	branchesContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+	branchesContainer.ClipsDescendants = true
 	branchesContainer.Parent = modalFrame
 
 	-- Bottom Equipped Slots Bar
@@ -1490,14 +1761,14 @@ function SkillTreeUIController.Start()
 	-- Bottom Action Bar Prompt / Subtitle
 	bottomPromptLabel = Instance.new("TextLabel")
 	bottomPromptLabel.Name = "BottomPrompt"
-	bottomPromptLabel.Size = UDim2.new(1, -20, 0, 22)
-	bottomPromptLabel.Position = UDim2.new(0, 12, 0, 5)
+	bottomPromptLabel.Size = UDim2.new(1, -20, 0, 24)
+	bottomPromptLabel.Position = UDim2.new(0, 12, 0, 4)
 	bottomPromptLabel.BackgroundTransparency = 1
 	bottomPromptLabel.TextColor3 = Color3.fromRGB(180, 190, 205)
-	bottomPromptLabel.Font = Enum.Font.GothamMedium
-	bottomPromptLabel.TextSize = 14.5
+	bottomPromptLabel.Font = Enum.Font.GothamBold
+	bottomPromptLabel.TextSize = 15.5
 	bottomPromptLabel.TextXAlignment = Enum.TextXAlignment.Left
-	bottomPromptLabel.Text = "ACTIVE ACTION SLOTS: Click an unlocked ability above to equip it into your hotbar."
+	bottomPromptLabel.Text = "EQUIPPED SKILLS: Click an unlocked ability above to equip into your hotbar."
 	bottomPromptLabel.Parent = bottomFrame
 
 	equippedSlotsContainer = Instance.new("Frame")
@@ -1534,7 +1805,8 @@ function SkillTreeUIController.Start()
 	Net.Get("CharacterDataChanged").OnClientEvent:Connect(function(_level, _unspentEXP, classId)
 		if classId and Classes[classId] and classId ~= currentClassId then
 			currentClassId = classId
-			activeMobileBranch = (BRANCH_ORDER_BY_CLASS[currentClassId] or BRANCH_ORDER_BY_CLASS.Tank)[1]
+			local branchList = BRANCH_ORDER_BY_CLASS[currentClassId] or BRANCH_ORDER_BY_CLASS.Tank
+			activeBranch = isMobileViewport() and branchList[1] or "ALL"
 			-- Refreshes the title bar's class name/icon too, not just the branch
 			-- columns -- updateResponsiveScale() is what actually sets titleLabel.Text.
 			updateResponsiveScale()
@@ -1550,6 +1822,13 @@ function SkillTreeUIController.Start()
 		unlockedSkills = unlocked or {"Taunt"}
 		equippedSkills = equipped or {"Taunt"}
 		refreshUI()
+	end)
+
+	ReplicatedStorage:GetAttributeChangedSignal("IsDungeon"):Connect(function()
+		updateResponsiveScale()
+		if screenGui and screenGui.Enabled then
+			refreshUI()
+		end
 	end)
 end
 

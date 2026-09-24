@@ -34,8 +34,8 @@ SkillTreeService.Start()
 -- own services. This is the single place that decision gets made -- don't
 -- duplicate this cleanup inside DungeonSessionService or the hub services
 -- themselves.
-local HUB_ONLY_SCENERY = {"RockhidePortal", "LevelUpShrine", "SpawnLocation", "SoulforgeHub"}
-local DUNGEON_ONLY_SCENERY = {"RockhideArena"}
+local HUB_ONLY_SCENERY = {"RockhidePortal", "SunforgedPortal", "LevelUpShrine", "SpawnLocation", "SoulforgeHub"}
+local DUNGEON_ONLY_SCENERY = {"RockhideArena", "SunforgedCitadel"}
 
 local function destroyScenery(names: {string})
 	for _, desc in workspace:GetDescendants() do
@@ -56,10 +56,13 @@ end
 -- in its own Main.server.lua.
 local RunService = game:GetService("RunService")
 
--- In Studio Play Solo, boot into the Hub on load so you can test Hub features
--- (character creation/spawning, dungeon portal, ascension shrine, training grounds).
--- Set to true if you want to bypass the Hub and jump straight into Rockhide's dungeon.
+-- In Studio Play Solo, set to true to bypass the Hub and jump straight into a dungeon on load for testing.
 local STUDIO_DIRECT_DUNGEON = false
+local STUDIO_DIRECT_DUNGEON_ID = "Sunforged" -- "Sunforged" or "Rockhide"
+
+if RunService:IsStudio() and STUDIO_DIRECT_DUNGEON then
+	ReplicatedStorage:SetAttribute("IsDungeon", true)
+end
 
 local function determineServerTypeAndStart(player: Player)
 	local teleportData = player:GetJoinData().TeleportData
@@ -69,8 +72,15 @@ local function determineServerTypeAndStart(player: Player)
 	if isDungeonServer then
 		ReplicatedStorage:SetAttribute("IsDungeon", true)
 		destroyScenery(HUB_ONLY_SCENERY)
-		local dungeonId = (teleportData and teleportData.dungeonId) or "Rockhide"
+		local dungeonId = (teleportData and teleportData.dungeonId)
+			or (RunService:IsStudio() and STUDIO_DIRECT_DUNGEON_ID)
+			or "Sunforged"
 		local partyUserIds = teleportData and teleportData.partyMemberUserIds
+
+		-- Enable level-up and crafting services so developer test commands (/lvl, /sunforged, /exp) work in dungeon testing
+		LevelUpService.Start()
+		CraftingService.Start()
+
 		DungeonSessionService.Start(dungeonId, partyUserIds)
 	else
 		destroyScenery(DUNGEON_ONLY_SCENERY)

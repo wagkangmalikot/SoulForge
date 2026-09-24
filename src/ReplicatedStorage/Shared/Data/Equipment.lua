@@ -392,14 +392,14 @@ local Equipment = {
 		-- ── STASHED: Sunforged (Tier 3 — Legendary, future content) ────────
 		-- These items are kept for future implementation.
 		-- Do NOT expose in crafting UI until released.
-		_SunforgedSword = {
+		SunforgedSword = {
 			id = "SunforgedSword",
 			setId = "Sunforged",
 			displayName = "Sunforged Runic Greatsword",
 			slot = "Weapon",
 			tier = 3,
 			rarity = "Legendary",
-			stashed = true, -- hidden from crafting UI
+			
 			description = "A masterwork greatsword forged in celestial solar flame, inscribed with ancient luminous runes.",
 			stats = {
 				physicalDamage = 32,
@@ -408,58 +408,122 @@ local Equipment = {
 				criticalChance = 0.12,
 			},
 			crafting = {
-				levelRequired = 3,
+				levelRequired = 5,
 				craftTime     = 8.0,
 				materials     = { IronIngot = 12, SunstoneCore = 1, AncientRune = 3 },
 			},
 		},
-		_SunforgedHelm = {
+		SunforgedHelm = {
 			id = "SunforgedHelm",
 			setId = "Sunforged",
 			displayName = "Sunforged Crown",
 			slot = "Head",
 			tier = 3,
 			rarity = "Legendary",
-			stashed = true,
+			
 			description = "A radiant golden crown that channels celestial energy.",
 			stats = { armor = 24, magicResist = 18, maxHPBonus = 40 },
-			crafting = { levelRequired = 3, craftTime = 8.0, materials = { IronIngot = 10, SunstoneCore = 1, AncientRune = 2 } },
+			crafting = { levelRequired = 5, craftTime = 8.0, materials = { IronIngot = 10, SunstoneCore = 1, AncientRune = 2 } },
 		},
-		_SunforgedChest = {
+		SunforgedChest = {
 			id = "SunforgedChest",
 			setId = "Sunforged",
 			displayName = "Sunforged Aegis Plate",
 			slot = "Body",
 			tier = 3,
 			rarity = "Legendary",
-			stashed = true,
+			
 			description = "A brilliant golden chestplate inscribed with solar seals.",
 			stats = { armor = 45, maxHPBonus = 80, damageReduction = 0.20 },
-			crafting = { levelRequired = 3, craftTime = 10.0, materials = { IronIngot = 15, SunstoneCore = 2, AncientRune = 3 } },
+			crafting = { levelRequired = 5, craftTime = 10.0, materials = { IronIngot = 15, SunstoneCore = 2, AncientRune = 3 } },
 		},
-		_SunforgedArms = {
+		SunforgedArms = {
 			id = "SunforgedArms",
 			setId = "Sunforged",
 			displayName = "Sunforged Gauntlets",
 			slot = "Arms",
 			tier = 3,
 			rarity = "Legendary",
-			stashed = true,
+			
 			description = "Radiant golden gauntlets that pulse with holy light.",
 			stats = { armor = 18, blockChance = 0.25, damageReduction = 0.10 },
-			crafting = { levelRequired = 3, craftTime = 8.0, materials = { IronIngot = 10, SunstoneCore = 1, AncientRune = 2 } },
+			crafting = { levelRequired = 5, craftTime = 8.0, materials = { IronIngot = 10, SunstoneCore = 1, AncientRune = 2 } },
 		},
-		_SunforgedFeet = {
+		SunforgedFeet = {
 			id = "SunforgedFeet",
 			setId = "Sunforged",
 			displayName = "Sunforged Sabatons",
 			slot = "Feet",
 			tier = 3,
 			rarity = "Legendary",
-			stashed = true,
 			description = "Golden armored boots that leave radiant footprints.",
 			stats = { armor = 16, movementSpeed = 0.10, maxHPBonus = 25 },
-			crafting = { levelRequired = 3, craftTime = 8.0, materials = { IronIngot = 8, SunstoneCore = 1, AncientRune = 2 } },
+			crafting = { levelRequired = 5, craftTime = 8.0, materials = { IronIngot = 8, SunstoneCore = 1, AncientRune = 2 } },
+		},
+
+		SunforgedStaff = {
+			id = "SunforgedStaff",
+			setId = "SunforgedMage",
+			displayName = "Solarius Solar Scepter",
+			slot = "Weapon",
+			tier = 3,
+			rarity = "Legendary",
+			description = "A golden celestial staff crowned with an eternal solar prism, projecting scorching beams of light.",
+			stats = {
+				magicDamage    = 34,
+				holyDamage     = 14,
+				spellAmp       = 0.18,
+				criticalChance = 0.10,
+			},
+			crafting = {
+				levelRequired = 5,
+				craftTime     = 8.0,
+				materials     = { OakTimber = 8, SunstoneCore = 1, AncientRune = 3 },
+			},
+		},
+		SunforgedHood = {
+			id = "SunforgedHood",
+			setId = "SunforgedMage",
+			displayName = "Sunforged Halo Cowl",
+			slot = "Head",
+			tier = 3,
+			rarity = "Legendary",
+			description = "An ivory and gold silk cowl featuring a floating golden halo of solar radiance.",
+			stats = { armor = 12, magicResist = 28, maxHPBonus = 35 },
+			crafting = { levelRequired = 5, craftTime = 8.0, materials = { LeatherStrap = 6, SunstoneCore = 1, AncientRune = 2 } },
+		},
+		SunforgedRobes = {
+			id = "SunforgedRobes",
+			setId = "SunforgedMage",
+			displayName = "Sunforged Celestial Vestments",
+			slot = "Body",
+			tier = 3,
+			rarity = "Legendary",
+			description = "Flowing solar-threaded silk vestments trimmed in sacred gold and inlaid with sunstone gems.",
+			stats = { armor = 20, magicResist = 42, maxHPBonus = 60, spellAmp = 0.12 },
+			crafting = { levelRequired = 5, craftTime = 10.0, materials = { LeatherStrap = 8, SunstoneCore = 2, AncientRune = 3 } },
+		},
+		SunforgedWraps = {
+			id = "SunforgedWraps",
+			setId = "SunforgedMage",
+			displayName = "Sunforged Solar Cuffs",
+			slot = "Arms",
+			tier = 3,
+			rarity = "Legendary",
+			description = "Brilliant golden bracers inscribed with solar runes that empower spellcasting.",
+			stats = { armor = 10, magicResist = 18, spellAmp = 0.15 },
+			crafting = { levelRequired = 5, craftTime = 8.0, materials = { IronIngot = 6, SunstoneCore = 1, AncientRune = 2 } },
+		},
+		SunforgedSlippers = {
+			id = "SunforgedSlippers",
+			setId = "SunforgedMage",
+			displayName = "Sunforged Dawn Treads",
+			slot = "Feet",
+			tier = 3,
+			rarity = "Legendary",
+			description = "Silken boots lined with sunstone dust, elevating the wearer slightly above the ground.",
+			stats = { armor = 10, magicResist = 16, movementSpeed = 2, maxHPBonus = 20 },
+			crafting = { levelRequired = 5, craftTime = 8.0, materials = { LeatherStrap = 6, SunstoneCore = 1, AncientRune = 2 } },
 		},
 	},
 
@@ -568,7 +632,6 @@ local Equipment = {
 			setBonus    = "Geomantic Surge",
 			setBonusDesc = "+20% damage dealt when HP is below 50%.",
 		},
-		-- STASHED: Sunforged kept for future release
 		Sunforged = {
 			id          = "Sunforged",
 			displayName = "Sunforged Relic Set",
@@ -576,10 +639,22 @@ local Equipment = {
 			tier        = 3,
 			rarity      = "Legendary",
 			bossOrigin  = "Sunforged",
-			stashed     = true, -- hidden from crafting UI
+			stashed     = false,
 			pieces      = { "SunforgedSword", "SunforgedHelm", "SunforgedChest", "SunforgedArms", "SunforgedFeet" },
 			setBonus    = "Solar Ascension",
 			setBonusDesc = "+20% holy damage and regenerate 1% HP per second.",
+		},
+		SunforgedMage = {
+			id          = "SunforgedMage",
+			displayName = "Sunforged Radiant Set",
+			classId     = "Mage",
+			tier        = 3,
+			rarity      = "Legendary",
+			bossOrigin  = "Sunforged",
+			stashed     = false,
+			pieces      = { "SunforgedStaff", "SunforgedHood", "SunforgedRobes", "SunforgedWraps", "SunforgedSlippers" },
+			setBonus    = "Supernova Radiance",
+			setBonusDesc = "+25% spell damage and casting skills releases a holy shockwave.",
 		},
 	},
 }

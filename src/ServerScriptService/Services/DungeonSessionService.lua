@@ -8,11 +8,14 @@ local Classes = require(ReplicatedStorage.Shared.Data.Classes)
 local BossAIService = require(script.Parent.BossAIService)
 local MonsterAIService = require(script.Parent.MonsterAIService)
 local DungeonMapService = require(script.Parent.DungeonMapService)
+local SunforgedCitadelMapService = require(script.Parent.SunforgedCitadelMapService)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 local RespawnService = require(script.Parent.RespawnService)
 local WeaponService = require(script.Parent.WeaponService)
+local SkillTreeService = require(script.Parent.SkillTreeService)
 
 local DungeonSessionService = {}
+local currentDungeonId = "Rockhide"
 
 -- Flat values for this slice; real formulas (dungeon tier, player level, party
 -- size, etc.) are a later plan. Wipe rewards are 20% of the victory reward for
@@ -35,6 +38,31 @@ local BOSS_SPAWN_CFRAME = CFrame.new(0, 1, 45) * CFrame.Angles(0, math.pi, 0)
 
 -- Staging Antechamber safe entrance platform (Z = -285)
 local ENTRANCE_POSITION = Vector3.new(0, 5, -285)
+local SUNFORGED_ENTRANCE_POSITION = Vector3.new(0, 5.5, -1300)
+local SUNFORGED_BOSS_SPAWN_CFRAME = CFrame.new(0, 50, 40) * CFrame.Angles(0, math.pi, 0)
+
+local SUNFORGED_ZONE_MOB_COORDINATES = {
+	-- Zone 1: Maze Entry Corridor (X = 26)
+	{ Vector3.new(24, 3, -1170), Vector3.new(28, 3, -1170), Vector3.new(24, 3, -1180), Vector3.new(28, 3, -1180) },
+	-- Zone 2: Dead End Alcove A (West Ambush)
+	{ Vector3.new(-34, 3, -1070), Vector3.new(-30, 3, -1070), Vector3.new(-34, 3, -1060), Vector3.new(-30, 3, -1060) },
+	-- Zone 3: Sunken Crypts - North Chicane
+	{ Vector3.new(-14, 3, -1000), Vector3.new(-6, 3, -1000), Vector3.new(-10, 3, -1010), Vector3.new(-2, 3, -1010) },
+	-- Zone 4: Sunken Crypts - South Chicane
+	{ Vector3.new(6, 3, -940), Vector3.new(14, 3, -940), Vector3.new(10, 3, -950), Vector3.new(18, 3, -950) },
+	-- Zone 5: East Transept Corridor
+	{ Vector3.new(24, 3, -870), Vector3.new(28, 3, -870), Vector3.new(24, 3, -860), Vector3.new(28, 3, -860) },
+	-- Zone 6: Dead End Alcove B (East Ambush)
+	{ Vector3.new(40, 3, -800), Vector3.new(44, 3, -800), Vector3.new(40, 3, -790), Vector3.new(44, 3, -790) },
+	-- Zone 7: Grand Archives - Rotunda
+	{ Vector3.new(-12, 3, -670), Vector3.new(12, 3, -670), Vector3.new(-6, 3, -680), Vector3.new(6, 3, -680) },
+	-- Zone 8: Grand Solar Cathedral Nave
+	{ Vector3.new(-14, 3, -440), Vector3.new(14, 3, -440), Vector3.new(-8, 3, -450), Vector3.new(8, 3, -450) },
+	-- Zone 9: Grand Stepped Colonnade Ascent
+	{ Vector3.new(-8, 25, -190), Vector3.new(8, 25, -190), Vector3.new(-4, 26, -185), Vector3.new(4, 26, -185) },
+	-- Zone 10: Solar Sanctum Gate Praetorians
+	{ Vector3.new(-12, 50, -75), Vector3.new(12, 50, -75), Vector3.new(-6, 50, -70), Vector3.new(6, 50, -70) },
+}
 
 -- Trash mob placement definitions: 10 strategic zones across the dungeon
 -- Scales dynamically to (20 * partyMemberCount) monsters total.
@@ -113,12 +141,13 @@ local ZONE_MOB_COORDINATES = {
 	},
 }
 
-local function buildScaledMobList(partySize: number)
+local function buildScaledMobList(partySize: number, dungeon: string?)
+	local coordsList = (dungeon == "Sunforged") and SUNFORGED_ZONE_MOB_COORDINATES or ZONE_MOB_COORDINATES
 	local validSize = math.clamp(math.floor(partySize), 1, 4)
 	local mobsPerZone = 2 * validSize
 	local list = {}
 
-	for zoneIndex, coords in ipairs(ZONE_MOB_COORDINATES) do
+	for zoneIndex, coords in ipairs(coordsList) do
 		for i = 1, mobsPerZone do
 			local pos = coords[i]
 			if not pos then
@@ -129,6 +158,7 @@ local function buildScaledMobList(partySize: number)
 			table.insert(list, {
 				position = pos,
 				packIndex = zoneIndex,
+				isSunforged = (dungeon == "Sunforged"),
 			})
 		end
 	end
@@ -145,10 +175,33 @@ end
 -- technique RespawnService.respawnAtEntrance already uses for repositioning
 -- after a respawn -- this is the same fix, just for the very first spawn.
 local function moveCharacterToEntrance(character: Model)
-	task.defer(function()
-		local rootPart = character:WaitForChild("HumanoidRootPart", 5)
+	local targetPos = (currentDungeonId == "Sunforged") and SUNFORGED_ENTRANCE_POSITION or ENTRANCE_POSITION
+	local targetCF = CFrame.new(targetPos)
+
+	local function doReposition()
+		if not character or not character.Parent then return end
+		character:PivotTo(targetCF)
+		local rootPart = character:FindFirstChild("HumanoidRootPart")
 		if rootPart then
-			rootPart.CFrame = CFrame.new(ENTRANCE_POSITION)
+			rootPart.AssemblyLinearVelocity = Vector3.zero
+			rootPart.AssemblyAngularVelocity = Vector3.zero
+		end
+		local player = Players:GetPlayerFromCharacter(character)
+		if player then
+			pcall(function()
+				Net.Get("TeleportClient"):FireClient(player, targetCF)
+			end)
+		end
+	end
+
+	doReposition()
+	task.defer(doReposition)
+	task.delay(0.12, function()
+		if character and character.Parent then
+			local root = character:FindFirstChild("HumanoidRootPart")
+			if root and (root.Position - targetPos).Magnitude > 30 then
+				doReposition()
+			end
 		end
 	end)
 end
@@ -164,21 +217,37 @@ local pendingMobFragments = {}
 local pendingMobGold = {}
 
 local function awardMobKillRewards(player: Player)
-	pendingMobEXP[player.UserId] = (pendingMobEXP[player.UserId] or 0) + MOB_EXP_REWARD
-	pendingMobFragments[player.UserId] = (pendingMobFragments[player.UserId] or 0) + MOB_FRAGMENT_REWARD
-	pendingMobGold[player.UserId] = (pendingMobGold[player.UserId] or 0) + MOB_GOLD_REWARD
+	local isSunforged = (currentDungeonId == "Sunforged")
+	local expGain = isSunforged and 18 or MOB_EXP_REWARD
+	local fragGain = isSunforged and 0 or MOB_FRAGMENT_REWARD
+	local goldGain = isSunforged and 15 or MOB_GOLD_REWARD
+
+	pendingMobEXP[player.UserId] = (pendingMobEXP[player.UserId] or 0) + expGain
+	pendingMobFragments[player.UserId] = (pendingMobFragments[player.UserId] or 0) + fragGain
+	pendingMobGold[player.UserId] = (pendingMobGold[player.UserId] or 0) + goldGain
 end
 
 local function bankRewardsAndReturnToHub(result: "victory" | "wipe")
+	local isSunforged = (currentDungeonId == "Sunforged")
+	local expBase = 0
+	local fragmentBase = 0
+	local goldBase = 0
+
+	if isSunforged then
+		expBase = (result == "victory") and 350 or 60
+		goldBase = (result == "victory") and 200 or 40
+		fragmentBase = (result == "victory") and 3 or 1 -- AncientRunes
+	else
+		expBase = (result == "victory") and EXP_REWARD_ON_VICTORY or EXP_REWARD_ON_WIPE
+		fragmentBase = (result == "victory") and FRAGMENT_REWARD_ON_VICTORY or FRAGMENT_REWARD_ON_WIPE
+		goldBase = (result == "victory") and GOLD_REWARD_ON_VICTORY or GOLD_REWARD_ON_WIPE
+	end
+
 	-- Bank BEFORE teleporting away, per spec section 1a's anti-dupe/anti-loss
 	-- ordering rule: the mutation must be in memory before the player leaves
 	-- this server, even if they disconnect the instant they land in the hub.
 	for _, player in Players:GetPlayers() do
 		local profile = PlayerDataService.GetProfile(player)
-
-		local expBase = (result == "victory") and EXP_REWARD_ON_VICTORY or EXP_REWARD_ON_WIPE
-		local fragmentBase = (result == "victory") and FRAGMENT_REWARD_ON_VICTORY or FRAGMENT_REWARD_ON_WIPE
-		local goldBase = (result == "victory") and GOLD_REWARD_ON_VICTORY or GOLD_REWARD_ON_WIPE
 
 		local totalEXP = expBase + (pendingMobEXP[player.UserId] or 0)
 		local totalFragments = fragmentBase + (pendingMobFragments[player.UserId] or 0)
@@ -187,8 +256,15 @@ local function bankRewardsAndReturnToHub(result: "victory" | "wipe")
 		if profile then
 			local charData = profile.Data.Character
 			charData.UnspentEXP += totalEXP
-			charData.CraftingMaterials.RockhideFragment = (charData.CraftingMaterials.RockhideFragment or 0) + totalFragments
 			charData.Gold += totalGold
+			if isSunforged then
+				charData.CraftingMaterials.AncientRune = (charData.CraftingMaterials.AncientRune or 0) + totalFragments
+				if result == "victory" then
+					charData.CraftingMaterials.SunstoneCore = (charData.CraftingMaterials.SunstoneCore or 0) + 1
+				end
+			else
+				charData.CraftingMaterials.RockhideFragment = (charData.CraftingMaterials.RockhideFragment or 0) + totalFragments
+			end
 		end
 
 		Net.Get("DungeonResult"):FireClient(player, result, totalEXP, totalFragments, totalGold)
@@ -259,12 +335,18 @@ local function hookPlayerDeath(player: Player, character: Model)
 	end)
 
 	WeaponService.EquipWeapons(character)
+	SkillTreeService.SyncSkills(player)
+	if profile and profile.Data and profile.Data.Character then
+		local char = profile.Data.Character
+		Net.Get("CharacterDataChanged"):FireClient(player, char.Level, char.UnspentEXP, char.ClassId)
+	end
 end
 
 function DungeonSessionService.Start(dungeonId: string, partyUserIds: {number}?)
-	if dungeonId ~= "Rockhide" then
+	if dungeonId ~= "Rockhide" and dungeonId ~= "Sunforged" then
 		return
 	end
+	currentDungeonId = dungeonId
 
 	-- Hub-only scenery cleanup (RockhidePortal/LevelUpShrine/SpawnLocation)
 	-- happens in Main.server.lua, at the same branch point that decided this
@@ -289,18 +371,24 @@ function DungeonSessionService.Start(dungeonId: string, partyUserIds: {number}?)
 	end
 	partySize = math.clamp(math.floor(partySize), 1, 4)
 
-	local mobSpawns = buildScaledMobList(partySize)
+	local isSunforged = (currentDungeonId == "Sunforged")
+	local mapService = isSunforged and SunforgedCitadelMapService or DungeonMapService
+	local entrancePos = isSunforged and SUNFORGED_ENTRANCE_POSITION or ENTRANCE_POSITION
+	local bossCFrame = isSunforged and SUNFORGED_BOSS_SPAWN_CFRAME or BOSS_SPAWN_CFRAME
+	local bossName = isSunforged and "Solarius" or "Rockhide"
+
+	local mobSpawns = buildScaledMobList(partySize, currentDungeonId)
 	local totalMobs = #mobSpawns
 	local mobsRemaining = totalMobs
 	local isGateUnlocked = false
 	local isGateOpen = false
 
 	local function syncObjective(player: Player?)
-		local objText = "Slay Dungeon Guardians"
+		local objText = isSunforged and "Slay Citadel Sentinels" or "Slay Dungeon Guardians"
 		if isGateOpen then
-			objText = "Defeat Rockhide the Earthbreaker"
+			objText = isSunforged and "Defeat Solarius, Sun of the Colosseum" or "Defeat Rockhide the Earthbreaker"
 		elseif isGateUnlocked then
-			objText = "Open Boss Chamber Gate"
+			objText = isSunforged and "Open Solar Chamber Gate" or "Open Boss Chamber Gate"
 		end
 		local kills = totalMobs - mobsRemaining
 		if player then
@@ -321,7 +409,7 @@ function DungeonSessionService.Start(dungeonId: string, partyUserIds: {number}?)
 			return
 		end
 		ended = true
-		DungeonMapService.UnsealBossGate()
+		mapService.UnsealBossGate()
 		RespawnService.Stop()
 		if stopMobs then
 			stopMobs()
@@ -335,10 +423,10 @@ function DungeonSessionService.Start(dungeonId: string, partyUserIds: {number}?)
 		end
 		isGateOpen = true
 
-		DungeonMapService.OpenBossGate(function()
-			-- Awaken Rockhide in the boss arena!
+		mapService.OpenBossGate(function()
+			-- Awaken Boss in the arena!
 			if not bossHandle and not ended then
-				bossHandle = BossAIService.SpawnBoss("Rockhide", BOSS_SPAWN_CFRAME, function()
+				bossHandle = BossAIService.SpawnBoss(bossName, bossCFrame, function()
 					endSession("victory")
 				end)
 			end
@@ -346,22 +434,27 @@ function DungeonSessionService.Start(dungeonId: string, partyUserIds: {number}?)
 		end)
 	end
 
+	DungeonSessionService.OpenBossGateForTesting = function()
+		isGateUnlocked = true
+		handleOpenGate()
+	end
+
 	-- Build the grand MMO dungeon environment (antechamber, labyrinth, boss colosseum)
-	DungeonMapService.BuildDungeon()
-	DungeonMapService.UpdateGateStatus(mobsRemaining, totalMobs)
-	DungeonMapService.SetOnGateOpenRequested(handleOpenGate)
+	mapService.BuildDungeon()
+	mapService.UpdateGateStatus(mobsRemaining, totalMobs)
+	mapService.SetOnGateOpenRequested(handleOpenGate)
 
 	Net.Get("RequestOpenBossGate").OnServerEvent:Connect(function(player)
 		handleOpenGate()
 	end)
 
 	-- Set up RespawnService before spawning the boss so death hooks are in place.
-	RespawnService.SetEntrancePosition(ENTRANCE_POSITION)
+	RespawnService.SetEntrancePosition(entrancePos)
 	RespawnService.Start()
 
 	stopMobs = MonsterAIService.SpawnMobs(mobSpawns, awardMobKillRewards, function(remaining, total)
 		mobsRemaining = remaining
-		DungeonMapService.UpdateGateStatus(mobsRemaining, totalMobs)
+		mapService.UpdateGateStatus(mobsRemaining, totalMobs)
 		if mobsRemaining == 0 and not isGateUnlocked then
 			isGateUnlocked = true
 		end
@@ -434,23 +527,16 @@ function DungeonSessionService.Start(dungeonId: string, partyUserIds: {number}?)
 				hookPlayerDeath(player, character)
 			end)
 			if player.Character then
-				-- Already has a character (e.g. the first player, if the engine's
-				-- own auto-spawn already completed before this ran) -- hook it
-				-- directly, since CharacterAdded already fired for it in the past
-				-- and won't fire again for the same character.
-				hookPlayerDeath(player, player.Character)
-				-- The engine would have placed them at whatever SpawnLocation
-				-- exists in this shared Workspace (the hub's), not
-				-- ENTRANCE_POSITION -- reposition explicitly.
+				-- Reposition immediately to entrance platform before any async yields
 				moveCharacterToEntrance(player.Character)
+				hookPlayerDeath(player, player.Character)
 			else
 				-- No character yet, and CharacterAutoLoads is now off, so the
 				-- engine won't spawn one on its own -- spawn it explicitly.
-				-- Same SpawnLocation problem applies: LoadCharacter() places
-				-- them via the default spawn point, not ENTRANCE_POSITION.
 				player:LoadCharacter()
 				if player.Character then
 					moveCharacterToEntrance(player.Character)
+					hookPlayerDeath(player, player.Character)
 				end
 			end
 		end)
@@ -473,6 +559,18 @@ function DungeonSessionService.Start(dungeonId: string, partyUserIds: {number}?)
 		spawnAndHook(player)
 		syncObjective(player)
 	end
+
+	-- Re-sync objectives on brief delays to ensure asynchronous client controllers receive it
+	task.delay(1.0, function()
+		if not ended then
+			syncObjective()
+		end
+	end)
+	task.delay(2.5, function()
+		if not ended then
+			syncObjective()
+		end
+	end)
 
 	-- Wipe detection:
 	-- 1. Wait a 10s grace period on dungeon start so players connecting/loading character models don't trigger a false wipe.

@@ -1272,6 +1272,25 @@ function CharacterCreationController.Start()
 		showPendingScreen()
 	end)
 
+	local function checkDungeon(): boolean
+		if ReplicatedStorage:GetAttribute("IsDungeon") == true then
+			screenGui.Enabled = false
+			setMenuBlur(false)
+			setHudVisible(true)
+			return true
+		end
+		local td = TeleportService:GetLocalPlayerTeleportData()
+		if td and td.isDungeon then
+			screenGui.Enabled = false
+			setMenuBlur(false)
+			setHudVisible(true)
+			return true
+		end
+		return false
+	end
+
+	ReplicatedStorage:GetAttributeChangedSignal("IsDungeon"):Connect(checkDungeon)
+
 	-- Clean exit when character spawns in game
 	player.CharacterAdded:Connect(function()
 		screenGui.Enabled = false
@@ -1280,6 +1299,11 @@ function CharacterCreationController.Start()
 	end)
 
 	if player.Character and player.Character.Parent then
+		screenGui.Enabled = false
+		setMenuBlur(false)
+		setHudVisible(true)
+	elseif checkDungeon() then
+		-- Directly in dungeon; suppress character creation GUI
 		screenGui.Enabled = false
 		setMenuBlur(false)
 		setHudVisible(true)
