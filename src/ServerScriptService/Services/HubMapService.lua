@@ -177,8 +177,8 @@ local function makeStreetLamp(parent: Instance, position: Vector3)
 
 	local light = Instance.new("PointLight")
 	light.Color = Color3.fromRGB(255, 200, 120)
-	light.Brightness = 2.6
-	light.Range = 30
+	light.Brightness = 1.2
+	light.Range = 18
 	light.Shadows = true
 	light.Parent = lampCore
 end
@@ -238,8 +238,8 @@ local function makeBrazier(parent: Instance, position: Vector3, flameColor: Colo
 
 	local light = Instance.new("PointLight")
 	light.Color = flameColor
-	light.Brightness = 3.6
-	light.Range = 36
+	light.Brightness = 1.4
+	light.Range = 18
 	light.Shadows = true
 	light.Parent = firePart
 
@@ -716,8 +716,8 @@ function HubMapService.BuildHub(): Model
 
 	local waterLight = Instance.new("PointLight")
 	waterLight.Color = Color3.fromRGB(75, 205, 255)
-	waterLight.Brightness = 2.8
-	waterLight.Range = 24
+	waterLight.Brightness = 0.6
+	waterLight.Range = 12
 	waterLight.Parent = water
 
 	-- Central Pedestal Column with 4 Sculpted Gargoyle Water Spouts
@@ -775,18 +775,18 @@ function HubMapService.BuildHub(): Model
 
 	local crystalLight = Instance.new("PointLight")
 	crystalLight.Color = Color3.fromRGB(100, 225, 255)
-	crystalLight.Brightness = 3.5
-	crystalLight.Range = 32
+	crystalLight.Brightness = 1.0
+	crystalLight.Range = 14
 	crystalLight.Parent = spireCrystal
 
-	-- Rotating Orbital Energy Rings around the Fountain Crystal
-	local ring1 = makePart(hub, "FountainOrbitalRing1", Vector3.new(3.8, 0.15, 3.8), CFrame.new(0, fountainBaseY + 12.4, 0), GOLD_TRIM, Enum.Material.Neon, false)
+	-- Rotating Orbital Energy Rings around the Fountain Crystal (SmoothPlastic with transparency to avoid blinding neon glare)
+	local ring1 = makePart(hub, "FountainOrbitalRing1", Vector3.new(3.8, 0.15, 3.8), CFrame.new(0, fountainBaseY + 12.4, 0), GOLD_TRIM, Enum.Material.SmoothPlastic, false)
 	addMesh(ring1, Enum.MeshType.Sphere, Vector3.new(1.0, 0.12, 1.0))
-	ring1.Transparency = 0.35
+	ring1.Transparency = 0.4
 
-	local ring2 = makePart(hub, "FountainOrbitalRing2", Vector3.new(4.6, 0.15, 4.6), CFrame.new(0, fountainBaseY + 12.4, 0) * CFrame.Angles(math.rad(45), 0, 0), Color3.fromRGB(120, 220, 255), Enum.Material.Neon, false)
+	local ring2 = makePart(hub, "FountainOrbitalRing2", Vector3.new(4.6, 0.15, 4.6), CFrame.new(0, fountainBaseY + 12.4, 0) * CFrame.Angles(math.rad(45), 0, 0), Color3.fromRGB(120, 220, 255), Enum.Material.SmoothPlastic, false)
 	addMesh(ring2, Enum.MeshType.Sphere, Vector3.new(1.0, 0.1, 1.0))
-	ring2.Transparency = 0.45
+	ring2.Transparency = 0.5
 
 	-- Floating crystal hover tween
 	local fTween = TweenService:Create(
@@ -887,7 +887,7 @@ function HubMapService.BuildHub(): Model
 	portalCore.Parent = workspace
 
 	-- Concentric Orbiting Celestial Rune Stone Rings
-	local pRing1 = makePart(hub, "PortalRing1", Vector3.new(16, 16, 0.4), CFrame.new(portalPos + Vector3.new(0, 11, 0)), GOLD_TRIM, Enum.Material.Neon, false)
+	local pRing1 = makePart(hub, "PortalRing1", Vector3.new(16, 16, 0.4), CFrame.new(portalPos + Vector3.new(0, 11, 0)), GOLD_TRIM, Enum.Material.SmoothPlastic, false)
 	addMesh(pRing1, Enum.MeshType.Sphere, Vector3.new(1.0, 1.0, 0.08))
 	pRing1.Transparency = 0.4
 
@@ -914,8 +914,8 @@ function HubMapService.BuildHub(): Model
 
 	local portalLight = Instance.new("PointLight")
 	portalLight.Color = PORTAL_COLOR
-	portalLight.Brightness = 4.0
-	portalLight.Range = 36
+	portalLight.Brightness = 1.2
+	portalLight.Range = 20
 	portalLight.Shadows = true
 	portalLight.Parent = portalCore
 
@@ -924,7 +924,8 @@ function HubMapService.BuildHub(): Model
 	portalBb.Name = "PortalTitle"
 	portalBb.Size = UDim2.new(0, 260, 0, 56)
 	portalBb.StudsOffset = Vector3.new(0, 12, 0)
-	portalBb.AlwaysOnTop = true
+	portalBb.AlwaysOnTop = false
+	portalBb.MaxDistance = 90
 	portalBb.Parent = portalCore
 
 	local pTitle = Instance.new("TextLabel")
@@ -961,7 +962,8 @@ function HubMapService.BuildHub(): Model
 	wfBb.Name = "WayfinderTitle"
 	wfBb.Size = UDim2.new(0, 360, 0, 75)
 	wfBb.StudsOffset = Vector3.new(0, 1.5, 0)
-	wfBb.AlwaysOnTop = true
+	wfBb.AlwaysOnTop = false
+	wfBb.MaxDistance = 80
 	wfBb.Parent = wfPart
 
 	local wfTitle = Instance.new("TextLabel")
@@ -1018,9 +1020,9 @@ function HubMapService.BuildHub(): Model
 	sunPortalCore.Parent = workspace
 
 	-- Concentric Orbiting Golden Solar Rings
-	local sRing1 = makePart(hub, "SunPortalRing1", Vector3.new(16, 16, 0.4), CFrame.new(sunPortalPos + Vector3.new(0, 11, 0)), Color3.fromRGB(255, 215, 60), Enum.Material.Neon, false)
+	local sRing1 = makePart(hub, "SunPortalRing1", Vector3.new(16, 16, 0.4), CFrame.new(sunPortalPos + Vector3.new(0, 11, 0)), Color3.fromRGB(255, 215, 60), Enum.Material.SmoothPlastic, false)
 	addMesh(sRing1, Enum.MeshType.Sphere, Vector3.new(1.0, 1.0, 0.08))
-	sRing1.Transparency = 0.35
+	sRing1.Transparency = 0.45
 
 	-- Golden Solar Particle Vortex
 	local sunParticles = Instance.new("ParticleEmitter")
@@ -1045,8 +1047,8 @@ function HubMapService.BuildHub(): Model
 
 	local sunLight = Instance.new("PointLight")
 	sunLight.Color = Color3.fromRGB(255, 160, 40)
-	sunLight.Brightness = 4.2
-	sunLight.Range = 38
+	sunLight.Brightness = 1.4
+	sunLight.Range = 22
 	sunLight.Shadows = true
 	sunLight.Parent = sunPortalCore
 
@@ -1055,7 +1057,8 @@ function HubMapService.BuildHub(): Model
 	sunBb.Name = "SunPortalTitle"
 	sunBb.Size = UDim2.new(0, 280, 0, 56)
 	sunBb.StudsOffset = Vector3.new(0, 12, 0)
-	sunBb.AlwaysOnTop = true
+	sunBb.AlwaysOnTop = false
+	sunBb.MaxDistance = 90
 	sunBb.Parent = sunPortalCore
 
 	local sTitle = Instance.new("TextLabel")
@@ -1145,19 +1148,19 @@ function HubMapService.BuildHub(): Model
 
 	local shrineLight = Instance.new("PointLight")
 	shrineLight.Color = SHRINE_COLOR
-	shrineLight.Brightness = 4.2
-	shrineLight.Range = 36
+	shrineLight.Brightness = 1.4
+	shrineLight.Range = 20
 	shrineLight.Shadows = true
 	shrineLight.Parent = shrineCrystal
 
 	-- Dual Counter-Rotating Golden Halo Rings
-	local sRing1 = makePart(hub, "ShrineRing1", Vector3.new(4.6, 0.15, 4.6), CFrame.new(shrinePos + Vector3.new(0, 8.0, 0)), GOLD_TRIM, Enum.Material.Neon, false)
+	local sRing1 = makePart(hub, "ShrineRing1", Vector3.new(4.6, 0.15, 4.6), CFrame.new(shrinePos + Vector3.new(0, 8.0, 0)), GOLD_TRIM, Enum.Material.Metal, false)
 	addMesh(sRing1, Enum.MeshType.Sphere, Vector3.new(1.0, 0.08, 1.0))
-	sRing1.Transparency = 0.3
+	sRing1.Transparency = 0.2
 
-	local sRing2 = makePart(hub, "ShrineRing2", Vector3.new(5.6, 0.15, 5.6), CFrame.new(shrinePos + Vector3.new(0, 8.0, 0)) * CFrame.Angles(math.rad(50), math.rad(25), 0), SHRINE_COLOR, Enum.Material.Neon, false)
+	local sRing2 = makePart(hub, "ShrineRing2", Vector3.new(5.6, 0.15, 5.6), CFrame.new(shrinePos + Vector3.new(0, 8.0, 0)) * CFrame.Angles(math.rad(50), math.rad(25), 0), SHRINE_COLOR, Enum.Material.SmoothPlastic, false)
 	addMesh(sRing2, Enum.MeshType.Sphere, Vector3.new(1.0, 0.08, 1.0))
-	sRing2.Transparency = 0.4
+	sRing2.Transparency = 0.35
 
 	-- Upward celestial light sparkles
 	local sparkles = Instance.new("Sparkles")
@@ -1177,7 +1180,8 @@ function HubMapService.BuildHub(): Model
 	shrineBb.Name = "ShrineTitle"
 	shrineBb.Size = UDim2.new(0, 260, 0, 54)
 	shrineBb.StudsOffset = Vector3.new(0, 4.6, 0)
-	shrineBb.AlwaysOnTop = true
+	shrineBb.AlwaysOnTop = false
+	shrineBb.MaxDistance = 80
 	shrineBb.Parent = shrineCrystal
 
 	local sTitle = Instance.new("TextLabel")
@@ -1328,7 +1332,8 @@ function HubMapService.BuildHub(): Model
 
 	local signBb = Instance.new("BillboardGui")
 	signBb.Size = UDim2.new(1, 0, 1, 0)
-	signBb.AlwaysOnTop = true
+	signBb.AlwaysOnTop = false
+	signBb.MaxDistance = 60
 	signBb.Parent = tSign
 	local signText = Instance.new("TextLabel")
 	signText.Size = UDim2.new(1, 0, 1, 0)
@@ -1378,8 +1383,8 @@ function HubMapService.BuildHub(): Model
 
 	local fLight = Instance.new("PointLight")
 	fLight.Color = Color3.fromRGB(255, 135, 25)
-	fLight.Brightness = 3.8
-	fLight.Range = 28
+	fLight.Brightness = 1.2
+	fLight.Range = 18
 	fLight.Parent = furnaceCore
 
 	-- Double-Chamber Oak & Pleated Leather Blacksmith Bellows
@@ -1719,41 +1724,43 @@ function HubMapService.BuildHub(): Model
 	-- ── 12. CINEMATIC ATMOSPHERIC LIGHTING & POST-PROCESSING ──────────────────
 	pcall(function()
 		Lighting.ClockTime = 16.6
-		Lighting.Brightness = 2.0
-		Lighting.Ambient = Color3.fromRGB(85, 90, 100)
-		Lighting.OutdoorAmbient = Color3.fromRGB(115, 120, 130)
+		Lighting.Brightness = 1.15
+		Lighting.Ambient = Color3.fromRGB(65, 70, 80)
+		Lighting.OutdoorAmbient = Color3.fromRGB(80, 85, 95)
 		Lighting.GlobalShadows = true
 		Lighting.ShadowSoftness = 0.2
 
-		local oldAtmosphere = Lighting:FindFirstChild("SoulforgeAtmosphere")
-		if oldAtmosphere then oldAtmosphere:Destroy() end
-		local oldBloom = Lighting:FindFirstChild("SoulforgeBloom")
-		if oldBloom then oldBloom:Destroy() end
-		local oldCC = Lighting:FindFirstChild("SoulforgeColorCorrection")
-		if oldCC then oldCC:Destroy() end
+		-- Clean up ALL existing Atmosphere, Bloom, or ColorCorrection so duplicates never stack
+		for _, child in ipairs(Lighting:GetChildren()) do
+			if child:IsA("BloomEffect") or child:IsA("Atmosphere") or child:IsA("ColorCorrectionEffect") then
+				child:Destroy()
+			end
+		end
 
 		local atmo = Instance.new("Atmosphere")
 		atmo.Name = "SoulforgeAtmosphere"
-		atmo.Density = 0.32
+		atmo.Density = 0.28
 		atmo.Offset = 0.22
 		atmo.Color = Color3.fromRGB(190, 205, 230)
 		atmo.Decay = Color3.fromRGB(135, 120, 145)
-		atmo.Glare = 0.25
-		atmo.Haze = 1.2
+		atmo.Glare = 0.0
+		atmo.Haze = 0.15
 		atmo.Parent = Lighting
 
+		-- Calibrated Bloom: Threshold 2.8 ensures ONLY true intense neon/spells bloom,
+		-- preventing character skin, faces, clothes, marble, and ground from glowing.
 		local bloom = Instance.new("BloomEffect")
 		bloom.Name = "SoulforgeBloom"
-		bloom.Intensity = 0.55
-		bloom.Size = 24
-		bloom.Threshold = 1.1
+		bloom.Intensity = 0.16
+		bloom.Size = 12
+		bloom.Threshold = 2.8
 		bloom.Parent = Lighting
 
 		local cc = Instance.new("ColorCorrectionEffect")
 		cc.Name = "SoulforgeColorCorrection"
-		cc.Contrast = 0.08
-		cc.Saturation = 0.12
-		cc.TintColor = Color3.fromRGB(255, 252, 246)
+		cc.Contrast = 0.05
+		cc.Saturation = 0.06
+		cc.TintColor = Color3.fromRGB(255, 252, 248)
 		cc.Parent = Lighting
 	end)
 

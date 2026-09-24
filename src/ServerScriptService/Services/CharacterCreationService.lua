@@ -282,6 +282,24 @@ function CharacterCreationService.Start()
 	local function hookPlayer(player: Player)
 		player.CharacterAdded:Connect(function(character)
 			moveCharacterToHubSpawn(character)
+
+			-- Ensure head has a crisp face decal so eyes and facial features are always visible
+			task.spawn(function()
+				local head = character:WaitForChild("Head", 5)
+				if head then
+					local face = head:FindFirstChild("face")
+					if not face then
+						face = Instance.new("Decal")
+						face.Name = "face"
+						face.Face = Enum.NormalId.Front
+						face.Parent = head
+					end
+					if not face.Texture or face.Texture == "" then
+						face.Texture = "rbxasset://textures/face.png"
+					end
+				end
+			end)
+
 			local humanoid = character:WaitForChild("Humanoid", 5)
 			if humanoid then
 				humanoid.Died:Connect(function()

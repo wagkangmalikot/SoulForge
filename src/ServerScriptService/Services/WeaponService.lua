@@ -293,8 +293,8 @@ local function createSunforgedSwordModel(): (Model, BasePart, Trail)
 	local pommelLight = Instance.new("PointLight")
 	pommelLight.Name = "PommelGlow"
 	pommelLight.Color = Color3.fromRGB(255, 200, 70)
-	pommelLight.Range = 4
-	pommelLight.Brightness = 1.2
+	pommelLight.Range = 2
+	pommelLight.Brightness = 0.3
 	pommelLight.Parent = pommelGem
 
 	-- ── Crossguard (Majestic Winged Quillons + Guard Crest) ────────────────
@@ -393,12 +393,12 @@ local function createSunforgedSwordModel(): (Model, BasePart, Trail)
 	addMesh(tipPoint, Enum.MeshType.Pyramid, Vector3.new(0.9, 1.3, 0.7))
 	weldParts(handle, tipPoint)
 
-	-- Blade Aura Glow
+	-- Blade Aura Glow (subtle ambient glow)
 	local bladeLight = Instance.new("PointLight")
 	bladeLight.Name = "BladeAuraGlow"
 	bladeLight.Color = Color3.fromRGB(255, 215, 85)
-	bladeLight.Range = 8
-	bladeLight.Brightness = 1.4
+	bladeLight.Range = 4
+	bladeLight.Brightness = 0.5
 	bladeLight.Parent = runicFuller
 
 	-- Sacred Embers Particle Emitter
@@ -588,8 +588,8 @@ local function createSunforgedShieldModel(): (Model, BasePart)
 	local coreLight = Instance.new("PointLight")
 	coreLight.Name = "ShieldCoreGlow"
 	coreLight.Color = Color3.fromRGB(255, 200, 70)
-	coreLight.Range = 8
-	coreLight.Brightness = 2.2
+	coreLight.Range = 3
+	coreLight.Brightness = 0.4
 	coreLight.Parent = coreJewel
 
 	local shieldEmitter = Instance.new("ParticleEmitter")
@@ -664,8 +664,8 @@ local function createRockhideSwordModel(): (Model, BasePart, Trail)
 	local pommelLight = Instance.new("PointLight")
 	pommelLight.Name = "EmberGlow"
 	pommelLight.Color = Color3.fromRGB(255, 110, 30)
-	pommelLight.Range = 6
-	pommelLight.Brightness = 1.2
+	pommelLight.Range = 2
+	pommelLight.Brightness = 0.3
 	pommelLight.Parent = pommelGem
 
 	-- ── Crossguard (Swept Wyvern Horn Quillons & Magma Demon Eye) ─────────
@@ -705,8 +705,8 @@ local function createRockhideSwordModel(): (Model, BasePart, Trail)
 	local guardLight = Instance.new("PointLight")
 	guardLight.Name = "GuardEmberGlow"
 	guardLight.Color = Color3.fromRGB(255, 120, 20)
-	guardLight.Range = 7
-	guardLight.Brightness = 1.4
+	guardLight.Range = 3
+	guardLight.Brightness = 0.3
 	guardLight.Parent = guardEmber
 
 	-- ── Colossal Wyvern Cleaver Blade ──────────────────────────────────────
@@ -747,8 +747,8 @@ local function createRockhideSwordModel(): (Model, BasePart, Trail)
 	local bladeGlow = Instance.new("PointLight")
 	bladeGlow.Name = "BladeEmberGlow"
 	bladeGlow.Color = Color3.fromRGB(255, 105, 20)
-	bladeGlow.Range = 8
-	bladeGlow.Brightness = 1.2
+	bladeGlow.Range = 4
+	bladeGlow.Brightness = 0.4
 	bladeGlow.Parent = crackA
 
 	-- ── Chisel Cleaver Tip ────────────────────────────────────────────────
@@ -921,8 +921,8 @@ local function createRockhideShieldModel(): (Model, BasePart)
 	local bossDomeGlow = Instance.new("PointLight")
 	bossDomeGlow.Name = "BossDomeEmberGlow"
 	bossDomeGlow.Color = Color3.fromRGB(255, 110, 30)
-	bossDomeGlow.Range = 10
-	bossDomeGlow.Brightness = 1.4
+	bossDomeGlow.Range = 3
+	bossDomeGlow.Brightness = 0.4
 	bossDomeGlow.Parent = bossDomeCore
 
 	-- 5 Wyvern Rock Horn Spikes around the boss dome (protruding forward & outward)
@@ -1067,12 +1067,12 @@ local function createApprenticeStaffModel(): (Model, BasePart, Trail)
 	addMesh(crystalCore, Enum.MeshType.Sphere, Vector3.new(0.7, 1.2, 0.7))
 	weldParts(handle, crystalCore)
 
-	-- Arcane Light Source — toned down (was 2.5 / 10, now 1.0 / 7)
+	-- Arcane Light Source — subtle ambient accent
 	local light = Instance.new("PointLight")
 	light.Name = "ArcaneLight"
 	light.Color = Color3.fromRGB(180, 100, 255)
-	light.Brightness = 1.0
-	light.Range = 7
+	light.Brightness = 0.4
+	light.Range = 4
 	light.Parent = crystalCore
 
 	-- Arcane Mote Emitter — subtle ambient sparks, not a firework
@@ -1185,8 +1185,8 @@ local function createRockhideStaffModel(): (Model, BasePart, Trail)
 	local fireLight = Instance.new("PointLight")
 	fireLight.Name = "MagmaLight"
 	fireLight.Color = Color3.fromRGB(255, 120, 30)
-	fireLight.Brightness = 3.0
-	fireLight.Range = 12
+	fireLight.Brightness = 0.5
+	fireLight.Range = 4
 	fireLight.Parent = magmaCore
 
 	local emberEmitter = Instance.new("ParticleEmitter")
@@ -1292,6 +1292,17 @@ local function attachHelm(character: Model, helmId: string?)
 	if not head then return end
 	local existing = character:FindFirstChild("EquippedHelm")
 	if existing then existing:Destroy() end
+
+	-- Manage hair visibility: hide hair when helmet/hood is worn so bangs do not cover eyes
+	for _, acc in ipairs(character:GetChildren()) do
+		if acc:IsA("Accessory") and acc.AccessoryType == Enum.AccessoryType.Hair then
+			local handle = acc:FindFirstChild("Handle")
+			if handle then
+				handle.Transparency = helmId and 1 or 0
+			end
+		end
+	end
+
 	if not helmId then return end
 
 	local helm = Instance.new("Model")
@@ -1310,9 +1321,9 @@ local function attachHelm(character: Model, helmId: string?)
 		addMesh(skullCap, Enum.MeshType.Sphere, Vector3.new(1.02, 0.82, 1.02))
 		weldParts(head, skullCap)
 
-		-- 2. Heavy Carved Forehead Brow Band
+		-- 2. Heavy Carved Forehead Brow Band (rests above eyebrows)
 		local brow = makePart(helm, "HelmBrow", Vector3.new(hW * 1.06, 0.26, hD * 1.06), Color3.fromRGB(44, 38, 32), Enum.Material.Cobblestone)
-		brow.CFrame = head.CFrame * CFrame.new(0, hH * 0.14, 0)
+		brow.CFrame = head.CFrame * CFrame.new(0, hH * 0.32, 0)
 		weldParts(head, brow)
 
 		-- 3. Left Massive Sweeping Wyvern Horn (Segmented with Molten Tip & Outer Spur)
@@ -1393,18 +1404,13 @@ local function attachHelm(character: Model, helmId: string?)
 		crestEmitter.Enabled = true
 		crestEmitter.Parent = crest1
 
-		-- 7. Glowing Magma Visor Eye-Slit
-		local visor = makePart(helm, "HelmVisor", Vector3.new(hW * 0.78, 0.18, 0.26), Color3.fromRGB(255, 110, 20), Enum.Material.Neon)
-		visor.CFrame = head.CFrame * CFrame.new(0, 0.05, -hD * 0.50)
+		-- 7. Glowing Magma Brow Crest (rests above eyes so facial features remain visible)
+		local visor = makePart(helm, "HelmVisor", Vector3.new(hW * 0.78, 0.16, 0.22), Color3.fromRGB(255, 110, 20), Enum.Material.Neon)
+		visor.CFrame = head.CFrame * CFrame.new(0, hH * 0.28, -hD * 0.50)
 		addMesh(visor, Enum.MeshType.Sphere, Vector3.new(1.0, 0.55, 0.8))
 		weldParts(head, visor)
 
-		local visorLight = Instance.new("PointLight")
-		visorLight.Name = "VisorGlow"
-		visorLight.Color = Color3.fromRGB(255, 110, 20)
-		visorLight.Range = 6
-		visorLight.Brightness = 1.4
-		visorLight.Parent = visor
+		-- Visor glow comes from its Neon material; no PointLight to avoid face glare
 
 		-- 8. Menacing Jaw Mandible Plates & Beast Fangs
 		local leftCheek = makePart(helm, "LeftCheek", Vector3.new(0.20, 0.68, hD * 0.55), Color3.fromRGB(32, 28, 24), Enum.Material.Slate)
@@ -1468,210 +1474,91 @@ local function attachHelm(character: Model, helmId: string?)
 		weldParts(head, napeRim)
 
 	elseif helmId == "ApprenticeHood" then
-		-- ── Apprentice Wizard Hat (Tall pointed deep-indigo cap with silver trim) ──
-		-- Wide brim — slightly curved via Wedge shape for a tipped look
-		local brim = makePart(helm, "HatBrim", Vector3.new(hW * 1.52, 0.12, hD * 1.52), Color3.fromRGB(28, 26, 54), Enum.Material.Fabric)
-		brim.CFrame = head.CFrame * CFrame.new(0, hH * 0.17, 0)
-		local brimMesh = Instance.new("SpecialMesh")
-		brimMesh.MeshType = Enum.MeshType.Cylinder
-		brimMesh.Scale = Vector3.new(0.10, 1, 1)
-		brimMesh.Parent = brim
-		weldParts(head, brim)
+		-- ── Apprentice Wizard Hat ──
+		local wizHatAsset = ReplicatedStorage:FindFirstChild("Assets") and ReplicatedStorage.Assets:FindFirstChild("WizardHat")
+		if wizHatAsset then
+			local hatModel = wizHatAsset:Clone()
+			hatModel.Name = "WizardHatMesh"
+			local brimMesh = hatModel:FindFirstChild("brim") and hatModel.brim:FindFirstChildWhichIsA("MeshPart")
+			local coneMesh = hatModel:FindFirstChild("cone") and hatModel.cone:FindFirstChildWhichIsA("MeshPart")
+			if brimMesh and coneMesh then
+				local hatBaseCf = head.CFrame * CFrame.new(0, hH * 0.95, -0.08) * CFrame.Angles(math.rad(-15), 0, 0)
+				brimMesh.CanCollide = false
+				brimMesh.Massless = true
+				brimMesh.CastShadow = false
+				brimMesh.CFrame = hatBaseCf
+				weldParts(head, brimMesh)
 
-		-- Brim silver trim outer ring
-		local brimTrim = makePart(helm, "BrimTrim", Vector3.new(hW * 1.55, 0.065, hD * 1.55), Color3.fromRGB(188, 192, 200), Enum.Material.Metal)
-		brimTrim.CFrame = head.CFrame * CFrame.new(0, hH * 0.14, 0)
-		local brimTrimMesh = Instance.new("SpecialMesh")
-		brimTrimMesh.MeshType = Enum.MeshType.Cylinder
-		brimTrimMesh.Scale = Vector3.new(0.055, 1, 1)
-		brimTrimMesh.Parent = brimTrim
-		weldParts(head, brimTrim)
+				coneMesh.CanCollide = false
+				coneMesh.Massless = true
+				coneMesh.CastShadow = false
+				coneMesh.CFrame = hatBaseCf * CFrame.new(0, 0.47, 0)
+				weldParts(head, coneMesh)
+			end
+			hatModel.Parent = helm
+		else
+			-- Fallback: Flat horizontal cylinder brim sitting firmly on top of the head
+			local brim = makePart(helm, "HatBrim", Vector3.new(0.08, hW * 1.52, hD * 1.52), Color3.fromRGB(28, 26, 54), Enum.Material.Fabric)
+			brim.Shape = Enum.PartType.Cylinder
+			brim.CFrame = head.CFrame * CFrame.new(0, hH * 0.65, 0) * CFrame.Angles(0, 0, math.rad(90))
+			weldParts(head, brim)
 
-		-- Brim arcane rune thread (thin glowing ring inset, very subtle)
-		local brimRune = makePart(helm, "BrimRune", Vector3.new(hW * 1.42, 0.04, hD * 1.42), Color3.fromRGB(140, 80, 230), Enum.Material.Neon)
-		brimRune.CFrame = head.CFrame * CFrame.new(0, hH * 0.22, 0)
-		local brimRuneMesh = Instance.new("SpecialMesh")
-		brimRuneMesh.MeshType = Enum.MeshType.Cylinder
-		brimRuneMesh.Scale = Vector3.new(0.035, 1, 1)
-		brimRuneMesh.Parent = brimRune
-		weldParts(head, brimRune)
-
-		-- Rune ring point light (very dim, just a hint of purple)
-		local runeLight = Instance.new("PointLight")
-		runeLight.Color = Color3.fromRGB(140, 80, 230)
-		runeLight.Brightness = 0.4
-		runeLight.Range = 4
-		runeLight.Parent = brimRune
-
-		-- Crown base — tapered octagonal shape (Torso mesh)
-		local crownBase = makePart(helm, "CrownBase", Vector3.new(hW * 1.06, 0.34, hD * 1.10), Color3.fromRGB(34, 30, 68), Enum.Material.Fabric)
-		crownBase.CFrame = head.CFrame * CFrame.new(0, hH * 0.40, 0)
-		addMesh(crownBase, Enum.MeshType.Torso, Vector3.new(0.32, 1, 1))
-		weldParts(head, crownBase)
-
-		-- Silver band wrapping crown base
-		local crownBand = makePart(helm, "CrownBand", Vector3.new(hW * 1.08, 0.07, hD * 1.12), Color3.fromRGB(178, 182, 190), Enum.Material.Metal)
-		crownBand.CFrame = head.CFrame * CFrame.new(0, hH * 0.55, 0)
-		addMesh(crownBand, Enum.MeshType.Cylinder, Vector3.new(0.06, 1, 1))
-		weldParts(head, crownBand)
-
-		-- Cone body — 4 segments, slightly different tones for fabric depth
-		local cone1 = makePart(helm, "HatCone1", Vector3.new(hW * 0.92, 0.62, hD * 0.94), Color3.fromRGB(38, 34, 78), Enum.Material.Fabric)
-		cone1.CFrame = head.CFrame * CFrame.new(0, hH * 0.74, 0)
-		addMesh(cone1, Enum.MeshType.Torso, Vector3.new(0.60, 1, 1))
-		weldParts(head, cone1)
-
-		local cone2 = makePart(helm, "HatCone2", Vector3.new(hW * 0.62, 0.56, hD * 0.64), Color3.fromRGB(40, 36, 82), Enum.Material.Fabric)
-		cone2.CFrame = head.CFrame * CFrame.new(0, hH * 1.12, 0)
-		addMesh(cone2, Enum.MeshType.Torso, Vector3.new(0.54, 1, 1))
-		weldParts(head, cone2)
-
-		local cone3 = makePart(helm, "HatCone3", Vector3.new(hW * 0.34, 0.49, hD * 0.36), Color3.fromRGB(36, 32, 74), Enum.Material.Fabric)
-		cone3.CFrame = head.CFrame * CFrame.new(0, hH * 1.46, 0)
-		addMesh(cone3, Enum.MeshType.Torso, Vector3.new(0.47, 1, 1))
-		weldParts(head, cone3)
-
-		local cone4 = makePart(helm, "HatCone4", Vector3.new(hW * 0.15, 0.38, hD * 0.16), Color3.fromRGB(32, 28, 66), Enum.Material.Fabric)
-		cone4.CFrame = head.CFrame * CFrame.new(0, hH * 1.76, 0)
-		addMesh(cone4, Enum.MeshType.Torso, Vector3.new(0.36, 1, 1))
-		weldParts(head, cone4)
-
-		-- Silver tip cap at peak
-		local tip = makePart(helm, "HatTip", Vector3.new(0.10, 0.16, 0.10), Color3.fromRGB(188, 192, 200), Enum.Material.Metal)
-		tip.CFrame = head.CFrame * CFrame.new(0, hH * 2.02, 0)
-		addMesh(tip, Enum.MeshType.Sphere)
-		weldParts(head, tip)
-
-		-- Cloth drape at back — two overlapping panels for depth
-		local drape = makePart(helm, "HoodDrape", Vector3.new(hW * 0.96, 0.84, 0.30), Color3.fromRGB(26, 24, 50), Enum.Material.Fabric)
-		drape.CFrame = head.CFrame * CFrame.new(0, hH * 0.04, hD * 0.44) * CFrame.Angles(math.rad(-22), 0, 0)
-		weldParts(head, drape)
-
-		local drape2 = makePart(helm, "HoodDrape2", Vector3.new(hW * 0.80, 0.64, 0.24), Color3.fromRGB(22, 20, 44), Enum.Material.Fabric)
-		drape2.CFrame = head.CFrame * CFrame.new(0, -hH * 0.30, hD * 0.54) * CFrame.Angles(math.rad(-30), 0, 0)
-		weldParts(head, drape2)
-
-		-- Side shoulder scarf wisps (left and right draping cloth flaps)
-		for _, xSide in {-1, 1} do
-			local scarf = makePart(helm, "ScarfWisp", Vector3.new(hW * 0.36, 0.55, 0.18), Color3.fromRGB(24, 22, 46), Enum.Material.Fabric)
-			scarf.CFrame = head.CFrame * CFrame.new(xSide * hW * 0.38, -hH * 0.10, hD * 0.36) * CFrame.Angles(math.rad(-15), 0, xSide * math.rad(10))
-			weldParts(head, scarf)
+			local cone = makePart(helm, "HatCone", Vector3.new(hW * 0.90, 1.4, hD * 0.90), Color3.fromRGB(34, 30, 68), Enum.Material.Fabric)
+			cone.CFrame = head.CFrame * CFrame.new(0, hH * 0.65 + 0.70, 0)
+			addMesh(cone, Enum.MeshType.Pyramid, Vector3.new(0.9, 1.4, 0.9))
+			weldParts(head, cone)
 		end
 
-		-- Brim front gem — faceted glass with a non-neon base and subtle inner core
-		local gemBase = makePart(helm, "GemBase", Vector3.new(0.13, 0.13, 0.08), Color3.fromRGB(55, 35, 90), Enum.Material.Glass)
-		gemBase.CFrame = head.CFrame * CFrame.new(0, hH * 0.20, -hD * 0.73)
-		addMesh(gemBase, Enum.MeshType.Sphere)
-		weldParts(head, gemBase)
-
-		local gemCore = makePart(helm, "GemCore", Vector3.new(0.07, 0.07, 0.05), Color3.fromRGB(155, 100, 255), Enum.Material.Neon)
-		gemCore.CFrame = head.CFrame * CFrame.new(0, hH * 0.20, -hD * 0.74)
-		addMesh(gemCore, Enum.MeshType.Sphere)
-		weldParts(head, gemCore)
-		-- No PointLight on gem — glow comes from the brim rune ring instead
+		-- Cloth drape at back of neck (well behind head)
+		local drape = makePart(helm, "HoodDrape", Vector3.new(hW * 0.96, 0.84, 0.20), Color3.fromRGB(26, 24, 50), Enum.Material.Fabric)
+		drape.CFrame = head.CFrame * CFrame.new(0, hH * 0.10, hD * 0.46) * CFrame.Angles(math.rad(-22), 0, 0)
+		weldParts(head, drape)
 
 	elseif helmId == "RockhideCowl" then
-		-- ── Rockhide Wizard Hat (Tall basalt stone cap — clearly superior) ────
-		-- Brim: wide flat basalt stone brim
-		local brim = makePart(helm, "HatBrim", Vector3.new(hW * 1.60, 0.12, hD * 1.60), Color3.fromRGB(34, 30, 26), Enum.Material.Slate)
-		brim.CFrame = head.CFrame * CFrame.new(0, hH * 0.18, 0)
-		local brimMesh = Instance.new("SpecialMesh")
-		brimMesh.MeshType = Enum.MeshType.Cylinder
-		brimMesh.Scale = Vector3.new(0.1, 1, 1)
-		brimMesh.Parent = brim
-		weldParts(head, brim)
+		-- ── Rockhide Wizard Hat ──
+		local wizHatAsset = ReplicatedStorage:FindFirstChild("Assets") and ReplicatedStorage.Assets:FindFirstChild("WizardHat")
+		if wizHatAsset then
+			local hatModel = wizHatAsset:Clone()
+			hatModel.Name = "WizardHatMesh"
+			local brimMesh = hatModel:FindFirstChild("brim") and hatModel.brim:FindFirstChildWhichIsA("MeshPart")
+			local coneMesh = hatModel:FindFirstChild("cone") and hatModel.cone:FindFirstChildWhichIsA("MeshPart")
+			if brimMesh and coneMesh then
+				local hatBaseCf = head.CFrame * CFrame.new(0, hH * 0.95, -0.08) * CFrame.Angles(math.rad(-15), 0, 0)
+				brimMesh.Color = Color3.fromRGB(34, 30, 26)
+				brimMesh.Material = Enum.Material.Slate
+				brimMesh.CanCollide = false
+				brimMesh.Massless = true
+				brimMesh.CastShadow = false
+				brimMesh.CFrame = hatBaseCf
+				weldParts(head, brimMesh)
 
-		-- Brim outer lava crack ring
-		local brimLava = makePart(helm, "BrimLavaCrack", Vector3.new(hW * 1.62, 0.05, hD * 1.62), Color3.fromRGB(255, 105, 20), Enum.Material.Neon)
-		brimLava.CFrame = head.CFrame * CFrame.new(0, hH * 0.14, 0)
-		local brimLavaMesh = Instance.new("SpecialMesh")
-		brimLavaMesh.MeshType = Enum.MeshType.Cylinder
-		brimLavaMesh.Scale = Vector3.new(0.04, 1, 1)
-		brimLavaMesh.Parent = brimLava
-		weldParts(head, brimLava)
+				coneMesh.Color = Color3.fromRGB(40, 36, 30)
+				coneMesh.Material = Enum.Material.Slate
+				coneMesh.CanCollide = false
+				coneMesh.Massless = true
+				coneMesh.CastShadow = false
+				coneMesh.CFrame = hatBaseCf * CFrame.new(0, 0.47, 0)
+				weldParts(head, coneMesh)
+			end
+			hatModel.Parent = helm
+		else
+			local brim = makePart(helm, "HatBrim", Vector3.new(0.10, hW * 1.60, hD * 1.60), Color3.fromRGB(34, 30, 26), Enum.Material.Slate)
+			brim.Shape = Enum.PartType.Cylinder
+			brim.CFrame = head.CFrame * CFrame.new(0, hH * 0.65, 0) * CFrame.Angles(0, 0, math.rad(90))
+			weldParts(head, brim)
 
-		-- Stone brim edge trim (dark obsidian)
-		local brimEdge = makePart(helm, "BrimEdge", Vector3.new(hW * 1.58, 0.08, hD * 1.58), Color3.fromRGB(22, 20, 18), Enum.Material.Cobblestone)
-		brimEdge.CFrame = head.CFrame * CFrame.new(0, hH * 0.22, 0)
-		local brimEdgeMesh = Instance.new("SpecialMesh")
-		brimEdgeMesh.MeshType = Enum.MeshType.Cylinder
-		brimEdgeMesh.Scale = Vector3.new(0.06, 1, 1)
-		brimEdgeMesh.Parent = brimEdge
-		weldParts(head, brimEdge)
+			local cone = makePart(helm, "HatCone", Vector3.new(hW * 0.95, 1.5, hD * 0.95), Color3.fromRGB(36, 32, 28), Enum.Material.Slate)
+			cone.CFrame = head.CFrame * CFrame.new(0, hH * 0.65 + 0.75, 0)
+			addMesh(cone, Enum.MeshType.Pyramid, Vector3.new(0.95, 1.5, 0.95))
+			weldParts(head, cone)
+		end
 
-		-- Crown base (chunky stone base)
-		local crownBase = makePart(helm, "CrownBase", Vector3.new(hW * 1.06, 0.35, hD * 1.10), Color3.fromRGB(32, 28, 24), Enum.Material.Slate)
-		crownBase.CFrame = head.CFrame * CFrame.new(0, hH * 0.42, 0)
-		addMesh(crownBase, Enum.MeshType.Cylinder, Vector3.new(0.35, 1, 1))
-		weldParts(head, crownBase)
-
-		-- Rune band on crown base (glowing orange)
-		local runeBand = makePart(helm, "RuneBand", Vector3.new(hW * 1.08, 0.08, hD * 1.12), Color3.fromRGB(255, 115, 25), Enum.Material.Neon)
-		runeBand.CFrame = head.CFrame * CFrame.new(0, hH * 0.55, 0)
-		addMesh(runeBand, Enum.MeshType.Cylinder, Vector3.new(0.08, 1, 1))
-		weldParts(head, runeBand)
-
-		-- Tall stone cone body
-		local cone1 = makePart(helm, "HatCone1", Vector3.new(hW * 0.94, 0.65, hD * 0.96), Color3.fromRGB(36, 32, 28), Enum.Material.Slate)
-		cone1.CFrame = head.CFrame * CFrame.new(0, hH * 0.80, 0)
-		addMesh(cone1, Enum.MeshType.Cylinder, Vector3.new(0.65, 1, 1))
-		weldParts(head, cone1)
-
-		local cone2 = makePart(helm, "HatCone2", Vector3.new(hW * 0.65, 0.60, hD * 0.67), Color3.fromRGB(30, 26, 22), Enum.Material.Cobblestone)
-		cone2.CFrame = head.CFrame * CFrame.new(0, hH * 1.22, 0)
-		addMesh(cone2, Enum.MeshType.Cylinder, Vector3.new(0.60, 1, 1))
-		weldParts(head, cone2)
-
-		-- Mid lava crack ring on cone
-		local midCrack = makePart(helm, "MidLavaCrack", Vector3.new(hW * 0.68, 0.06, hD * 0.70), Color3.fromRGB(255, 100, 15), Enum.Material.Neon)
-		midCrack.CFrame = head.CFrame * CFrame.new(0, hH * 1.20, 0)
-		addMesh(midCrack, Enum.MeshType.Cylinder, Vector3.new(0.06, 1, 1))
-		weldParts(head, midCrack)
-
-		local cone3 = makePart(helm, "HatCone3", Vector3.new(hW * 0.38, 0.52, hD * 0.40), Color3.fromRGB(28, 24, 20), Enum.Material.Slate)
-		cone3.CFrame = head.CFrame * CFrame.new(0, hH * 1.60, 0)
-		addMesh(cone3, Enum.MeshType.Cylinder, Vector3.new(0.52, 1, 1))
-		weldParts(head, cone3)
-
-		local cone4 = makePart(helm, "HatCone4", Vector3.new(hW * 0.18, 0.42, hD * 0.19), Color3.fromRGB(24, 20, 16), Enum.Material.Slate)
-		cone4.CFrame = head.CFrame * CFrame.new(0, hH * 1.96, 0)
-		addMesh(cone4, Enum.MeshType.Cylinder, Vector3.new(0.42, 1, 1))
-		weldParts(head, cone4)
-
-		-- Upper lava crack ring
-		local upperCrack = makePart(helm, "UpperLavaCrack", Vector3.new(hW * 0.40, 0.05, hD * 0.42), Color3.fromRGB(255, 120, 30), Enum.Material.Neon)
-		upperCrack.CFrame = head.CFrame * CFrame.new(0, hH * 1.58, 0)
-		addMesh(upperCrack, Enum.MeshType.Cylinder, Vector3.new(0.05, 1, 1))
-		weldParts(head, upperCrack)
-
-		-- Gemstone cap at peak (pulsing amethyst orb)
-		local gemBase = makePart(helm, "GemBase", Vector3.new(0.26, 0.26, 0.26), Color3.fromRGB(22, 18, 14), Enum.Material.Slate)
-		gemBase.CFrame = head.CFrame * CFrame.new(0, hH * 2.22, 0)
-		addMesh(gemBase, Enum.MeshType.Sphere)
-		weldParts(head, gemBase)
-
+		-- Peak Gemstone (rests well above top of the hat)
 		local gem = makePart(helm, "PeakGem", Vector3.new(0.20, 0.20, 0.20), Color3.fromRGB(200, 100, 255), Enum.Material.Neon)
-		gem.CFrame = head.CFrame * CFrame.new(0, hH * 2.24, 0)
+		gem.CFrame = head.CFrame * CFrame.new(0, hH + 1.8, 0)
 		addMesh(gem, Enum.MeshType.Sphere)
 		weldParts(head, gem)
 
-		-- Gem glow light
-		local gemLight = Instance.new("PointLight")
-		gemLight.Name = "GemGlow"
-		gemLight.Color = Color3.fromRGB(180, 80, 255)
-		gemLight.Range = 8
-		gemLight.Brightness = 2.0
-		gemLight.Parent = gem
-
-		-- Brim lava glow light
-		local brimLight = Instance.new("PointLight")
-		brimLight.Name = "BrimLavaGlow"
-		brimLight.Color = Color3.fromRGB(255, 105, 20)
-		brimLight.Range = 5
-		brimLight.Brightness = 1.2
-		brimLight.Parent = brimLava
-
-		-- Orbiting ember particles from peak gem
 		local emberEmitter = Instance.new("ParticleEmitter")
 		emberEmitter.Name = "HatEmbers"
 		emberEmitter.LightEmission = 1
@@ -1692,27 +1579,9 @@ local function attachHelm(character: Model, helmId: string?)
 		})
 		emberEmitter.SpreadAngle = Vector2.new(60, 60)
 		emberEmitter.Speed = NumberRange.new(0.8, 2.0)
-		emberEmitter.Rate = 8
-		emberEmitter.Lifetime = NumberRange.new(0.8, 1.4)
-		emberEmitter.RotSpeed = NumberRange.new(-45, 45)
+		emberEmitter.Rate = 6
+		emberEmitter.Lifetime = NumberRange.new(0.6, 1.2)
 		emberEmitter.Parent = gem
-
-		-- Obsidian front ridge (decorative stone fin on front face)
-		local ridge = makePart(helm, "ObsidianRidge", Vector3.new(0.10, hH * 0.80, 0.12), Color3.fromRGB(18, 14, 12), Enum.Material.Slate)
-		ridge.CFrame = head.CFrame * CFrame.new(0, hH * 0.90, -hD * 0.52)
-		weldParts(head, ridge)
-
-		local ridgeGlow = makePart(helm, "RidgeGlow", Vector3.new(0.06, hH * 0.75, 0.06), Color3.fromRGB(255, 100, 20), Enum.Material.Neon)
-		ridgeGlow.CFrame = head.CFrame * CFrame.new(0, hH * 0.90, -hD * 0.55)
-		weldParts(head, ridgeGlow)
-
-		-- Glowing Magma Eye Facets on brow area
-		for _, xOff in {-0.26, 0.26} do
-			local eyeFacet = makePart(helm, "EyeFacet", Vector3.new(0.20, 0.11, 0.13), Color3.fromRGB(255, 110, 20), Enum.Material.Neon)
-			eyeFacet.CFrame = head.CFrame * CFrame.new(xOff, hH * 0.22, -hD * 0.58)
-			addMesh(eyeFacet, Enum.MeshType.Sphere)
-			weldParts(head, eyeFacet)
-		end
 	end
 
 	helm.Parent = character
@@ -1762,12 +1631,7 @@ local function attachChest(character: Model, chestId: string?)
 		addMesh(core, Enum.MeshType.Sphere, Vector3.new(1.0, 1.0, 0.85))
 		weldParts(torso, core)
 
-		local coreLight = Instance.new("PointLight")
-		coreLight.Name = "CoreGlow"
-		coreLight.Color = Color3.fromRGB(255, 110, 20)
-		coreLight.Range = 7
-		coreLight.Brightness = 1.6
-		coreLight.Parent = core
+		-- Core glow provided by Neon material; no PointLight to avoid player self-glare
 
 		-- Ambient chest magma embers
 		local coreEmitter = Instance.new("ParticleEmitter")
@@ -1970,12 +1834,7 @@ local function attachChest(character: Model, chestId: string?)
 		medallionCore.CFrame = torso.CFrame * CFrame.new(0, tH * 0.10, -0.64)
 		addMesh(medallionCore, Enum.MeshType.Sphere)
 		weldParts(torso, medallionCore)
-		-- Very dim ambient glow only — not a beacon
-		local medallionLight = Instance.new("PointLight")
-		medallionLight.Color = Color3.fromRGB(150, 80, 240)
-		medallionLight.Brightness = 0.5
-		medallionLight.Range = 4
-		medallionLight.Parent = medallionCore
+		-- Medallion glow provided by Neon material; no PointLight to avoid player self-glare
 
 		-- Sculpted shoulder pads (fabric-covered, rounded with silver edge)
 		for _, xSign in {-1, 1} do
@@ -2056,12 +1915,7 @@ local function attachChest(character: Model, chestId: string?)
 		addMesh(magmaCore, Enum.MeshType.Sphere)
 		weldParts(torso, magmaCore)
 
-		local coreLight = Instance.new("PointLight")
-		coreLight.Name = "CoreGlow"
-		coreLight.Color = Color3.fromRGB(255, 110, 20)
-		coreLight.Range = 8
-		coreLight.Brightness = 1.8
-		coreLight.Parent = magmaCore
+		-- Core glow provided by Neon material; no PointLight to avoid player self-glare
 
 		-- Magma ember particles from core
 		local robeEmitter = Instance.new("ParticleEmitter")
@@ -2349,12 +2203,7 @@ local function attachPauldrons(character: Model, armsId: string?)
 				addMesh(magmaVein, Enum.MeshType.Sphere, Vector3.new(0.6, 1, 0.6))
 				weldParts(data.arm, magmaVein)
 
-				-- Stone plate glow
-				local plateLight = Instance.new("PointLight")
-				plateLight.Color = Color3.fromRGB(255, 100, 20)
-				plateLight.Range = 4
-				plateLight.Brightness = 1.0
-				plateLight.Parent = magmaVein
+				-- Stone plate glow provided by Neon material; no PointLight to avoid player self-glare
 
 				-- Shoulder upper guard (stone cap on upper arm)
 				if data.upperArm then
@@ -2556,12 +2405,7 @@ local function attachBoots(character: Model, feetId: string?)
 				tremorSole.CFrame = data.leg.CFrame * CFrame.new(0, -0.56, 0.04)
 				weldParts(data.leg, tremorSole)
 
-				-- Sole glow light
-				local soleLight = Instance.new("PointLight")
-				soleLight.Color = Color3.fromRGB(255, 100, 20)
-				soleLight.Range = 5
-				soleLight.Brightness = 1.2
-				soleLight.Parent = tremorSole
+				-- Sole glow provided by Neon material; no PointLight to avoid player self-glare
 
 				-- Ground ember particle from sole
 				local soleEmitter = Instance.new("ParticleEmitter")
