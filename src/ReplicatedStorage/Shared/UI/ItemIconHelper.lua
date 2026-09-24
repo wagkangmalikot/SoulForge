@@ -1043,8 +1043,10 @@ function ItemIconHelper.CreateItemIcon(parent: Instance, itemId: string, size: U
 	local tile = createBaseTile(parent, size, isSelected)
 	local item = EquipmentData.Items[itemId]
 	local slot = item and item.slot or "Weapon"
-	local isRockhide = (item and (item.setId == "Rockhide" or item.setId == "RockhideMage"))
-	local isMage = (item and (item.setId == "Apprentice" or item.setId == "RockhideMage"))
+	local isRockhide = (item and (item.setId == "Rockhide" or item.setId == "RockhideMage" or item.setId == "RockhideHealer"))
+	-- "Caster-style" gear renders with the staff/hood/robe/bracer/boot graphics -- covers
+	-- Mage and (Phase 1 of) Healer, which deliberately reuses these same shapes for now.
+	local isMage = (item and (item.setId == "Apprentice" or item.setId == "RockhideMage" or item.setId == "Sanctum" or item.setId == "RockhideHealer"))
 
 	if slot == "Weapon" then
 		if isMage or itemId == "ApprenticeStaff" or itemId == "RockhideStaff" then

@@ -65,6 +65,7 @@ local BRANCH_ORDER_BY_CLASS = {
 	Tank = {"Bulwark", "Sentinel"},
 	Mage = {"Pyromancy", "Frostweave", "ArcaneMastery"},
 	Warrior = {"Juggernaut", "Bloodlust"},
+	Healer = {"Mending", "Sanctuary"},
 }
 
 local activeBranch: string = "ALL"
@@ -74,6 +75,7 @@ local CLASS_TITLE_INFO = {
 	Tank = { icon = "🛡️", name = "TANK" },
 	Mage = { icon = "🔮", name = "MAGE" },
 	Warrior = { icon = "⚔️", name = "WARRIOR" },
+	Healer = { icon = "✨", name = "HEALER" },
 }
 
 local function getClassTitleText(mobile: boolean): string
@@ -173,6 +175,30 @@ local BRANCH_COLORS = {
 		name = "BLOODLUST",
 		displayName = "BLOODLUST SPECIALIZATION",
 		tagline = "Sustained lifesteal, reckless offense & frenzy",
+	},
+	Mending = {
+		primary = Color3.fromRGB(255, 210, 110),
+		secondary = Color3.fromRGB(160, 130, 50),
+		bg = Color3.fromRGB(34, 30, 18),
+		cardBg = Color3.fromRGB(46, 40, 24),
+		border = Color3.fromRGB(215, 175, 80),
+		accent = Color3.fromRGB(255, 235, 180),
+		icon = "✨",
+		name = "MENDING",
+		displayName = "MENDING SPECIALIZATION",
+		tagline = "Focused single-target healing that scales into a powerful restoration",
+	},
+	Sanctuary = {
+		primary = Color3.fromRGB(110, 220, 140),
+		secondary = Color3.fromRGB(45, 130, 75),
+		bg = Color3.fromRGB(16, 30, 20),
+		cardBg = Color3.fromRGB(22, 40, 28),
+		border = Color3.fromRGB(80, 180, 110),
+		accent = Color3.fromRGB(180, 255, 200),
+		icon = "🌿",
+		name = "SANCTUARY",
+		displayName = "SANCTUARY SPECIALIZATION",
+		tagline = "Area healing that keeps the whole party topped up",
 	},
 }
 

@@ -678,9 +678,20 @@ local function renderLoadoutSlots()
 		card.Parent = loadoutSlotsContainer
 	end
 
-	-- Update Set Bonus (check RockhideMage if Mage or wields staff, otherwise Rockhide)
-	local isMage = (cachedClassId == "Mage") or (cachedEquippedEquipment.Weapon == "ApprenticeStaff" or cachedEquippedEquipment.Weapon == "RockhideStaff")
-	local activeSetId = isMage and "RockhideMage" or "Rockhide"
+	-- Update Set Bonus (RockhideHealer if Healer, RockhideMage if Mage or wields a caster
+	-- staff, otherwise Rockhide). Healer keeps the same blue caster-style accent Mage
+	-- uses here (isCasterStyle) -- Phase 1 deliberately reuses Mage's visual language.
+	local isCasterStyle = (cachedClassId == "Mage") or (cachedClassId == "Healer")
+		or cachedEquippedEquipment.Weapon == "ApprenticeStaff" or cachedEquippedEquipment.Weapon == "RockhideStaff"
+		or cachedEquippedEquipment.Weapon == "BlessedScepter" or cachedEquippedEquipment.Weapon == "RockhideStaffOfMercy"
+	local activeSetId
+	if cachedClassId == "Healer" then
+		activeSetId = "RockhideHealer"
+	elseif isCasterStyle then
+		activeSetId = "RockhideMage"
+	else
+		activeSetId = "Rockhide"
+	end
 	local activeSet = EquipmentData.Sets[activeSetId] or EquipmentData.Sets["Rockhide"]
 
 	local setEquippedCount, totalPieces = getEquippedCountForSet(activeSetId)
@@ -693,10 +704,10 @@ local function renderLoadoutSlots()
 			local isPieceOn = isEquipped(pieceId)
 			local pip = Instance.new("Frame")
 			pip.Size = UDim2.new(0, 24, 0, 24)
-			pip.BackgroundColor3 = isPieceOn and (isMage and Color3.fromRGB(85, 190, 255) or THEME.amberBright) or THEME.panelBg
+			pip.BackgroundColor3 = isPieceOn and (isCasterStyle and Color3.fromRGB(85, 190, 255) or THEME.amberBright) or THEME.panelBg
 			pip.BorderSizePixel = 0
 			makeCorner(pip, 3)
-			makeStroke(pip, isPieceOn and (isMage and Color3.fromRGB(130, 215, 255) or THEME.borderBright) or THEME.borderDim, 1)
+			makeStroke(pip, isPieceOn and (isCasterStyle and Color3.fromRGB(130, 215, 255) or THEME.borderBright) or THEME.borderDim, 1)
 
 			local pieceItem = EquipmentData.Items[pieceId]
 			local slotChar = pieceItem and string.sub(pieceItem.slot, 1, 1) or tostring(i)
@@ -716,7 +727,7 @@ local function renderLoadoutSlots()
 		setBonusText.TextSize = 14
 		if isActive then
 			setBonusText.Text = string.format("%s ACTIVE (%d/%d): %s", string.upper(activeSet.setBonus or "SET BONUS"), setEquippedCount, totalPieces, activeSet.setBonusDesc or "+20% damage")
-			setBonusText.TextColor3 = isMage and Color3.fromRGB(85, 190, 255) or THEME.amberBright
+			setBonusText.TextColor3 = isCasterStyle and Color3.fromRGB(85, 190, 255) or THEME.amberBright
 		else
 			setBonusText.Text = string.format("%s (%d/%d): %s (Equip all %d pieces)", activeSet.displayName, setEquippedCount, totalPieces, activeSet.setBonus or "Set Bonus", totalPieces)
 			setBonusText.TextColor3 = THEME.textSilver

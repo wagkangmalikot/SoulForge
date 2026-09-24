@@ -68,7 +68,7 @@ local COLORS = {
 }
 
 -- Per-class content for the character-creation picker cards. Keys must match
--- ReplicatedStorage.Shared.Data.Classes's own keys ("Tank", "Mage", "Warrior").
+-- ReplicatedStorage.Shared.Data.Classes's own keys ("Tank", "Mage", "Warrior", "Healer").
 local CLASS_CARD_INFO = {
 	Tank = {
 		icon = "🛡️",
@@ -98,6 +98,16 @@ local CLASS_CARD_INFO = {
 			{ "🪓", "Attack: Heavy Weapon Cleave" },
 			{ "💙", "Base Health: 120 (Balanced)" },
 			{ "🌳", "Trees: Juggernaut & Bloodlust" },
+		},
+	},
+	Healer = {
+		icon = "✨",
+		title = "HEALER ARCHETYPE",
+		description = "Pure support caster who mends allies from a distance -- no damage skills, just keeping the party alive.",
+		traits = {
+			{ "✨", "Starter Skill: Mend" },
+			{ "❤️", "Base Health: 90" },
+			{ "🌳", "Trees: Mending & Sanctuary" },
 		},
 	},
 }
@@ -154,12 +164,13 @@ local function createClassCard(parent: Instance, classId: string, xScale: number
 	classTitle.TextXAlignment = Enum.TextXAlignment.Left
 	classTitle.Parent = banner
 
-	-- Card width shrank from ~48.5% to ~31.5% of the row when Warrior was added,
-	-- and Tank/Warrior's descriptions run 200+ chars, so a fixed-height label can
-	-- easily need more lines than it has room for. Grown height (56->80, reclaimed
-	-- from traitsFrame below) buys real headroom; TextScaled+UITextSizeConstraint
-	-- shrinks the font as a fallback for whatever still doesn't fit; ClipsDescendants
-	-- is a last-resort guard so any remaining overflow clips instead of bleeding
+	-- Card width shrank further (~31.5% to ~23.5% of the row) once Healer joined
+	-- Warrior as a 4th card, and several classes' descriptions run 100-200+
+	-- chars, so a fixed-height label can easily need more lines than it has
+	-- room for. Grown height (56->80, reclaimed from traitsFrame below) buys
+	-- real headroom; TextScaled+UITextSizeConstraint shrinks the font as a
+	-- fallback for whatever still doesn't fit; ClipsDescendants is a
+	-- last-resort guard so any remaining overflow clips instead of bleeding
 	-- into traitsFrame rather than visually overlapping it.
 	local desc = Instance.new("TextLabel")
 	desc.Size = UDim2.new(1, -20, 0, 80)
@@ -780,8 +791,8 @@ function CharacterCreationController.Start()
 
 	-- Per-class content for the "hero choice" (continue-as-existing-hero) summary
 	-- card. Keys must match ReplicatedStorage.Shared.Data.Classes's own keys
-	-- ("Tank", "Mage", "Warrior"). Any unrecognized/missing classId falls back
-	-- to Tank, matching the old isMage-ternary's implicit fallback direction.
+	-- ("Tank", "Mage", "Warrior", "Healer"). Any unrecognized/missing classId
+	-- falls back to Tank, matching the old isMage-ternary's implicit fallback direction.
 	local HERO_CHOICE_INFO = {
 		Tank = {
 			badgeText = "🛡️ TANK",
@@ -812,6 +823,16 @@ function CharacterCreationController.Start()
 			chip2 = { icon = "⚔️", title = "Cleave", subtitle = "Melee Opener" },
 			chip3 = { icon = "🩸", title = "Berserker", subtitle = "Juggernaut & Bloodlust" },
 			deleteName = "Warrior",
+		},
+		Healer = {
+			badgeText = "✨ HEALER",
+			badgeTextColor = Color3.fromRGB(255, 240, 200),
+			badgeStrokeColor = Color3.fromRGB(255, 215, 130),
+			badgeBackgroundColor = Color3.fromRGB(70, 55, 20),
+			chip1 = { icon = "❤️", title = "90 HP", subtitle = "Base Health" },
+			chip2 = { icon = "✨", title = "Mend", subtitle = "Ally Restore" },
+			chip3 = { icon = "🌿", title = "Sanctuary", subtitle = "Mending & Support" },
+			deleteName = "Healer",
 		},
 	}
 
@@ -953,16 +974,17 @@ function CharacterCreationController.Start()
 	createTitle.TextSize = 24
 	createTitle.Parent = createCard
 
-	-- Class Picker: three selectable cards
+	-- Class Picker: four selectable cards (width 0.235 each, 0.02 gaps -- 4*0.235 + 3*0.02 = 1.0)
 	local classCardsRow = Instance.new("Frame")
 	classCardsRow.Size = UDim2.new(1, 0, 0, 220)
 	classCardsRow.Position = UDim2.new(0, 0, 0, 56)
 	classCardsRow.BackgroundTransparency = 1
 	classCardsRow.Parent = createCard
 
-	local tankCard, tankCardStroke, tankCardHitbox = createClassCard(classCardsRow, "Tank", 0, 0.315)
-	local mageCard, mageCardStroke, mageCardHitbox = createClassCard(classCardsRow, "Mage", 0.3425, 0.315)
-	local warriorCard, warriorCardStroke, warriorCardHitbox = createClassCard(classCardsRow, "Warrior", 0.685, 0.315)
+	local tankCard, tankCardStroke, tankCardHitbox = createClassCard(classCardsRow, "Tank", 0, 0.235)
+	local mageCard, mageCardStroke, mageCardHitbox = createClassCard(classCardsRow, "Mage", 0.255, 0.235)
+	local warriorCard, warriorCardStroke, warriorCardHitbox = createClassCard(classCardsRow, "Warrior", 0.51, 0.235)
+	local healerCard, healerCardStroke, healerCardHitbox = createClassCard(classCardsRow, "Healer", 0.765, 0.235)
 
 	local selectedClassId = "Mage"
 
@@ -973,6 +995,8 @@ function CharacterCreationController.Start()
 		mageCardStroke.Thickness = (selectedClassId == "Mage") and 2.4 or 1.6
 		warriorCardStroke.Color = (selectedClassId == "Warrior") and COLORS.goldPrimary or COLORS.slateBorder
 		warriorCardStroke.Thickness = (selectedClassId == "Warrior") and 2.4 or 1.6
+		healerCardStroke.Color = (selectedClassId == "Healer") and COLORS.goldPrimary or COLORS.slateBorder
+		healerCardStroke.Thickness = (selectedClassId == "Healer") and 2.4 or 1.6
 	end
 	refreshClassCardSelection()
 
@@ -986,6 +1010,10 @@ function CharacterCreationController.Start()
 	end)
 	warriorCardHitbox.Activated:Connect(function()
 		selectedClassId = "Warrior"
+		refreshClassCardSelection()
+	end)
+	healerCardHitbox.Activated:Connect(function()
+		selectedClassId = "Healer"
 		refreshClassCardSelection()
 	end)
 

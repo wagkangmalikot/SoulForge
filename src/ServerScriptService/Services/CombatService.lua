@@ -7,6 +7,7 @@ local Skills = require(ReplicatedStorage.Shared.Data.Skills)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 local RespawnService = require(script.Parent.RespawnService)
 local EquipmentData = require(ReplicatedStorage.Shared.Data.Equipment)
+local PartyService = require(script.Parent.PartyService)
 
 local CombatService = {}
 
@@ -102,6 +103,37 @@ local function applySlowToEnemy(enemy, player: Player, slowPercent: number)
 	end
 end
 
+-- A `targetId` sent by the client is either a bare enemy id (looked up in the `enemies`
+-- table above) or "player:<userId>" for an ally/self heal target (see HUDController's
+-- click-targeting, which produces this format for a clicked player character). This
+-- resolves the latter; returns nil for anything else (including a bare enemy id).
+local function resolvePlayerTarget(targetId: string?): Player?
+	if not targetId or not targetId:match("^player:") then
+		return nil
+	end
+	local userId = tonumber(targetId:match("^player:(%d+)$"))
+	return userId and Players:GetPlayerByUserId(userId) or nil
+end
+
+-- Rockhide Sanctum set's "Earthen Blessing" bonus: +20% healing when the TARGET
+-- (not the caster) is below 50% HP -- mirrors getDamageMultiplier's shape but keys
+-- off the person being healed, since that's who the bonus should matter for.
+local function getHealMultiplier(caster: Player, targetHumanoid: Humanoid): number
+	local profile = PlayerDataService.GetProfile(caster)
+	local charData = profile and profile.Data.Character
+	if charData and charData.EquippedEquipment and EquipmentData.IsSetBonusActive("RockhideHealer", charData.EquippedEquipment) then
+		if targetHumanoid.Health / math.max(targetHumanoid.MaxHealth, 1) <= 0.5 then
+			return 1.20
+		end
+	end
+	return 1.0
+end
+
+local function getPlayerHealAmount(caster: Player, targetHumanoid: Humanoid, baseHeal: number): number
+	local mult = getHealMultiplier(caster, targetHumanoid)
+	return math.floor(baseHeal * mult)
+end
+
 -- Schedules tickCount follow-up hits of tickDamage against enemy, interval seconds
 -- apart, for dotDamage/aoeDotDamage skills. Each tick re-resolves the damage
 -- multiplier at fire time (not once upfront) so a mid-DoT health-threshold change
@@ -175,10 +207,14 @@ local function onCastSkill(player: Player, skillId: string, targetId: string?)
 		return
 	end
 
-	local isAoeOrSelf = (skill.effectType == "tauntAoe" or skill.effectType == "aoeDamage" or skill.effectType == "aoeDotDamage"
-		or skill.effectType == "selfHeal" or skill.effectType == "buffSelf" or skill.effectType == "buffParty")
+	-- Skills that don't need this block's enemy-based range gate: AoE/self skills need no
+	-- target at all, and healTarget's target is a Player (range-checked separately, inside
+	-- its own dispatch branch below) rather than an entry in the `enemies` table.
+	local bypassesEnemyRangeGate = (skill.effectType == "tauntAoe" or skill.effectType == "aoeDamage" or skill.effectType == "aoeDotDamage"
+		or skill.effectType == "selfHeal" or skill.effectType == "buffSelf" or skill.effectType == "buffParty"
+		or skill.effectType == "healTarget" or skill.effectType == "aoeHeal")
 	local enemy = targetId and enemies[targetId]
-	if skill.range > 0 and not isAoeOrSelf then
+	if skill.range > 0 and not bypassesEnemyRangeGate then
 		if not enemy or not enemy.model.PrimaryPart then
 			return
 		end
@@ -274,6 +310,54 @@ local function onCastSkill(player: Player, skillId: string, targetId: string?)
 					arcaneShields[player.UserId] = nil
 				end
 			end)
+		end
+	elseif skill.effectType == "healTarget" then
+		local targetPlayer = resolvePlayerTarget(targetId)
+		if targetPlayer and not RespawnService.IsPlayerDowned(targetPlayer.UserId) then
+			local isSelf = (targetPlayer == player)
+			local isPartyMember = false
+			local party = PartyService.GetParty(player)
+			if party then
+				for _, memberUserId in party.members do
+					if memberUserId == targetPlayer.UserId then
+						isPartyMember = true
+						break
+					end
+				end
+			end
+			if isSelf or isPartyMember then
+				local targetCharacter = targetPlayer.Character
+				local targetHumanoid = targetCharacter and targetCharacter:FindFirstChildOfClass("Humanoid")
+				local targetRoot = targetCharacter and targetCharacter:FindFirstChild("HumanoidRootPart")
+				if targetHumanoid and targetRoot then
+					local distance = (targetRoot.Position - rootPart.Position).Magnitude
+					if distance <= skill.range then
+						local heal = getPlayerHealAmount(player, targetHumanoid, skill.healAmount or 0)
+						targetHumanoid.Health = math.min(targetHumanoid.MaxHealth, targetHumanoid.Health + heal)
+						Net.Get("HealthChanged"):FireAllClients(targetPlayer.UserId, targetHumanoid.Health, targetHumanoid.MaxHealth)
+					end
+				end
+			end
+		end
+	elseif skill.effectType == "aoeHeal" then
+		local party = PartyService.GetParty(player)
+		local memberUserIds = party and party.members or {player.UserId}
+		local aoeRadius = skill.range > 0 and skill.range or 16
+		for _, memberUserId in memberUserIds do
+			if not RespawnService.IsPlayerDowned(memberUserId) then
+				local member = Players:GetPlayerByUserId(memberUserId)
+				local memberCharacter = member and member.Character
+				local memberHumanoid = memberCharacter and memberCharacter:FindFirstChildOfClass("Humanoid")
+				local memberRoot = memberCharacter and memberCharacter:FindFirstChild("HumanoidRootPart")
+				if memberHumanoid and memberRoot then
+					local dist = (memberRoot.Position - rootPart.Position).Magnitude
+					if dist <= aoeRadius then
+						local heal = getPlayerHealAmount(player, memberHumanoid, skill.healAmount or 0)
+						memberHumanoid.Health = math.min(memberHumanoid.MaxHealth, memberHumanoid.Health + heal)
+						Net.Get("HealthChanged"):FireAllClients(member.UserId, memberHumanoid.Health, memberHumanoid.MaxHealth)
+					end
+				end
+			end
 		end
 	end
 	-- buffParty (FortressAura) is intentionally unhandled -- same pre-existing no-op as before.
