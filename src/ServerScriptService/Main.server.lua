@@ -57,7 +57,7 @@ end
 local RunService = game:GetService("RunService")
 
 -- In Studio Play Solo, set to true to bypass the Hub and jump straight into a dungeon on load for testing.
-local STUDIO_DIRECT_DUNGEON = true
+local STUDIO_DIRECT_DUNGEON = false
 local STUDIO_DIRECT_DUNGEON_ID = "Sunforged" -- "Sunforged" or "Rockhide"
 
 if RunService:IsStudio() and STUDIO_DIRECT_DUNGEON then

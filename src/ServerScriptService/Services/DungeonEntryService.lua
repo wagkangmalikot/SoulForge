@@ -43,7 +43,7 @@ local function enterDungeon(player: Player, dungeonId: string)
 			end
 		end
 
-		local entranceTarget = (dungeonId == "Sunforged") and Vector3.new(0, 5, -420) or Vector3.new(0, 5, -285)
+		local entranceTarget = (dungeonId == "Sunforged") and Vector3.new(0, 5, -1300) or Vector3.new(0, 5, -285)
 		local targetCF = CFrame.new(entranceTarget)
 		for _, p in players do
 			if p.Character then

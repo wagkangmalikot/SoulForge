@@ -841,45 +841,44 @@ function HubMapService.BuildHub(): Model
 	makePlanterUrn(hub, Vector3.new(-16, FLOOR_Y, 26))
 	makePlanterUrn(hub, Vector3.new(16, FLOOR_Y, 26))
 
-	-- ── 3. GRAND MYSTIC DUNGEON GATEWAY (RockhidePortal) ───────────────────────
-	local portalPos = Vector3.new(0, FLOOR_Y, -58)
+	-- ── 3A. TIER 1 ROCKHIDE'S DUNGEON GATEWAY (RockhidePortal) ───────────────
+	-- Positioned on the Northwest plaza (X = -28, Z = -58)
+	local portalPos = Vector3.new(-28, FLOOR_Y, -58)
 
 	-- Raised stone dais with molded steps
-	makePart(hub, "PortalDais", Vector3.new(38, 2, 26), CFrame.new(portalPos + Vector3.new(0, 1, 0)), DARK_STONE, Enum.Material.Cobblestone)
-	makePart(hub, "PortalSteps", Vector3.new(28, 1, 7), CFrame.new(portalPos + Vector3.new(0, 0.5, 14)), STONE_COLOR, Enum.Material.Slate)
+	makePart(hub, "PortalDais", Vector3.new(32, 2, 24), CFrame.new(portalPos + Vector3.new(0, 1, 0)), DARK_STONE, Enum.Material.Cobblestone)
+	makePart(hub, "PortalSteps", Vector3.new(24, 1, 6), CFrame.new(portalPos + Vector3.new(0, 0.5, 13)), STONE_COLOR, Enum.Material.Slate)
 
 	-- Massive Fluted Runic Stone Megaliths (Portal Frame)
-	makeColumn(hub, portalPos + Vector3.new(-10.5, 2, 0), 24, 2.6, true)
-	makeColumn(hub, portalPos + Vector3.new(10.5, 2, 0), 24, 2.6, true)
+	makeColumn(hub, portalPos + Vector3.new(-8.5, 2, 0), 22, 2.4, true)
+	makeColumn(hub, portalPos + Vector3.new(8.5, 2, 0), 22, 2.4, true)
 
 	-- Stepped Gothic Portal Archway with Sculpted Keystone
-	makePart(hub, "PortalArchLower", Vector3.new(25.5, 3.8, 5.0), CFrame.new(portalPos + Vector3.new(0, 24.0, 0)), DARK_STONE, Enum.Material.Slate)
-	makePart(hub, "PortalArchUpper", Vector3.new(27.0, 1.2, 5.4), CFrame.new(portalPos + Vector3.new(0, 26.2, 0)), GOLD_TRIM, Enum.Material.Metal)
+	makePart(hub, "PortalArchLower", Vector3.new(21.5, 3.5, 4.8), CFrame.new(portalPos + Vector3.new(0, 22.0, 0)), DARK_STONE, Enum.Material.Slate)
+	makePart(hub, "PortalArchUpper", Vector3.new(23.0, 1.2, 5.2), CFrame.new(portalPos + Vector3.new(0, 24.2, 0)), GOLD_TRIM, Enum.Material.Metal)
 
 	-- Sculpted Arch Keystone
-	local keystone = makePart(hub, "PortalKeystone", Vector3.new(3.2, 4.4, 5.6), CFrame.new(portalPos + Vector3.new(0, 25.2, 0)), DARK_STONE, Enum.Material.Slate)
+	local keystone = makePart(hub, "PortalKeystone", Vector3.new(3.0, 4.0, 5.4), CFrame.new(portalPos + Vector3.new(0, 23.2, 0)), DARK_STONE, Enum.Material.Slate)
 	addMesh(keystone, Enum.MeshType.Wedge, Vector3.new(1.0, 1.0, 1.0))
 
-	-- 2 Carved Dragon-Head Corbel Brackets supporting the Arch
-	local corbelL = makePart(hub, "CorbelL", Vector3.new(2.4, 2.4, 4.8), CFrame.new(portalPos + Vector3.new(-8.2, 22.0, 0)), DARK_STONE, Enum.Material.Slate, false)
+	-- Carved Dragon-Head Corbel Brackets
+	local corbelL = makePart(hub, "CorbelL", Vector3.new(2.2, 2.2, 4.4), CFrame.new(portalPos + Vector3.new(-6.8, 20.2, 0)), DARK_STONE, Enum.Material.Slate, false)
 	addMesh(corbelL, Enum.MeshType.Head, Vector3.new(1.0, 1.0, 1.0))
-	local corbelR = makePart(hub, "CorbelR", Vector3.new(2.4, 2.4, 4.8), CFrame.new(portalPos + Vector3.new(8.2, 22.0, 0)), DARK_STONE, Enum.Material.Slate, false)
+	local corbelR = makePart(hub, "CorbelR", Vector3.new(2.2, 2.2, 4.4), CFrame.new(portalPos + Vector3.new(6.8, 20.2, 0)), DARK_STONE, Enum.Material.Slate, false)
 	addMesh(corbelR, Enum.MeshType.Head, Vector3.new(1.0, 1.0, 1.0))
 
 	-- Glowing Ancient Runic Glyphs carved along the pillars
-	local runeL = makePart(hub, "RuneLeft", Vector3.new(0.5, 14, 1.2), CFrame.new(portalPos + Vector3.new(-8.2, 13, 0)), PORTAL_COLOR, Enum.Material.Neon, false)
-	local runeR = makePart(hub, "RuneRight", Vector3.new(0.5, 14, 1.2), CFrame.new(portalPos + Vector3.new(8.2, 13, 0)), PORTAL_COLOR, Enum.Material.Neon, false)
+	makePart(hub, "RuneLeft", Vector3.new(0.5, 12, 1.0), CFrame.new(portalPos + Vector3.new(-6.8, 12, 0)), PORTAL_COLOR, Enum.Material.Neon, false)
+	makePart(hub, "RuneRight", Vector3.new(0.5, 12, 1.0), CFrame.new(portalPos + Vector3.new(6.8, 12, 0)), PORTAL_COLOR, Enum.Material.Neon, false)
 
-	-- The Active RockhidePortal Part (Target of ProximityPrompt)
+	-- Active RockhidePortal Part (Target of ProximityPrompt)
 	local existingPortal = workspace:FindFirstChild("RockhidePortal")
-	if existingPortal then
-		existingPortal:Destroy()
-	end
+	if existingPortal then existingPortal:Destroy() end
 
 	local portalCore = Instance.new("Part")
 	portalCore.Name = "RockhidePortal"
-	portalCore.Size = Vector3.new(16, 19, 1.6)
-	portalCore.CFrame = CFrame.new(portalPos + Vector3.new(0, 12, 0))
+	portalCore.Size = Vector3.new(13.5, 17, 1.5)
+	portalCore.CFrame = CFrame.new(portalPos + Vector3.new(0, 11, 0))
 	portalCore.Color = PORTAL_COLOR
 	portalCore.Material = Enum.Material.Neon
 	portalCore.Transparency = 0.35
@@ -888,7 +887,7 @@ function HubMapService.BuildHub(): Model
 	portalCore.Parent = workspace
 
 	-- Concentric Orbiting Celestial Rune Stone Rings
-	local pRing1 = makePart(hub, "PortalRing1", Vector3.new(18, 18, 0.4), CFrame.new(portalPos + Vector3.new(0, 12, 0)), GOLD_TRIM, Enum.Material.Neon, false)
+	local pRing1 = makePart(hub, "PortalRing1", Vector3.new(16, 16, 0.4), CFrame.new(portalPos + Vector3.new(0, 11, 0)), GOLD_TRIM, Enum.Material.Neon, false)
 	addMesh(pRing1, Enum.MeshType.Sphere, Vector3.new(1.0, 1.0, 0.08))
 	pRing1.Transparency = 0.4
 
@@ -900,7 +899,7 @@ function HubMapService.BuildHub(): Model
 		ColorSequenceKeypoint.new(1, Color3.fromRGB(170, 90, 255)),
 	})
 	particles.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 1.6),
+		NumberSequenceKeypoint.new(0, 1.5),
 		NumberSequenceKeypoint.new(1, 0.25),
 	})
 	particles.Transparency = NumberSequence.new({
@@ -908,28 +907,28 @@ function HubMapService.BuildHub(): Model
 		NumberSequenceKeypoint.new(1, 1.0),
 	})
 	particles.Lifetime = NumberRange.new(1.2, 2.2)
-	particles.Rate = 50
-	particles.Speed = NumberRange.new(3, 9)
+	particles.Rate = 45
+	particles.Speed = NumberRange.new(3, 8)
 	particles.SpreadAngle = Vector2.new(45, 45)
 	particles.Parent = portalCore
 
 	local portalLight = Instance.new("PointLight")
 	portalLight.Color = PORTAL_COLOR
-	portalLight.Brightness = 4.2
-	portalLight.Range = 38
+	portalLight.Brightness = 4.0
+	portalLight.Range = 36
 	portalLight.Shadows = true
 	portalLight.Parent = portalCore
 
 	-- Portal Nameplate / Banner
 	local portalBb = Instance.new("BillboardGui")
 	portalBb.Name = "PortalTitle"
-	portalBb.Size = UDim2.new(0, 260, 0, 54)
-	portalBb.StudsOffset = Vector3.new(0, 13, 0)
+	portalBb.Size = UDim2.new(0, 260, 0, 56)
+	portalBb.StudsOffset = Vector3.new(0, 12, 0)
 	portalBb.AlwaysOnTop = true
 	portalBb.Parent = portalCore
 
 	local pTitle = Instance.new("TextLabel")
-	pTitle.Size = UDim2.new(1, 0, 0.6, 0)
+	pTitle.Size = UDim2.new(1, 0, 0.58, 0)
 	pTitle.BackgroundTransparency = 1
 	pTitle.TextColor3 = Color3.fromRGB(180, 220, 255)
 	pTitle.Font = Enum.Font.GothamBlack
@@ -939,36 +938,69 @@ function HubMapService.BuildHub(): Model
 
 	local pSub = Instance.new("TextLabel")
 	pSub.Size = UDim2.new(1, 0, 0.38, 0)
-	pSub.Position = UDim2.new(0, 0, 0.62, 0)
+	pSub.Position = UDim2.new(0, 0, 0.60, 0)
 	pSub.BackgroundTransparency = 1
 	pSub.TextColor3 = Color3.fromRGB(240, 200, 100)
 	pSub.Font = Enum.Font.GothamBold
 	pSub.TextScaled = true
-	pSub.Text = "[Party Level 1-5 Dungeon]"
+	pSub.Text = "[Tier 1 | Level 1-5 Normal]"
 	pSub.Parent = portalBb
 
-	-- Flanking Braziers with blue mystic flames
-	makeBrazier(hub, portalPos + Vector3.new(-15, 2, 4), Color3.fromRGB(80, 150, 255))
-	makeBrazier(hub, portalPos + Vector3.new(15, 2, 4), Color3.fromRGB(80, 150, 255))
+	makeBrazier(hub, portalPos + Vector3.new(-12, 2, 4), Color3.fromRGB(80, 150, 255))
+	makeBrazier(hub, portalPos + Vector3.new(12, 2, 4), Color3.fromRGB(80, 150, 255))
 
-	-- Flanking Guardian Columns
-	makeColumn(hub, portalPos + Vector3.new(-16, 2, 8), 13, 1.8)
-	makeColumn(hub, portalPos + Vector3.new(16, 2, 8), 13, 1.8)
+	-- ── 3B. CENTRAL EXPEDITION WAYFINDER MONUMENT ─────────────────────────────
+	-- Positioned directly in the center between the twin portals (X = 0, Z = -58)
+	local wayfinderPos = Vector3.new(0, FLOOR_Y, -58)
+	makePart(hub, "WayfinderDais", Vector3.new(16, 1.5, 14), CFrame.new(wayfinderPos + Vector3.new(0, 0.75, 0)), DARK_STONE, Enum.Material.Slate)
+	makePart(hub, "WayfinderPlinth", Vector3.new(8, 0.8, 8), CFrame.new(wayfinderPos + Vector3.new(0, 1.9, 0)), STONE_COLOR, Enum.Material.Marble)
+	makeColumn(hub, wayfinderPos + Vector3.new(0, 2.3, 0), 16, 1.8, true)
 
-	-- ── 3B. TIER 2 SUNFORGED CITADEL PORTAL (SunforgedPortal) ───────────────
-	-- Grand solar archway on the East Avenue (Z = -58, X = 45)
-	local sunPortalPos = Vector3.new(48, FLOOR_Y, -58)
+	local wfPart = makePart(hub, "WayfinderSignPart", Vector3.new(12, 3.5, 0.6), CFrame.new(wayfinderPos + Vector3.new(0, 17, 0)), GOLD_TRIM, Enum.Material.Metal, false)
+	local wfBb = Instance.new("BillboardGui")
+	wfBb.Name = "WayfinderTitle"
+	wfBb.Size = UDim2.new(0, 360, 0, 75)
+	wfBb.StudsOffset = Vector3.new(0, 1.5, 0)
+	wfBb.AlwaysOnTop = true
+	wfBb.Parent = wfPart
 
-	-- Raised solar stone dais
-	makePart(hub, "SunPortalDais", Vector3.new(32, 2, 22), CFrame.new(sunPortalPos + Vector3.new(0, 1, 0)), DARK_STONE, Enum.Material.Cobblestone)
-	makePart(hub, "SunPortalSteps", Vector3.new(24, 1, 6), CFrame.new(sunPortalPos + Vector3.new(0, 0.5, 12)), GOLD_TRIM, Enum.Material.Metal)
+	local wfTitle = Instance.new("TextLabel")
+	wfTitle.Size = UDim2.new(1, 0, 0.5, 0)
+	wfTitle.BackgroundTransparency = 1
+	wfTitle.TextColor3 = Color3.fromRGB(255, 230, 130)
+	wfTitle.Font = Enum.Font.GothamBlack
+	wfTitle.TextScaled = true
+	wfTitle.Text = "⚔️ DUNGEON EXPEDITIONS ⚔️"
+	wfTitle.Parent = wfBb
+
+	local wfSub = Instance.new("TextLabel")
+	wfSub.Size = UDim2.new(1, 0, 0.44, 0)
+	wfSub.Position = UDim2.new(0, 0, 0.52, 0)
+	wfSub.BackgroundTransparency = 1
+	wfSub.TextColor3 = Color3.fromRGB(230, 235, 245)
+	wfSub.Font = Enum.Font.GothamBold
+	wfSub.TextScaled = true
+	wfSub.Text = "⬅ Tier 1: Rockhide (Lv. 1-5)  |  Tier 2: Sunforged (Lv. 5-30+) ➡"
+	wfSub.Parent = wfBb
+
+	-- ── 3C. TIER 2 SUNFORGED CITADEL PORTAL (SunforgedPortal) ───────────────
+	-- Positioned on the Northeast plaza (X = 28, Z = -58)
+	local sunPortalPos = Vector3.new(28, FLOOR_Y, -58)
+
+	-- Raised solar stone dais with gold nosing
+	makePart(hub, "SunPortalDais", Vector3.new(32, 2, 24), CFrame.new(sunPortalPos + Vector3.new(0, 1, 0)), DARK_STONE, Enum.Material.Cobblestone)
+	makePart(hub, "SunPortalSteps", Vector3.new(24, 1, 6), CFrame.new(sunPortalPos + Vector3.new(0, 0.5, 13)), GOLD_TRIM, Enum.Material.Metal)
 
 	-- Golden Fluted Portal Arch Columns
-	makeColumn(hub, sunPortalPos + Vector3.new(-7.5, 2, 0), 20, 2.4, true)
-	makeColumn(hub, sunPortalPos + Vector3.new(7.5, 2, 0), 20, 2.4, true)
+	makeColumn(hub, sunPortalPos + Vector3.new(-8.5, 2, 0), 22, 2.4, true)
+	makeColumn(hub, sunPortalPos + Vector3.new(8.5, 2, 0), 22, 2.4, true)
 
 	-- Golden Arch Head & Sunburst Keystone
-	makePart(hub, "SunArchLintel", Vector3.new(18, 3.5, 4.8), CFrame.new(sunPortalPos + Vector3.new(0, 22.5, 0)), GOLD_TRIM, Enum.Material.Metal)
+	makePart(hub, "SunArchLintel", Vector3.new(21.5, 3.5, 4.8), CFrame.new(sunPortalPos + Vector3.new(0, 22.0, 0)), GOLD_TRIM, Enum.Material.Metal)
+	makePart(hub, "SunArchUpper", Vector3.new(23.0, 1.2, 5.2), CFrame.new(sunPortalPos + Vector3.new(0, 24.2, 0)), Color3.fromRGB(255, 205, 75), Enum.Material.Metal)
+
+	local sunKeystone = makePart(hub, "SunKeystone", Vector3.new(3.0, 4.0, 5.4), CFrame.new(sunPortalPos + Vector3.new(0, 23.2, 0)), GOLD_TRIM, Enum.Material.Metal)
+	addMesh(sunKeystone, Enum.MeshType.Wedge, Vector3.new(1.0, 1.0, 1.0))
 
 	-- Active SunforgedPortal Part (Target of ProximityPrompt)
 	local existingSunPortal = workspace:FindFirstChild("SunforgedPortal")
@@ -976,7 +1008,7 @@ function HubMapService.BuildHub(): Model
 
 	local sunPortalCore = Instance.new("Part")
 	sunPortalCore.Name = "SunforgedPortal"
-	sunPortalCore.Size = Vector3.new(14, 18, 1.6)
+	sunPortalCore.Size = Vector3.new(13.5, 17, 1.5)
 	sunPortalCore.CFrame = CFrame.new(sunPortalPos + Vector3.new(0, 11, 0))
 	sunPortalCore.Color = Color3.fromRGB(255, 150, 40)
 	sunPortalCore.Material = Enum.Material.Neon
@@ -984,6 +1016,11 @@ function HubMapService.BuildHub(): Model
 	sunPortalCore.Anchored = true
 	sunPortalCore.CanCollide = false
 	sunPortalCore.Parent = workspace
+
+	-- Concentric Orbiting Golden Solar Rings
+	local sRing1 = makePart(hub, "SunPortalRing1", Vector3.new(16, 16, 0.4), CFrame.new(sunPortalPos + Vector3.new(0, 11, 0)), Color3.fromRGB(255, 215, 60), Enum.Material.Neon, false)
+	addMesh(sRing1, Enum.MeshType.Sphere, Vector3.new(1.0, 1.0, 0.08))
+	sRing1.Transparency = 0.35
 
 	-- Golden Solar Particle Vortex
 	local sunParticles = Instance.new("ParticleEmitter")
@@ -1008,8 +1045,8 @@ function HubMapService.BuildHub(): Model
 
 	local sunLight = Instance.new("PointLight")
 	sunLight.Color = Color3.fromRGB(255, 160, 40)
-	sunLight.Brightness = 4.0
-	sunLight.Range = 36
+	sunLight.Brightness = 4.2
+	sunLight.Range = 38
 	sunLight.Shadows = true
 	sunLight.Parent = sunPortalCore
 
@@ -1017,12 +1054,12 @@ function HubMapService.BuildHub(): Model
 	local sunBb = Instance.new("BillboardGui")
 	sunBb.Name = "SunPortalTitle"
 	sunBb.Size = UDim2.new(0, 280, 0, 56)
-	sunBb.StudsOffset = Vector3.new(0, 12.5, 0)
+	sunBb.StudsOffset = Vector3.new(0, 12, 0)
 	sunBb.AlwaysOnTop = true
 	sunBb.Parent = sunPortalCore
 
 	local sTitle = Instance.new("TextLabel")
-	sTitle.Size = UDim2.new(1, 0, 0.6, 0)
+	sTitle.Size = UDim2.new(1, 0, 0.58, 0)
 	sTitle.BackgroundTransparency = 1
 	sTitle.TextColor3 = Color3.fromRGB(255, 215, 110)
 	sTitle.Font = Enum.Font.GothamBlack
@@ -1032,12 +1069,12 @@ function HubMapService.BuildHub(): Model
 
 	local sSub = Instance.new("TextLabel")
 	sSub.Size = UDim2.new(1, 0, 0.38, 0)
-	sSub.Position = UDim2.new(0, 0, 0.62, 0)
+	sSub.Position = UDim2.new(0, 0, 0.60, 0)
 	sSub.BackgroundTransparency = 1
 	sSub.TextColor3 = Color3.fromRGB(255, 175, 60)
 	sSub.Font = Enum.Font.GothamBold
 	sSub.TextScaled = true
-	sSub.Text = "[Tier 2 Dungeon | Level 5-30+ Hardcore]"
+	sSub.Text = "[Tier 2 | Level 5-30+ Hardcore]"
 	sSub.Parent = sunBb
 
 	makeBrazier(hub, sunPortalPos + Vector3.new(-12, 2, 4), Color3.fromRGB(255, 130, 30))
