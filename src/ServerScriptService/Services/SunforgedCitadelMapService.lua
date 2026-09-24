@@ -136,6 +136,307 @@ local function makeGoldenPillar(parent: Instance, position: Vector3, height: num
 	makePart(parent, "PillarCap", Vector3.new(width + 1.2, 2.5, width + 1.2), CFrame.new(position + Vector3.new(0, height - 1.25, 0)), GOLD_ACCENT, Enum.Material.Metal)
 end
 
+-- ============================================================================
+-- 3D MESH ASSET DEFINITIONS & HIGH-FIDELITY DECORATION BUILDERS
+-- ============================================================================
+local MESH_ASSETS = {
+	GUARDIAN = {
+		name = "PortalGuardianStatue",
+		meshId = "rbxassetid://124679527409967",
+		textureId = "rbxassetid://134441413553055",
+		baseSize = Vector3.new(5, 11, 5),
+	},
+	SERAPH = {
+		name = "ShrineSeraphIdol",
+		meshId = "rbxassetid://111513548414082",
+		textureId = "rbxassetid://96129369000308",
+		baseSize = Vector3.new(6, 6, 2),
+	},
+	DRAGON = {
+		name = "FountainDragonStatue",
+		meshId = "rbxassetid://136069627854899",
+		textureId = "rbxassetid://139266328436174",
+		baseSize = Vector3.new(6, 10, 6),
+	},
+	CAPSTONE = {
+		name = "PortalArchCapstone",
+		meshId = "rbxassetid://75585422571738",
+		textureId = "rbxassetid://137556938497758",
+		baseSize = Vector3.new(3.84, 5, 3.83),
+	},
+	BANNER = {
+		name = "WatchtowerBanner",
+		meshId = "rbxassetid://78548585350116",
+		textureId = "rbxassetid://80368395271356",
+		baseSize = Vector3.new(2, 2.72, 0.4),
+	},
+	SHIELD = {
+		name = "ForgeDisplayShield",
+		meshId = "rbxassetid://109237508888055",
+		textureId = "rbxassetid://90345909167702",
+		baseSize = Vector3.new(1.4, 2.17, 0.6),
+	},
+	DOOR_LEFT = {
+		name = "BossVaultDoor_Left",
+		meshId = "rbxassetid://138323525682816",
+		textureId = "rbxassetid://106251618778890",
+		baseSize = Vector3.new(4.44, 5.34, 2.5),
+	},
+	DOOR_RIGHT = {
+		name = "BossVaultDoor_Right",
+		meshId = "rbxassetid://127394666403021",
+		textureId = "rbxassetid://77648884602587",
+		baseSize = Vector3.new(6.25, 11.31, 2.5),
+	},
+}
+
+local function spawnMeshAsset(parent: Instance, assetKey: string, cframe: CFrame, scaleFactor: number?, canCollide: boolean?): Instance?
+	local info = MESH_ASSETS[assetKey]
+	if not info then return nil end
+
+	local scale = scaleFactor or 1
+	local collide = (canCollide == true)
+	local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
+
+	-- Primary: Clone studio template if present
+	if assetsFolder then
+		local template = assetsFolder:FindFirstChild(info.name)
+		if template then
+			local clone = template:Clone()
+			if clone:IsA("Model") then
+				local geom = clone:FindFirstChildWhichIsA("MeshPart", true) or clone:FindFirstChildWhichIsA("BasePart", true)
+				if geom then
+					clone.PrimaryPart = geom
+					for _, bp in ipairs(clone:GetDescendants()) do
+						if bp:IsA("BasePart") then
+							bp.Anchored = true
+							bp.CanCollide = collide
+							bp.CastShadow = true
+						end
+					end
+					if scale ~= 1 then
+						clone:ScaleTo(scale)
+					end
+					clone:PivotTo(cframe)
+					clone.Parent = parent
+					return clone
+				end
+			elseif clone:IsA("BasePart") then
+				clone.Anchored = true
+				clone.CanCollide = collide
+				clone.CastShadow = true
+				if scale ~= 1 then
+					clone.Size = clone.Size * scale
+				end
+				clone.CFrame = cframe
+				clone.Parent = parent
+				return clone
+			end
+		end
+	end
+
+	-- Procedural SpecialMesh Part Fallback (zero dependency, always succeeds)
+	local part = Instance.new("Part")
+	part.Name = info.name
+	part.Size = info.baseSize * scale
+	part.CFrame = cframe
+	part.Anchored = true
+	part.CanCollide = collide
+	part.CastShadow = true
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
+
+	local sm = Instance.new("SpecialMesh")
+	sm.MeshType = Enum.MeshType.FileMesh
+	sm.MeshId = info.meshId
+	sm.TextureId = info.textureId
+	sm.Scale = Vector3.new(scale, scale, scale)
+	sm.Parent = part
+
+	part.Parent = parent
+	return part
+end
+
+local function spawnGuardianStatue(parent: Instance, pos: Vector3, rotY: number, scale: number?)
+	local s = scale or 1.25
+	local model = Instance.new("Model")
+	model.Name = "CitadelGuardianStatue"
+	model.Parent = parent
+
+	-- Tiered Marble & Gold Pedestal
+	local rotCF = CFrame.Angles(0, rotY, 0)
+	makePart(model, "PedestalBase", Vector3.new(7 * s, 2.5 * s, 7 * s), CFrame.new(pos + Vector3.new(0, 1.25 * s, 0)) * rotCF, MARBLE_WHITE, Enum.Material.Marble)
+	makePart(model, "PedestalTrim", Vector3.new(6.2 * s, 0.8 * s, 6.2 * s), CFrame.new(pos + Vector3.new(0, 2.9 * s, 0)) * rotCF, GOLD_DARK, Enum.Material.Metal)
+	local pedTop = makePart(model, "PedestalTop", Vector3.new(5.6 * s, 0.8 * s, 5.6 * s), CFrame.new(pos + Vector3.new(0, 3.7 * s, 0)) * rotCF, MARBLE_WHITE, Enum.Material.Marble)
+
+	local statueY = pos.Y + (4.1 * s) + (5.5 * s)
+	local statueCF = CFrame.new(pos.X, statueY, pos.Z) * rotCF
+	spawnMeshAsset(model, "GUARDIAN", statueCF, s, false)
+
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 215, 120)
+	light.Brightness = 1.6
+	light.Range = 22 * s
+	light.Parent = pedTop
+
+	return model
+end
+
+local function spawnSeraphIdol(parent: Instance, pos: Vector3, rotY: number, scale: number?)
+	local s = scale or 1.5
+	local model = Instance.new("Model")
+	model.Name = "CelestialSeraphIdol"
+	model.Parent = parent
+
+	local rotCF = CFrame.Angles(0, rotY, 0)
+	makePart(model, "PlinthBase", Vector3.new(4.5 * s, 2.8 * s, 4.5 * s), CFrame.new(pos + Vector3.new(0, 1.4 * s, 0)) * rotCF, GOLD_DARK, Enum.Material.Metal)
+	makePart(model, "PlinthShaft", Vector3.new(3.8 * s, 2 * s, 3.8 * s), CFrame.new(pos + Vector3.new(0, 3.8 * s, 0)) * rotCF, MARBLE_WHITE, Enum.Material.Marble)
+	local pedCap = makePart(model, "PlinthCap", Vector3.new(4.2 * s, 0.6 * s, 4.2 * s), CFrame.new(pos + Vector3.new(0, 5.1 * s, 0)) * rotCF, GOLD_ACCENT, Enum.Material.Metal)
+
+	local idolY = pos.Y + (5.4 * s) + (3.0 * s)
+	local idolCF = CFrame.new(pos.X, idolY, pos.Z) * rotCF
+	spawnMeshAsset(model, "SERAPH", idolCF, s, false)
+
+	local light = Instance.new("PointLight")
+	light.Color = CELESTIAL_BLUE
+	light.Brightness = 2.4
+	light.Range = 26 * s
+	light.Parent = pedCap
+
+	return model
+end
+
+local function spawnDragonStatue(parent: Instance, pos: Vector3, rotY: number, scale: number?)
+	local s = scale or 1.2
+	local model = Instance.new("Model")
+	model.Name = "SunforgedDragonStatue"
+	model.Parent = parent
+
+	local rotCF = CFrame.Angles(0, rotY, 0)
+	makePart(model, "DragonPlinthBase", Vector3.new(6.5 * s, 2 * s, 6.5 * s), CFrame.new(pos + Vector3.new(0, 1.0 * s, 0)) * rotCF, BRONZE_METAL, Enum.Material.Metal)
+	local pedTop = makePart(model, "DragonPlinthTop", Vector3.new(5.8 * s, 1 * s, 5.8 * s), CFrame.new(pos + Vector3.new(0, 2.5 * s, 0)) * rotCF, GOLD_DARK, Enum.Material.Metal)
+
+	local dragonY = pos.Y + (3.0 * s) + (5.0 * s)
+	local dragonCF = CFrame.new(pos.X, dragonY, pos.Z) * rotCF
+	spawnMeshAsset(model, "DRAGON", dragonCF, s, false)
+
+	local light = Instance.new("PointLight")
+	light.Color = SOLAR_ORANGE
+	light.Brightness = 2.2
+	light.Range = 24 * s
+	light.Parent = pedTop
+
+	return model
+end
+
+local function spawnArchCapstone(parent: Instance, pos: Vector3, rotY: number, scale: number?)
+	local s = scale or 1.3
+	local capCF = CFrame.new(pos) * CFrame.Angles(0, rotY, 0)
+	return spawnMeshAsset(parent, "CAPSTONE", capCF, s, false)
+end
+
+local function spawnWallBanner(parent: Instance, pos: Vector3, rotY: number, scale: number?)
+	local s = scale or 3.2
+	local bannerModel = Instance.new("Model")
+	bannerModel.Name = "CitadelWallBanner"
+	bannerModel.Parent = parent
+
+	local rotCF = CFrame.Angles(0, rotY, 0)
+	local rod = Instance.new("Part")
+	rod.Name = "BannerRod"
+	rod.Size = Vector3.new(3.6 * s, 0.4 * s, 0.4 * s)
+	rod.CFrame = CFrame.new(pos) * rotCF
+	rod.Color = GOLD_DARK
+	rod.Material = Enum.Material.Metal
+	rod.Anchored = true
+	rod.CanCollide = false
+	rod.Parent = bannerModel
+
+	local bannerY = pos.Y - (1.35 * s)
+	local bannerCF = CFrame.new(pos.X, bannerY, pos.Z) * rotCF
+	spawnMeshAsset(bannerModel, "BANNER", bannerCF, s, false)
+
+	return bannerModel
+end
+
+local function spawnHeraldicShield(parent: Instance, pos: Vector3, rotY: number, scale: number?)
+	local s = scale or 2.5
+	local shieldCF = CFrame.new(pos) * CFrame.Angles(0, rotY, 0)
+	return spawnMeshAsset(parent, "SHIELD", shieldCF, s, false)
+end
+
+local function spawnCelestialOrrery(parent: Instance, centerPos: Vector3)
+	local orrery = Instance.new("Model")
+	orrery.Name = "CelestialOrreryOfSol"
+	orrery.Parent = parent
+
+	-- Tiered Marble and Gold Dais
+	makePart(orrery, "OrreryDais_1", Vector3.new(22, 1.5, 22), CFrame.new(centerPos + Vector3.new(0, 0.75, 0)), GOLD_DARK, Enum.Material.Marble)
+	makePart(orrery, "OrreryDais_2", Vector3.new(17, 1.5, 17), CFrame.new(centerPos + Vector3.new(0, 2.25, 0)), MARBLE_WHITE, Enum.Material.Marble)
+	makePart(orrery, "OrreryDais_3", Vector3.new(13, 1.2, 13), CFrame.new(centerPos + Vector3.new(0, 3.6, 0)), GOLD_ACCENT, Enum.Material.Metal)
+
+	-- Spindle and Ring Base
+	makePart(orrery, "SpindleShaft", Vector3.new(3.5, 10, 3.5), CFrame.new(centerPos + Vector3.new(0, 8.5, 0)), GOLD_DARK, Enum.Material.Metal)
+
+	local coreY = centerPos.Y + 16
+	local core = Instance.new("Part")
+	core.Name = "SunstoneCore"
+	core.Shape = Enum.PartType.Ball
+	core.Size = Vector3.new(6.5, 6.5, 6.5)
+	core.CFrame = CFrame.new(centerPos.X, coreY, centerPos.Z)
+	core.Color = Color3.fromRGB(255, 205, 45)
+	core.Material = Enum.Material.Neon
+	core.Anchored = true
+	core.CanCollide = false
+	core.Parent = orrery
+
+	local coreLight = Instance.new("PointLight")
+	coreLight.Color = Color3.fromRGB(255, 190, 50)
+	coreLight.Brightness = 4.5
+	coreLight.Range = 50
+	coreLight.Shadows = true
+	coreLight.Parent = core
+
+	-- Concentric armillary gimbal rings
+	local ringAngles = {
+		Vector3.new(0, 0, 0),
+		Vector3.new(35, 25, 0),
+		Vector3.new(-35, 75, 0),
+		Vector3.new(65, -45, 0),
+	}
+	local ringRadii = { 11, 14, 17, 20 }
+
+	for i, radius in ipairs(ringRadii) do
+		local ringAngle = ringAngles[i]
+		local ringPart = Instance.new("Part")
+		ringPart.Name = "ArmillaryRing_" .. i
+		ringPart.Size = Vector3.new(radius * 2, 0.8, radius * 2)
+		ringPart.CFrame = CFrame.new(centerPos.X, coreY, centerPos.Z) * CFrame.Angles(math.rad(ringAngle.X), math.rad(ringAngle.Y), math.rad(ringAngle.Z))
+		ringPart.Color = (i % 2 == 0) and GOLD_ACCENT or GOLD_DARK
+		ringPart.Material = Enum.Material.Metal
+		ringPart.Anchored = true
+		ringPart.CanCollide = false
+		ringPart.Parent = orrery
+
+		local sm = Instance.new("SpecialMesh")
+		sm.MeshType = Enum.MeshType.Cylinder
+		sm.Scale = Vector3.new(0.3, 1, 1)
+		sm.Parent = ringPart
+	end
+
+	-- Orbital rotation animation
+	task.spawn(function()
+		local angle = 0
+		while orrery.Parent do
+			angle = (angle + 1) % 360
+			core.CFrame = CFrame.new(centerPos.X, coreY + math.sin(math.rad(angle * 2)) * 0.7, centerPos.Z) * CFrame.Angles(0, math.rad(angle), 0)
+			task.wait(0.04)
+		end
+	end)
+
+	return orrery
+end
+
 -- Constructs a physical, completely walkable staircase (slope < 22 degrees)
 local function makeStairs(parent: Instance, name: string, minX: number, maxX: number, startZ: number, endZ: number, startY: number, endY: number, numSteps: number)
 	local width = math.abs(maxX - minX)
@@ -210,6 +511,35 @@ local function createSunforgedDoorLeaf(parent: Instance, doorName: string, isLef
 	addDetail(Vector3.new(size.X * 0.5, size.Y * 0.5, 0.6), cframe * CFrame.new(0, 0, 1.6), Color3.fromRGB(255, 210, 80), Enum.Material.Neon)
 	addDetail(Vector3.new(size.X * 0.8, size.Y * 0.75, 0.4), cframe * CFrame.new(0, 0, -1.4), GOLD_ACCENT, Enum.Material.Metal)
 
+	-- 3D Mesh Vault Relief Overlay welded to the door leaf
+	local doorMeshKey = isLeft and "DOOR_LEFT" or "DOOR_RIGHT"
+	local meshPart = spawnMeshAsset(doorBase, doorMeshKey, cframe * CFrame.new(0, 0, 1.6), 1, false)
+	if meshPart then
+		if meshPart:IsA("Model") then
+			for _, bp in ipairs(meshPart:GetDescendants()) do
+				if bp:IsA("BasePart") then
+					bp.Anchored = false
+					bp.CanCollide = false
+					bp.Massless = true
+					local w = Instance.new("WeldConstraint")
+					w.Part0 = doorBase
+					w.Part1 = bp
+					w.Parent = doorBase
+				end
+			end
+		elseif meshPart:IsA("BasePart") then
+			meshPart.Anchored = false
+			meshPart.CanCollide = false
+			meshPart.Massless = true
+			meshPart.Size = Vector3.new(size.X * 0.85, size.Y * 0.95, 2)
+			meshPart.CFrame = cframe * CFrame.new(0, 0, 1.6)
+			local w = Instance.new("WeldConstraint")
+			w.Part0 = doorBase
+			w.Part1 = meshPart
+			w.Parent = doorBase
+		end
+	end
+
 	return doorBase
 end
 
@@ -230,6 +560,11 @@ local function setupCryptToArchivesShortcut(dungeon: Model, passagePos: Vector3)
 	makePart(model, "Arch_L", Vector3.new(3, WALL_HEIGHT, 4), CFrame.new(doorX - 7.5, doorY + WALL_HEIGHT/2, doorZ), GOLD_DARK, Enum.Material.Metal)
 	makePart(model, "Arch_R", Vector3.new(3, WALL_HEIGHT, 4), CFrame.new(doorX + 7.5, doorY + WALL_HEIGHT/2, doorZ), GOLD_DARK, Enum.Material.Metal)
 	makePart(model, "Arch_Top", Vector3.new(18, 4, 5), CFrame.new(doorX, doorY + WALL_HEIGHT - 2, doorZ), GOLD_ACCENT, Enum.Material.Metal)
+
+	-- 3D Mesh Arch Capstone & Heraldic Shields
+	spawnArchCapstone(model, Vector3.new(doorX, doorY + WALL_HEIGHT + 1, doorZ), 0, 1.4)
+	spawnHeraldicShield(model, Vector3.new(doorX - 7.5, doorY + 14, doorZ + 2.3), 0, 2.0)
+	spawnHeraldicShield(model, Vector3.new(doorX + 7.5, doorY + 14, doorZ + 2.3), 0, 2.0)
 
 	-- Double heavy bronze vault doors
 	local doorL = makePart(model, "VaultDoor_L", Vector3.new(6, WALL_HEIGHT - 4, 1.5), CFrame.new(doorX - 3, doorY + (WALL_HEIGHT - 4)/2, doorZ), BRONZE_METAL, Enum.Material.Metal)
@@ -315,6 +650,11 @@ local function setupTombsToCathedralShortcut(dungeon: Model, gatePos: Vector3)
 	makePart(model, "PortcullisArch_L", Vector3.new(3, WALL_HEIGHT, 4), CFrame.new(gateX - 7.5, gateY + WALL_HEIGHT/2, gateZ), GOLD_DARK, Enum.Material.Metal)
 	makePart(model, "PortcullisArch_R", Vector3.new(3, WALL_HEIGHT, 4), CFrame.new(gateX + 7.5, gateY + WALL_HEIGHT/2, gateZ), GOLD_DARK, Enum.Material.Metal)
 	makePart(model, "PortcullisArch_Top", Vector3.new(18, 4, 5), CFrame.new(gateX, gateY + WALL_HEIGHT - 2, gateZ), GOLD_ACCENT, Enum.Material.Metal)
+
+	-- 3D Mesh Arch Capstone & Heraldic Shields
+	spawnArchCapstone(model, Vector3.new(gateX, gateY + WALL_HEIGHT + 1, gateZ), 0, 1.4)
+	spawnHeraldicShield(model, Vector3.new(gateX - 7.5, gateY + 14, gateZ + 2.3), 0, 2.0)
+	spawnHeraldicShield(model, Vector3.new(gateX + 7.5, gateY + 14, gateZ + 2.3), 0, 2.0)
 
 	-- Heavy iron grate
 	local grate = makePart(model, "TranseptGrate", Vector3.new(12, WALL_HEIGHT - 4, 1.2), CFrame.new(gateX, gateY + (WALL_HEIGHT - 4)/2, gateZ), BRONZE_METAL, Enum.Material.Metal)
@@ -446,6 +786,23 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 	makeSolarBrazier(dungeon, Vector3.new(-36, FLOOR_Y, -1220), SOLAR_ORANGE)
 	makeSolarBrazier(dungeon, Vector3.new(36, FLOOR_Y, -1220), SOLAR_ORANGE)
 
+	-- 3D Mesh Details: Antechamber Sentinels, Seraphs, Banners & Crests
+	spawnGuardianStatue(dungeon, Vector3.new(-12, FLOOR_Y, -1320), 0, 1.35)
+	spawnGuardianStatue(dungeon, Vector3.new(12, FLOOR_Y, -1320), 0, 1.35)
+	spawnSeraphIdol(dungeon, Vector3.new(-38, FLOOR_Y, -1265), math.rad(45), 1.3)
+	spawnSeraphIdol(dungeon, Vector3.new(38, FLOOR_Y, -1265), math.rad(-45), 1.3)
+	spawnWallBanner(dungeon, Vector3.new(-48, FLOOR_Y + 16, -1310), math.rad(90), 3.2)
+	spawnWallBanner(dungeon, Vector3.new(-48, FLOOR_Y + 16, -1250), math.rad(90), 3.2)
+	spawnWallBanner(dungeon, Vector3.new(48, FLOOR_Y + 16, -1310), math.rad(-90), 3.2)
+	spawnWallBanner(dungeon, Vector3.new(48, FLOOR_Y + 16, -1250), math.rad(-90), 3.2)
+	spawnHeraldicShield(dungeon, Vector3.new(-24, FLOOR_Y + 12, -1317), 0, 2.4)
+	spawnHeraldicShield(dungeon, Vector3.new(24, FLOOR_Y + 12, -1317), 0, 2.4)
+	spawnHeraldicShield(dungeon, Vector3.new(-24, FLOOR_Y + 12, -1247), 0, 2.4)
+	spawnHeraldicShield(dungeon, Vector3.new(24, FLOOR_Y + 12, -1247), 0, 2.4)
+	spawnArchCapstone(dungeon, Vector3.new(-25, FLOOR_Y + 20, -1200), 0, 1.4)
+	spawnArchCapstone(dungeon, Vector3.new(0, FLOOR_Y + 22, -1200), 0, 1.8)
+	spawnArchCapstone(dungeon, Vector3.new(25, FLOOR_Y + 20, -1200), 0, 1.4)
+
 	-- ═══════════════════════════════════════════════════════════════════════════
 	-- ZONE 2: THE 3-WING GRAND SOLAR LABYRINTH & CATACOMBS (Z = -1200 to -800, X = -120 to 120)
 	-- Vast interconnected maze: West Crypts, Central Avenue, East Sunken Tombs
@@ -497,6 +854,16 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 	makeSolarBrazier(dungeon, Vector3.new(85, FLOOR_Y, -1100), SOLAR_ORANGE)
 	makeSolarBrazier(dungeon, Vector3.new(85, FLOOR_Y, -900), SOLAR_ORANGE)
 
+	-- 3D Mesh Details: Labyrinth Guardians, Dragon Idols & Banners
+	spawnDragonStatue(dungeon, Vector3.new(-45, FLOOR_Y, -960), math.rad(-90), 1.3)
+	spawnWallBanner(dungeon, Vector3.new(-118, FLOOR_Y + 14, -1100), math.rad(90), 2.8)
+	spawnWallBanner(dungeon, Vector3.new(-118, FLOOR_Y + 14, -900), math.rad(90), 2.8)
+	spawnGuardianStatue(dungeon, Vector3.new(-22, FLOOR_Y, -1030), math.rad(45), 1.25)
+	spawnGuardianStatue(dungeon, Vector3.new(22, FLOOR_Y, -1030), math.rad(-45), 1.25)
+	spawnDragonStatue(dungeon, Vector3.new(45, FLOOR_Y, -960), math.rad(90), 1.3)
+	spawnWallBanner(dungeon, Vector3.new(118, FLOOR_Y + 14, -1100), math.rad(-90), 2.8)
+	spawnWallBanner(dungeon, Vector3.new(118, FLOOR_Y + 14, -900), math.rad(-90), 2.8)
+
 	-- ═══════════════════════════════════════════════════════════════════════════
 	-- SHORTCUT DOOR 1: Crypt Vault Door (West Crypts to Grand Archives)
 	-- Cross-wing portal at X = -80, Z = -800
@@ -512,7 +879,6 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 
 	-- North Wall separating Labyrinth and Archives (Openings at X[-87, -73] for Shortcut 1, Center X[-14, 14], East X[73, 87] for Shortcut 2 corridor)
 	makeWallX(dungeon, "Archives_North_W1", -100, -88, -800, 4)
-	-- X[-88, -72] is Shortcut 1 portal frame
 	makeWallX(dungeon, "Archives_North_W2", -72, -14, -800, 4)
 	makeWallX(dungeon, "Archives_North_Lintel_C", -14, 14, -800, 4, 20, 32) -- Main entrance from Center Avenue
 	makeWallX(dungeon, "Archives_North_E1", 14, 72, -800, 4)
@@ -525,7 +891,6 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 	makeWallX(dungeon, "Archives_South_W", -100, -20, -550, 4, 0, 32)
 	makeWallX(dungeon, "Archives_South_Lintel", -20, 20, -550, 4, 22, 32)
 	makeWallX(dungeon, "Archives_South_E", 20, 62, -550, 4, 0, 32)
-	-- Opening at X[62, 78] for Shortcut 2 Portcullis
 	makeWallX(dungeon, "Archives_South_E2", 78, 100, -550, 4, 0, 32)
 
 	-- Grand Archives Colonnade Rows & Statuary
@@ -534,9 +899,24 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 		makeGoldenPillar(dungeon, Vector3.new(45, FLOOR_Y, z), 32, 5)
 		makeSolarBrazier(dungeon, Vector3.new(-45, FLOOR_Y, z + 20), SOLAR_ORANGE)
 		makeSolarBrazier(dungeon, Vector3.new(45, FLOOR_Y, z + 20), SOLAR_ORANGE)
+		spawnHeraldicShield(dungeon, Vector3.new(-45, FLOOR_Y + 12, z + 2.6), 0, 2.2)
+		spawnHeraldicShield(dungeon, Vector3.new(45, FLOOR_Y + 12, z + 2.6), 0, 2.2)
 	end
 	makeGoldenPillar(dungeon, Vector3.new(0, FLOOR_Y, -675), 32, 7) -- Central celestial pillar
 	makeSolarBrazier(dungeon, Vector3.new(0, FLOOR_Y, -650), CELESTIAL_BLUE)
+
+	-- 3D Mesh Details: Floating Celestial Orrery, 4 Seraphs, Wall Banners & Arch Capstones
+	spawnCelestialOrrery(dungeon, Vector3.new(0, FLOOR_Y, -675))
+	spawnSeraphIdol(dungeon, Vector3.new(-25, FLOOR_Y, -700), math.rad(45), 1.3)
+	spawnSeraphIdol(dungeon, Vector3.new(25, FLOOR_Y, -700), math.rad(-45), 1.3)
+	spawnSeraphIdol(dungeon, Vector3.new(-25, FLOOR_Y, -650), math.rad(135), 1.3)
+	spawnSeraphIdol(dungeon, Vector3.new(25, FLOOR_Y, -650), math.rad(-135), 1.3)
+	spawnWallBanner(dungeon, Vector3.new(-98, FLOOR_Y + 18, -750), math.rad(90), 3.2)
+	spawnWallBanner(dungeon, Vector3.new(-98, FLOOR_Y + 18, -650), math.rad(90), 3.2)
+	spawnWallBanner(dungeon, Vector3.new(98, FLOOR_Y + 18, -750), math.rad(-90), 3.2)
+	spawnWallBanner(dungeon, Vector3.new(98, FLOOR_Y + 18, -650), math.rad(-90), 3.2)
+	spawnArchCapstone(dungeon, Vector3.new(0, FLOOR_Y + 22, -800), 0, 1.8)
+	spawnArchCapstone(dungeon, Vector3.new(0, FLOOR_Y + 24, -550), 0, 1.8)
 
 	-- ═══════════════════════════════════════════════════════════════════════════
 	-- SHORTCUT DOOR 2: Transept Portcullis (East Sunken Tombs to Grand Cathedral)
@@ -571,7 +951,19 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 		makeGoldenPillar(dungeon, Vector3.new(32, FLOOR_Y, z), 36, 5)
 		makeSolarBrazier(dungeon, Vector3.new(-24, FLOOR_Y, z), SOLAR_ORANGE)
 		makeSolarBrazier(dungeon, Vector3.new(24, FLOOR_Y, z), SOLAR_ORANGE)
+		spawnWallBanner(dungeon, Vector3.new(-68, FLOOR_Y + 20, z), math.rad(90), 3.4)
+		spawnWallBanner(dungeon, Vector3.new(68, FLOOR_Y + 20, z), math.rad(-90), 3.4)
+		spawnHeraldicShield(dungeon, Vector3.new(-32, FLOOR_Y + 14, z + 2.6), 0, 2.4)
+		spawnHeraldicShield(dungeon, Vector3.new(32, FLOOR_Y + 14, z + 2.6), 0, 2.4)
 	end
+
+	-- 3D Mesh Details: High Altar Dais, Central 2.0x Seraph, Twin Dragons & Grand Portal Capstone
+	makeFloor(dungeon, "CathedralAltar_Dais1", -15, 15, -315, -295, FLOOR_Y + 1)
+	makeFloor(dungeon, "CathedralAltar_Dais2", -10, 10, -313, -297, FLOOR_Y + 2)
+	spawnSeraphIdol(dungeon, Vector3.new(0, FLOOR_Y + 2, -305), 0, 2.0)
+	spawnDragonStatue(dungeon, Vector3.new(-16, FLOOR_Y + 1, -305), math.rad(45), 1.3)
+	spawnDragonStatue(dungeon, Vector3.new(16, FLOOR_Y + 1, -305), math.rad(-45), 1.3)
+	spawnArchCapstone(dungeon, Vector3.new(0, FLOOR_Y + 26, -280), 0, 2.0)
 
 	-- ═══════════════════════════════════════════════════════════════════════════
 	-- ZONE 5: THE GRAND STEPPED COLONNADE (Z = -280 to -100, rising from Y = 1 to Y = 48)
@@ -603,6 +995,20 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 	makeSolarBrazier(dungeon, Vector3.new(-12, 44, -120), SOLAR_ORANGE)
 	makeSolarBrazier(dungeon, Vector3.new(12, 44, -120), SOLAR_ORANGE)
 
+	-- 3D Mesh Details: Sentinel Statues & Shields stationed along the climb
+	spawnGuardianStatue(dungeon, Vector3.new(-12, 12, -240), math.rad(90), 1.25)
+	spawnGuardianStatue(dungeon, Vector3.new(12, 12, -240), math.rad(-90), 1.25)
+	spawnGuardianStatue(dungeon, Vector3.new(-12, 28, -180), math.rad(90), 1.25)
+	spawnGuardianStatue(dungeon, Vector3.new(12, 28, -180), math.rad(-90), 1.25)
+	spawnGuardianStatue(dungeon, Vector3.new(-12, 44, -120), math.rad(90), 1.25)
+	spawnGuardianStatue(dungeon, Vector3.new(12, 44, -120), math.rad(-90), 1.25)
+	spawnHeraldicShield(dungeon, Vector3.new(stairMinX + 2.1, 12 + 8, -240), math.rad(90), 2.2)
+	spawnHeraldicShield(dungeon, Vector3.new(stairMaxX - 2.1, 12 + 8, -240), math.rad(-90), 2.2)
+	spawnHeraldicShield(dungeon, Vector3.new(stairMinX + 2.1, 28 + 8, -180), math.rad(90), 2.2)
+	spawnHeraldicShield(dungeon, Vector3.new(stairMaxX - 2.1, 28 + 8, -180), math.rad(-90), 2.2)
+	spawnHeraldicShield(dungeon, Vector3.new(stairMinX + 2.1, 44 + 8, -120), math.rad(90), 2.2)
+	spawnHeraldicShield(dungeon, Vector3.new(stairMaxX - 2.1, 44 + 8, -120), math.rad(-90), 2.2)
+
 	-- ═══════════════════════════════════════════════════════════════════════════
 	-- ZONE 6: SPIRE COURTYARD & PRE-BOSS GATE SANCTUM (Z = -100 to -50, X = -60 to 60, Y = 48)
 	-- Grand high-elevation terrace under the sky leading to the boss gate
@@ -626,6 +1032,15 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 	makeSolarBrazier(dungeon, Vector3.new(-35, 48, -75), CELESTIAL_BLUE)
 	makeSolarBrazier(dungeon, Vector3.new(35, 48, -75), CELESTIAL_BLUE)
 
+	-- 3D Mesh Details: Twin Giant Colossi, Seraph Viewpoints & Arch Capstone
+	spawnGuardianStatue(dungeon, Vector3.new(-24, 48, -58), math.rad(30), 1.5)
+	spawnGuardianStatue(dungeon, Vector3.new(24, 48, -58), math.rad(-30), 1.5)
+	spawnSeraphIdol(dungeon, Vector3.new(-38, 48, -75), math.rad(90), 1.5)
+	spawnSeraphIdol(dungeon, Vector3.new(38, 48, -75), math.rad(-90), 1.5)
+	spawnArchCapstone(dungeon, Vector3.new(0, 48 + 24, -100), 0, 1.8)
+	spawnWallBanner(dungeon, Vector3.new(-58, 48 + 16, -75), math.rad(90), 3.2)
+	spawnWallBanner(dungeon, Vector3.new(58, 48 + 16, -75), math.rad(-90), 3.2)
+
 	-- ═══════════════════════════════════════════════════════════════════════════
 	-- ZONE 7: THE SOLAR SANCTUM GATE (Z = -50, at Y = 48)
 	-- Massive sealed double disc gate leading to Solarius's Solar Throne
@@ -642,6 +1057,11 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 	makePart(gateModel, "GatePost_L", Vector3.new(5, 26, 5), CFrame.new(-18, gateY + 13, gateZ), GOLD_DARK, Enum.Material.Metal)
 	makePart(gateModel, "GatePost_R", Vector3.new(5, 26, 5), CFrame.new(18, gateY + 13, gateZ), GOLD_DARK, Enum.Material.Metal)
 	makePart(gateModel, "GateArch_Top", Vector3.new(40, 5, 6), CFrame.new(0, gateY + 23, gateZ), GOLD_ACCENT, Enum.Material.Metal)
+
+	-- 3D Mesh Arch Capstone & Heraldic Shields
+	spawnArchCapstone(gateModel, Vector3.new(0, gateY + 26, gateZ), 0, 2.2)
+	spawnHeraldicShield(gateModel, Vector3.new(-18, gateY + 16, gateZ - 2.6), 0, 2.5)
+	spawnHeraldicShield(gateModel, Vector3.new(18, gateY + 16, gateZ - 2.6), 0, 2.5)
 
 	-- Left and Right radiant golden vault doors
 	doorLeft = createSunforgedDoorLeaf(gateModel, "Door_Left", true,
@@ -763,7 +1183,7 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 	makeWallX(dungeon, "Arena_South_L", -75, -18, -50, 5, 0, arenaHeight, 48)
 	makeWallX(dungeon, "Arena_South_R", 18, 75, -50, 5, 0, arenaHeight, 48)
 
-	-- Ring of 8 Colossal Sun Pillars
+	-- Ring of 8 Colossal Sun Pillars with Heraldic Shields facing inward
 	local pillarRadius = 55
 	for angle = 0, 315, 45 do
 		local rad = math.rad(angle)
@@ -772,8 +1192,18 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 		if not (math.abs(px) < 12 and pz < -20) then
 			makeGoldenPillar(dungeon, Vector3.new(px, 48, pz), arenaHeight, 6.5)
 			makeSolarBrazier(dungeon, Vector3.new(px * 0.85, 48, pz * 0.85), SOLAR_ORANGE)
+			local lookAngle = math.atan2(-px, 40 - pz)
+			local shieldPos = Vector3.new(px * 0.94, 48 + 14, pz * 0.94)
+			spawnHeraldicShield(dungeon, shieldPos, lookAngle, 2.5)
 		end
 	end
+
+	-- 3D Mesh Details: High Solar Dais, Throne Seraph & Twin Throne Dragons
+	makeFloor(dungeon, "SolarThrone_Dais1", -20, 20, 120, 138, 49.5)
+	makeFloor(dungeon, "SolarThrone_Dais2", -14, 14, 124, 138, 51)
+	spawnSeraphIdol(dungeon, Vector3.new(0, 51, 134), math.rad(180), 2.2)
+	spawnDragonStatue(dungeon, Vector3.new(-24, 48, 124), math.rad(150), 1.4)
+	spawnDragonStatue(dungeon, Vector3.new(24, 48, 124), math.rad(-150), 1.4)
 
 	dungeon.Parent = workspace
 	return dungeon
