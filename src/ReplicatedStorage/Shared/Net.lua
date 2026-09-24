@@ -45,6 +45,12 @@ local REMOTE_NAMES = {
 	"CraftingResult",         -- server -> client: {success, message, storedEquipment, craftingMaterials}
 	"OpenCraftingUI",         -- server -> client: triggers crafting panel (fired from ProximityPrompt)
 	"TeleportClient",         -- server -> client: {targetCFrame} -- instantly syncs client character transform
+	"RequestBuyPotion",       -- client -> server: {itemId} -- request to purchase a potion
+	"ShopResult",             -- server -> client: {success, message, newConsumables}
+	"RequestUsePotion",       -- client -> server: {itemId} -- request to drink an owned potion
+	"PotionUseResult",        -- server -> client: {success, message, newConsumables}
+	"RequestConsumablesSync", -- client -> server: () -- ask for current owned potion counts (fired once on HUD/Shop UI init)
+	"ConsumablesSynced",      -- server -> client: {consumables} -- reply to RequestConsumablesSync
 }
 
 
