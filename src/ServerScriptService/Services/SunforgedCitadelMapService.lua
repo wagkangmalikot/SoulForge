@@ -924,11 +924,11 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 	makeWallZ(dungeon, "Colonnade_WestWall", stairMinX, -280, -100, 4, 0, 80)
 	makeWallZ(dungeon, "Colonnade_EastWall", stairMaxX, -280, -100, 4, 0, 80)
 
-	-- High vaulted sloped ceiling over Grand Stepped Colonnade
+	-- High vaulted sloped ceiling over Grand Stepped Colonnade (slopes upwards to give 30-stud clearance all the way to Y=48)
 	local colCeilingAngle = math.atan(47 / 180) -- gentle ~14.6 degrees
 	local colCeilingLen = math.sqrt(180^2 + 47^2) + 6
 	local colCeiling = makePart(dungeon, "Colonnade_Ceiling", Vector3.new(stairWidth + 8, 3, colCeilingLen),
-		CFrame.new(0, 56, -190) * CFrame.Angles(colCeilingAngle, 0, 0), MARBLE_WHITE, Enum.Material.Marble)
+		CFrame.new(0, 56, -190) * CFrame.Angles(-colCeilingAngle, 0, 0), MARBLE_WHITE, Enum.Material.Marble)
 
 	-- 45 gentle steps flush with Cathedral floor: starts at Z = -280, startY = FLOOR_Y+1 (=2) matches Cathedral top surface
 	makeStairs(dungeon, "Colonnade_Ascent", stairMinX, stairMaxX, -280, -100, FLOOR_Y + 1, 49, 45)
@@ -1115,6 +1115,25 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 		end
 	end)
 
+	local function tryTriggerOpenGate(hit: Instance)
+		if isGateUnlocked and not isGateOpen then
+			local char = hit and hit.Parent
+			local player = char and Players:GetPlayerFromCharacter(char)
+			if player then
+				if onGateOpenRequestedCallback then
+					onGateOpenRequestedCallback(player)
+				else
+					SunforgedCitadelMapService.OpenBossGate()
+				end
+			end
+		end
+	end
+
+	barrier.Touched:Connect(tryTriggerOpenGate)
+	promptPart.Touched:Connect(tryTriggerOpenGate)
+	doorLeft.Touched:Connect(tryTriggerOpenGate)
+	doorRight.Touched:Connect(tryTriggerOpenGate)
+
 	-- ═══════════════════════════════════════════════════════════════════════════
 	-- ZONE 8: THE SOLAR THRONE ARENA (Z = -50 to 140, X = -75 to 75 at Y = 48)
 	-- Colossal celestial open-air arena under desert sun
@@ -1270,9 +1289,9 @@ function SunforgedCitadelMapService.Cleanup()
 	gateTitleLabel = nil
 	isGateUnlocked = false
 	isGateOpen = false
-	onGateOpenedCallback = nil
-	shortcuts.shortcut_crypt_vault.isOpen = false
-	shortcuts.shortcut_transept_portcullis.isOpen = false
+	shortcuts.master_shortcut.isOpen = false
+	shortcuts.master_shortcut.gatePart = nil
+	shortcuts.master_shortcut.prompt = nil
 end
 
 return SunforgedCitadelMapService

@@ -617,6 +617,25 @@ function DungeonMapService.BuildDungeon(): Model
 		end
 	end)
 
+	local function tryTriggerOpenGate(hit: Instance)
+		if isGateUnlocked and not isGateOpen then
+			local char = hit and hit.Parent
+			local player = char and Players:GetPlayerFromCharacter(char)
+			if player then
+				if onGateOpenRequestedCallback then
+					onGateOpenRequestedCallback(player)
+				else
+					DungeonMapService.OpenBossGate()
+				end
+			end
+		end
+	end
+
+	barrier.Touched:Connect(tryTriggerOpenGate)
+	promptPart.Touched:Connect(tryTriggerOpenGate)
+	doorLeft.Touched:Connect(tryTriggerOpenGate)
+	doorRight.Touched:Connect(tryTriggerOpenGate)
+
 	-- ═══════════════════════════════════════════════════════════════════════════
 	-- ZONE 7: THE GRAND BOSS COLOSSEUM (Z = -25 to 105, X = -60 to 60)
 	-- ═══════════════════════════════════════════════════════════════════════════

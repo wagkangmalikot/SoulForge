@@ -1040,6 +1040,7 @@ function HUDController.Start()
 			return
 		end
 		isBossGuideActive = true
+		local hasRequestedBossGateOpen = false
 
 		local targetPos = getBossGateTarget()
 
@@ -1316,6 +1317,14 @@ function HUDController.Start()
 			local diffX = currentTarget.X - playerPos.X
 			local diffZ = currentTarget.Z - playerPos.Z
 			local horizontalDist = math.sqrt(diffX * diffX + diffZ * diffZ)
+
+			-- Auto-request boss gate open from client when player approaches the unlocked gate
+			if horizontalDist < 20 and not hasRequestedBossGateOpen then
+				hasRequestedBossGateOpen = true
+				pcall(function()
+					Net.Get("RequestOpenBossGate"):FireServer()
+				end)
+			end
 
 			local dirUnit = horizontalDist > 0.1 and Vector3.new(diffX / horizontalDist, 0, diffZ / horizontalDist) or Vector3.new(0, 0, -1)
 
