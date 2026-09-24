@@ -121,7 +121,6 @@ local function applyDotTicks(enemy, player: Player, tickDamage: number, tickCoun
 end
 
 
-
 local function isOnCooldown(userId: number, skillId: string, cooldown: number): boolean
 	local perPlayer = lastCastAt[userId]
 	if not perPlayer then
