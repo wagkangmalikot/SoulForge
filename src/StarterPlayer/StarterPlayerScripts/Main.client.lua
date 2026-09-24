@@ -26,6 +26,7 @@ local controllers = {
 	{"SkillTreeUIController", script.Parent.Controllers.SkillTreeUIController},
 	{"CraftingUIController", script.Parent.Controllers.CraftingUIController},
 	{"InventoryUIController", script.Parent.Controllers.InventoryUIController},
+	{"ShopUIController", script.Parent.Controllers.ShopUIController},
 }
 
 for _, entry in controllers do

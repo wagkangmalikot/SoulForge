@@ -49,6 +49,29 @@ local slotCdLabels: {[number]: TextLabel} = {}
 local slotDimOverlays: {[number]: Frame} = {}
 local slotStrokes: {[number]: UIStroke} = {}
 
+-- Potion quick-use slot (separate from the TOTAL_SLOTS skill-slot loop --
+-- it's keyed to owned Consumables, not equippedSkills).
+local POTION_SLOT_OFFSET = Vector2.new(82, 0) -- 3:00 position, mirrors slot 1's 9:00 across the Attack button
+local POTION_ORDER_HIGHEST_FIRST = {"GreaterHealthPotion", "HealthPotion", "MinorHealthPotion"}
+local cachedConsumables: {[string]: number} = {}
+local potionSlotFrame: Frame? = nil
+local potionIconLabel: TextLabel? = nil
+local potionCountLabel: TextLabel? = nil
+local potionCdLabel: TextLabel? = nil
+local potionDimOverlay: Frame? = nil
+local potionCooldownEnd = 0
+local POTION_USE_COOLDOWN = 12 -- seconds; must match ShopService.lua's POTION_USE_COOLDOWN
+
+--- Returns the id of the highest-tier owned potion, or nil if none are owned.
+local function getHighestTierOwnedPotion(): string?
+	for _, itemId in POTION_ORDER_HIGHEST_FIRST do
+		if (cachedConsumables[itemId] or 0) > 0 then
+			return itemId
+		end
+	end
+	return nil
+end
+
 local normalAttackCooldownEnd = 0
 local attackDimOverlay: Frame? = nil
 local attackCdLabel: TextLabel? = nil
@@ -1852,12 +1875,151 @@ function HUDController.Start()
 		end)
 	end
 
+	-- ── Potion Quick-Use Slot (5th slot, keyed to owned Consumables) ─────────
+	do
+		local frame = Instance.new("Frame")
+		frame.Name = "PotionSlot"
+		frame.AnchorPoint = Vector2.new(0.5, 0.5)
+		frame.Size = UDim2.new(0, SKILL_BUTTON_SIZE, 0, SKILL_BUTTON_SIZE)
+		frame.Position = UDim2.new(0, ATTACK_POS_X + POTION_SLOT_OFFSET.X, 0, ATTACK_POS_Y + POTION_SLOT_OFFSET.Y)
+		frame.BackgroundColor3 = Color3.fromRGB(24, 28, 38)
+		frame.BorderSizePixel = 0
+		frame.ClipsDescendants = true
+		frame.Parent = bottomRightContainer
+		potionSlotFrame = frame
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 8)
+		corner.Parent = frame
+
+		local slotGrad = Instance.new("UIGradient")
+		slotGrad.Rotation = 45
+		slotGrad.Color = ColorSequence.new(Color3.fromRGB(34, 40, 54), Color3.fromRGB(16, 20, 28))
+		slotGrad.Parent = frame
+
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = Color3.fromRGB(220, 90, 90)
+		stroke.Thickness = 1.8
+		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		stroke.Parent = frame
+
+		local iconLabel = Instance.new("TextLabel")
+		iconLabel.Size = UDim2.new(1, 0, 0.52, 0)
+		iconLabel.Position = UDim2.new(0, 0, 0.08, 0)
+		iconLabel.BackgroundTransparency = 1
+		iconLabel.Font = Enum.Font.GothamBold
+		iconLabel.TextStrokeColor3 = Color3.fromRGB(12, 14, 20)
+		iconLabel.TextStrokeTransparency = 0.35
+		iconLabel.Text = "🧪"
+		iconLabel.TextScaled = true
+		iconLabel.ZIndex = 2
+		iconLabel.Parent = frame
+		potionIconLabel = iconLabel
+
+		-- Owned-count badge (bottom-right corner, like the hotkey badge but for a number)
+		local countBadge = Instance.new("Frame")
+		countBadge.Size = UDim2.new(0, 20, 0, 18)
+		countBadge.Position = UDim2.new(1, -22, 1, -20)
+		countBadge.BackgroundColor3 = Color3.fromRGB(10, 12, 16)
+		countBadge.BackgroundTransparency = 0.2
+		countBadge.BorderSizePixel = 0
+		countBadge.ZIndex = 4
+		countBadge.Parent = frame
+		local countCorner = Instance.new("UICorner")
+		countCorner.CornerRadius = UDim.new(0, 4)
+		countCorner.Parent = countBadge
+		local countLabel = Instance.new("TextLabel")
+		countLabel.Size = UDim2.new(1, 0, 1, 0)
+		countLabel.BackgroundTransparency = 1
+		countLabel.Font = Enum.Font.GothamBold
+		countLabel.TextSize = 12
+		countLabel.TextColor3 = Color3.fromRGB(255, 220, 220)
+		countLabel.Text = "0"
+		countLabel.ZIndex = 5
+		countLabel.Parent = countBadge
+		potionCountLabel = countLabel
+
+		local cdLabel = Instance.new("TextLabel")
+		cdLabel.Name = "CooldownLabel"
+		cdLabel.Size = UDim2.new(1, 0, 0.50, 0)
+		cdLabel.Position = UDim2.new(0, 0, 0.22, 0)
+		cdLabel.BackgroundTransparency = 1
+		cdLabel.TextColor3 = Color3.fromRGB(255, 225, 60)
+		cdLabel.TextStrokeColor3 = Color3.fromRGB(10, 10, 15)
+		cdLabel.TextStrokeTransparency = 0.2
+		cdLabel.Font = Enum.Font.GothamBlack
+		cdLabel.TextScaled = true
+		cdLabel.Text = ""
+		cdLabel.ZIndex = 6
+		cdLabel.Parent = frame
+		potionCdLabel = cdLabel
+
+		local dimOverlay = Instance.new("Frame")
+		dimOverlay.Name = "DimOverlay"
+		dimOverlay.Size = UDim2.new(1, 0, 1, 0)
+		dimOverlay.BackgroundColor3 = Color3.fromRGB(10, 12, 16)
+		dimOverlay.BackgroundTransparency = 1
+		dimOverlay.ZIndex = 5
+		dimOverlay.Parent = frame
+		potionDimOverlay = dimOverlay
+		local dimCorner = Instance.new("UICorner")
+		dimCorner.CornerRadius = UDim.new(0, 8)
+		dimCorner.Parent = dimOverlay
+
+		local button = Instance.new("TextButton")
+		button.Name = "HitArea"
+		button.Size = UDim2.new(1, 0, 1, 0)
+		button.BackgroundTransparency = 1
+		button.Text = ""
+		button.ZIndex = 7
+		button.Parent = frame
+
+		button.Activated:Connect(function()
+			if os.clock() < potionCooldownEnd then
+				return -- On cooldown: ignore click completely
+			end
+			local itemId = getHighestTierOwnedPotion()
+			if not itemId then
+				return -- Nothing owned: nothing to use
+			end
+			potionCooldownEnd = os.clock() + POTION_USE_COOLDOWN
+			Net.Get("RequestUsePotion"):FireServer(itemId)
+		end)
+	end
+
 	updateSkillButtons()
 
 	Net.Get("SkillDataChanged").OnClientEvent:Connect(function(points, unlocked, equipped)
 		equippedSkills = equipped or {"Taunt"}
 		updateSkillButtons()
 	end)
+
+	Net.Get("ConsumablesSynced").OnClientEvent:Connect(function(consumables: {[string]: number})
+		cachedConsumables = consumables or {}
+	end)
+
+	Net.Get("PotionUseResult").OnClientEvent:Connect(function(success: boolean, message: string, newConsumables: {[string]: number}?)
+		if success and newConsumables then
+			cachedConsumables = newConsumables
+			potionCooldownEnd = os.clock() + POTION_USE_COOLDOWN
+		else
+			-- Server rejected the optimistically-started cooldown (e.g. already at full
+			-- health, no longer owned, downed) -- clear it immediately instead of leaving
+			-- the slot falsely dimmed for the full cooldown duration with no explanation.
+			potionCooldownEnd = 0
+			if message ~= "" then
+				warn("[Shop] Potion not used: " .. message)
+			end
+		end
+	end)
+
+	Net.Get("ShopResult").OnClientEvent:Connect(function(_success: boolean, _message: string, newConsumables: {[string]: number}?)
+		if newConsumables then
+			cachedConsumables = newConsumables
+		end
+	end)
+
+	Net.Get("RequestConsumablesSync"):FireServer()
 
 	-- ── Input Handling (Keyboard Shortcuts, Mouse Click, Mobile Touch) ─────────
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -1970,6 +2132,27 @@ function HUDController.Start()
 			else
 				cdLabel.Text = ""
 				dimOverlay.BackgroundTransparency = 1
+			end
+		end
+
+		-- Potion slot: icon/count reflect the highest-tier owned potion, dim+countdown while on cooldown
+		if potionSlotFrame and potionIconLabel and potionCountLabel and potionCdLabel and potionDimOverlay then
+			local itemId = getHighestTierOwnedPotion()
+			if itemId then
+				potionIconLabel.Text = "🧪"
+				potionCountLabel.Text = tostring(cachedConsumables[itemId] or 0)
+				potionSlotFrame.Visible = true
+			else
+				potionSlotFrame.Visible = false
+			end
+
+			if now < potionCooldownEnd then
+				local remaining = potionCooldownEnd - now
+				potionCdLabel.Text = ("%.1f"):format(remaining)
+				potionDimOverlay.BackgroundTransparency = 0.55
+			else
+				potionCdLabel.Text = ""
+				potionDimOverlay.BackgroundTransparency = 1
 			end
 		end
 	end)

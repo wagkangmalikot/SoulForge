@@ -1764,6 +1764,64 @@ function HubMapService.BuildHub(): Model
 		cc.Parent = Lighting
 	end)
 
+	-- ── 13. SHOPKEEPER STALL (Health Potion Vendor) ──────────────────────────
+	-- Positioned Southwest of the plaza (X = -48, Z = 75), south of the Tavern
+	-- (X = -48, Z = 46) -- same axis, pushed well clear of the Tavern's own
+	-- footprint (TavernWalls spans roughly Z:[33,59]) and well inside the South
+	-- wall/gate boundary (Z ~= 85, from plazaSize/2).
+	local stallPos = Vector3.new(-48, FLOOR_Y, 75)
+
+	-- Counter (waist-height serving table)
+	local stallCounter = makePart(hub, "StallCounter", Vector3.new(6.0, 1.1, 2.4), CFrame.new(stallPos + Vector3.new(0, 1.7, 0)), DARK_WOOD, Enum.Material.WoodPlanks)
+
+	-- Counter legs
+	for _, lx in {-2.6, 2.6} do
+		makePart(hub, "StallLeg", Vector3.new(0.5, 1.1, 0.5), CFrame.new(stallPos + Vector3.new(lx, 0.55, 0)), DARK_WOOD, Enum.Material.Wood)
+	end
+
+	-- Canopy support posts
+	local postPositions = {Vector3.new(-2.8, 0, -1.1), Vector3.new(2.8, 0, -1.1)}
+	for _, offset in postPositions do
+		makeCylinder(hub, "StallPost", 0.35, 5.2, CFrame.new(stallPos + offset + Vector3.new(0, 2.6, 0)), DARK_WOOD, Enum.Material.Wood)
+	end
+
+	-- Striped canopy roof (two overlapping wedge halves for a peaked-tent look)
+	local canopyCf = CFrame.new(stallPos + Vector3.new(0, 5.4, -1.1))
+	local canopyLeft = makeWedge(hub, "StallCanopyLeft", Vector3.new(6.6, 1.6, 1.8), canopyCf * CFrame.new(-1.65, 0, 0) * CFrame.Angles(0, math.rad(90), 0), GOLD_TRIM, Enum.Material.Fabric)
+	local canopyRight = makeWedge(hub, "StallCanopyRight", Vector3.new(6.6, 1.6, 1.8), canopyCf * CFrame.new(1.65, 0, 0) * CFrame.Angles(0, math.rad(-90), 0), ROOF_COLOR, Enum.Material.Fabric)
+
+	-- Wares crate on the counter (visual flavor -- what the vendor is selling)
+	local waresCrate = makePart(hub, "StallWaresCrate", Vector3.new(1.4, 1.0, 1.4), CFrame.new(stallPos + Vector3.new(-1.6, 2.75, 0)), WOOD_COLOR, Enum.Material.WoodPlanks)
+	addMesh(waresCrate, Enum.MeshType.Brick)
+
+	-- A couple of potion-bottle stand-ins (small glowing spheres) on the counter
+	for _, px in {1.0, 1.8} do
+		local bottle = makePart(hub, "StallPotionBottle", Vector3.new(0.4, 0.6, 0.4), CFrame.new(stallPos + Vector3.new(px, 2.55, 0)), Color3.fromRGB(200, 40, 60), Enum.Material.Glass, false)
+		addMesh(bottle, Enum.MeshType.Sphere, Vector3.new(0.8, 1.2, 0.8))
+		local bottleGlow = Instance.new("PointLight")
+		bottleGlow.Color = Color3.fromRGB(255, 90, 100)
+		bottleGlow.Brightness = 0.6
+		bottleGlow.Range = 5
+		bottleGlow.Parent = bottle
+	end
+
+	-- Hanging sign
+	local signCf = CFrame.new(stallPos + Vector3.new(0, 4.6, -1.1))
+	makePart(hub, "StallSign", Vector3.new(2.8, 1.0, 0.15), signCf, DARK_WOOD, Enum.Material.WoodPlanks)
+
+	-- Active ShopkeeperStall Part (Target of ProximityPrompt, attached client-side)
+	local existingStall = workspace:FindFirstChild("ShopkeeperStall")
+	if existingStall then existingStall:Destroy() end
+
+	local stallPromptTarget = Instance.new("Part")
+	stallPromptTarget.Name = "ShopkeeperStall"
+	stallPromptTarget.Size = Vector3.new(6.0, 1.1, 2.4)
+	stallPromptTarget.CFrame = stallCounter.CFrame
+	stallPromptTarget.Transparency = 1
+	stallPromptTarget.CanCollide = false
+	stallPromptTarget.Anchored = true
+	stallPromptTarget.Parent = workspace
+
 	hub.Parent = workspace
 	return hub
 end
