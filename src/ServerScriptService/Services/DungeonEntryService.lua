@@ -43,7 +43,10 @@ local function enterDungeon(player: Player, dungeonId: string)
 			end
 		end
 
-		local entranceTarget = (dungeonId == "Sunforged") and Vector3.new(0, 5, -1300) or Vector3.new(0, 5, -285)
+		-- Start the dungeon session first so dungeon geometry (floors, walls, collision) is fully generated
+		DungeonSessionService.Start(dungeonId, memberUserIds)
+
+		local entranceTarget = (dungeonId == "Sunforged") and Vector3.new(0, 5.5, -1300) or Vector3.new(0, 5, -285)
 		local targetCF = CFrame.new(entranceTarget)
 		for _, p in players do
 			if p.Character then
@@ -53,11 +56,12 @@ local function enterDungeon(player: Player, dungeonId: string)
 					hrp.AssemblyLinearVelocity = Vector3.zero
 					hrp.AssemblyAngularVelocity = Vector3.zero
 				end
-				Net.Get("TeleportClient"):FireClient(p, targetCF)
+				pcall(function()
+					Net.Get("TeleportClient"):FireClient(p, targetCF)
+				end)
 			end
 		end
 
-		DungeonSessionService.Start(dungeonId, memberUserIds)
 		return
 	end
 

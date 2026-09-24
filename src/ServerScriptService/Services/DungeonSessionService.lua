@@ -38,7 +38,7 @@ local BOSS_SPAWN_CFRAME = CFrame.new(0, 1, 45) * CFrame.Angles(0, math.pi, 0)
 
 -- Staging Antechamber safe entrance platform (Z = -285)
 local ENTRANCE_POSITION = Vector3.new(0, 5, -285)
-local SUNFORGED_ENTRANCE_POSITION = Vector3.new(0, 5, -1300)
+local SUNFORGED_ENTRANCE_POSITION = Vector3.new(0, 5.5, -1300)
 local SUNFORGED_BOSS_SPAWN_CFRAME = CFrame.new(0, 50, 40) * CFrame.Angles(0, math.pi, 0)
 
 local SUNFORGED_ZONE_MOB_COORDINATES = {
@@ -188,7 +188,9 @@ local function moveCharacterToEntrance(character: Model)
 		end
 		local player = Players:GetPlayerFromCharacter(character)
 		if player then
-			Net.Get("TeleportClient"):FireClient(player, targetCF)
+			pcall(function()
+				Net.Get("TeleportClient"):FireClient(player, targetCF)
+			end)
 		end
 	end
 
@@ -525,23 +527,16 @@ function DungeonSessionService.Start(dungeonId: string, partyUserIds: {number}?)
 				hookPlayerDeath(player, character)
 			end)
 			if player.Character then
-				-- Already has a character (e.g. the first player, if the engine's
-				-- own auto-spawn already completed before this ran) -- hook it
-				-- directly, since CharacterAdded already fired for it in the past
-				-- and won't fire again for the same character.
-				hookPlayerDeath(player, player.Character)
-				-- The engine would have placed them at whatever SpawnLocation
-				-- exists in this shared Workspace (the hub's), not
-				-- ENTRANCE_POSITION -- reposition explicitly.
+				-- Reposition immediately to entrance platform before any async yields
 				moveCharacterToEntrance(player.Character)
+				hookPlayerDeath(player, player.Character)
 			else
 				-- No character yet, and CharacterAutoLoads is now off, so the
 				-- engine won't spawn one on its own -- spawn it explicitly.
-				-- Same SpawnLocation problem applies: LoadCharacter() places
-				-- them via the default spawn point, not ENTRANCE_POSITION.
 				player:LoadCharacter()
 				if player.Character then
 					moveCharacterToEntrance(player.Character)
+					hookPlayerDeath(player, player.Character)
 				end
 			end
 		end)

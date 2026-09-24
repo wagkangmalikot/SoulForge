@@ -736,7 +736,7 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 		local char = hit.Parent
 		local player = Players:GetPlayerFromCharacter(char)
 		if player and char then
-			char:PivotTo(CFrame.new(0, 5, -1300))
+			char:PivotTo(CFrame.new(0, 5.5, -1300))
 			local hrp = char:FindFirstChild("HumanoidRootPart")
 			if hrp then
 				hrp.AssemblyLinearVelocity = Vector3.zero
@@ -752,15 +752,28 @@ function SunforgedCitadelMapService.BuildDungeon(): Model
 	makeFloor(dungeon, "Antechamber", -50, 50, -1350, -1200)
 	makeCeiling(dungeon, "Antechamber", -50, 50, -1350, -1200)
 
+	-- Solid Grand Landing Dais
 	local spawnPad = Instance.new("SpawnLocation")
 	spawnPad.Name = "SunforgedDungeonSpawn"
-	spawnPad.Size = Vector3.new(20, 1, 20)
-	spawnPad.CFrame = CFrame.new(0, FLOOR_Y + 0.5, -1300)
-	spawnPad.Transparency = 1
+	spawnPad.Size = Vector3.new(26, 1.2, 26)
+	spawnPad.CFrame = CFrame.new(0, FLOOR_Y + 0.6, -1300)
+	spawnPad.Color = GOLD_DARK
+	spawnPad.Material = Enum.Material.Marble
+	spawnPad.Transparency = 0
 	spawnPad.CanCollide = true
 	spawnPad.Anchored = true
 	spawnPad.Duration = 0
 	spawnPad.Parent = dungeon
+
+	local daisTrim = Instance.new("Part")
+	daisTrim.Name = "DaisTrim"
+	daisTrim.Size = Vector3.new(28, 0.4, 28)
+	daisTrim.CFrame = CFrame.new(0, FLOOR_Y + 0.2, -1300)
+	daisTrim.Color = GOLD_ACCENT
+	daisTrim.Material = Enum.Material.Metal
+	daisTrim.Anchored = true
+	daisTrim.CanCollide = true
+	daisTrim.Parent = dungeon
 
 	-- Perimeter Walls
 	makeWallX(dungeon, "Antechamber_BackWall", -50, 50, -1350, 4)
